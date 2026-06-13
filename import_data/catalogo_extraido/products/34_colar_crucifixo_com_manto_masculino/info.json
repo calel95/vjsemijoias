@@ -1,0 +1,31 @@
+{
+  "page": 34,
+  "title": "COLAR CRUCIFIXO COM MANTO MASCULINO",
+  "prices": [
+    {
+      "value": "149,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "149,00",
+  "description": "Banho 18K\n2 Anos de Garantia\nCorrente: 60cm",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia",
+    "Corrente: 60cm"
+  ],
+  "images": [
+    {
+      "file": "products/34_colar_crucifixo_com_manto_masculino/img_1.jpeg",
+      "width": 628,
+      "height": 753,
+      "rect": [
+        100.8,
+        194.7,
+        504.4,
+        678.2
+      ]
+    }
+  ],
+  "folder": "products/34_colar_crucifixo_com_manto_masculino"
+}

@@ -1,0 +1,30 @@
+{
+  "page": 2,
+  "title": "MEDALHA PERSONALIZADA INICIAIS + DATA",
+  "prices": [
+    {
+      "value": "199,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "199,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/02_medalha_personalizada_iniciais_data/img_1.jpeg",
+      "width": 626,
+      "height": 750,
+      "rect": [
+        103.4,
+        217.1,
+        491.6,
+        683.2
+      ]
+    }
+  ],
+  "folder": "products/02_medalha_personalizada_iniciais_data"
+}

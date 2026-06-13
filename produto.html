@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produto - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text"><span class="logo-vj">VJ</span><span class="logo-tagline">SEMIJOIAS</span></div>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="index.html">Início</a></li>
+                <li><a href="catalogo.html" class="active">Catálogo</a></li>
+                <li><a href="index.html#categorias">Categorias</a></li>
+                <li><a href="index.html#sobre">Sobre</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="login.html" class="nav-icon" data-user-info><span>👤</span></a>
+                <a href="carrinho.html" class="nav-icon"><span>🛒</span><span class="cart-badge">0</span></a>
+                <button class="hamburger"><span></span><span></span><span></span></button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <main class="product-detail">
+        <div class="breadcrumb" style="margin-bottom: 2rem; justify-content: flex-start;">
+            <a href="index.html">Início</a>
+            <span>›</span>
+            <a href="catalogo.html">Catálogo</a>
+            <span>›</span>
+            <span id="breadcrumb-product">Produto</span>
+        </div>
+
+        <div class="product-detail-grid" id="product-content"></div>
+
+        <section style="margin-top: 5rem;">
+            <div class="section-header" style="margin-bottom: 2rem;">
+                <h2 class="section-title">Você também vai <span>amar</span></h2>
+            </div>
+            <div class="products-grid" id="related-products"></div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                <p>Semijoias finas banhadas a ouro 18k.</p>
+                <div class="social-links">
+                    <a href="#">📷</a><a href="#">📘</a><a href="#">💬</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Categorias</h3>
+                <ul>
+                    <li><a href="catalogo.html?cat=brincos">Brincos</a></li>
+                    <li><a href="catalogo.html?cat=colares">Colares</a></li>
+                    <li><a href="catalogo.html?cat=pulseiras">Pulseiras</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Contato</h3>
+                <ul>
+                    <li>📧 contato@vjsemijoias.com</li>
+                    <li>📱 (11) 99999-9999</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProductsFromAPI();
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = parseInt(urlParams.get('id'));
+            const product = getProductById(productId);
+
+            if (!product) {
+                document.getElementById('product-content').innerHTML = `
+                    <div style="text-align: center; padding: 4rem; grid-column: 1/-1;">
+                        <h2>Produto não encontrado</h2>
+                        <p style="margin: 1rem 0 2rem; color: var(--gray);">O produto que você procura não existe ou foi removido.</p>
+                        <a href="catalogo.html" class="btn btn-primary">Ver Catálogo</a>
+                    </div>`;
+                return;
+            }
+
+            document.getElementById('breadcrumb-product').textContent = product.name;
+            document.title = `${product.name} - VJ Semijoias`;
+
+            const productImages = Array.isArray(product.images) && product.images.length
+                ? product.images
+                : (product.image ? [product.image] : []);
+            const detailImage = productImages.length
+                ? `
+                    <img
+                        id="product-main-image"
+                        src="${productImages[0]}"
+                        alt="${product.name}"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                    >
+                    <div class="placeholder-large" style="display: none;">${product.icon || '💎'}</div>
+                `
+                : `<div class="placeholder-large">${product.icon || '💎'}</div>`;
+
+            const galleryThumbnails = productImages.length > 1
+                ? `
+                    <div class="product-gallery-thumbnails">
+                        ${productImages.map((image, index) => `
+                            <button
+                                type="button"
+                                class="product-gallery-thumb ${index === 0 ? 'active' : ''}"
+                                onclick="changeProductImage('${image}', this)"
+                                aria-label="Ver foto ${index + 1} de ${product.name}"
+                            >
+                                <img src="${image}" alt="${product.name} - foto ${index + 1}">
+                            </button>
+                        `).join('')}
+                    </div>
+                `
+                : '';
+
+            const content = `
+                <div class="product-gallery ${productImages.length > 1 ? 'has-thumbnails' : ''}">
+                    ${galleryThumbnails}
+                    <div class="product-detail-image">
+                        ${detailImage}
+                    </div>
+                </div>
+                <div class="product-detail-info">
+                    <span class="product-category">${product.categoryName}</span>
+                    <h1>${product.name}</h1>
+                    ${product.badge === 'new' ? '<span class="product-badge new" style="position: static; display: inline-block; margin-bottom: 1rem;">NOVO</span>' : ''}
+                    <div class="product-price">${formatPrice(product.price)}</div>
+                    <p class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</p>
+                    <p class="product-installment" style="color: var(--success); font-weight: 600;">✓ Frete grátis acima de R$ 199</p>
+                    
+                    <p class="product-description">${product.description}</p>
+                    
+                    <div class="product-features">
+                        <h4>✨ Características</h4>
+                        <ul>
+                            ${product.features.map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </div>
+                    
+                    <div class="quantity-selector">
+                        <label>Quantidade:</label>
+                        <div class="quantity-controls">
+                            <button type="button" onclick="changeQuantity(-1)">−</button>
+                            <input type="number" id="quantity" value="1" min="1" max="10">
+                            <button type="button" onclick="changeQuantity(1)">+</button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="addProductToCart()" style="flex: 1; min-width: 200px;">
+                            🛒 Adicionar ao Carrinho
+                        </button>
+                        <button class="btn btn-secondary" onclick="buyNow()" style="flex: 1; min-width: 200px;">
+                            ⚡ Comprar Agora
+                        </button>
+                    </div>
+                    
+                    <div style="margin-top: 2rem; padding: 1rem; background: var(--cream); border-radius: 12px; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <span style="font-size: 1.5rem;">🔒</span>
+                        <div>
+                            <strong>Compra 100% segura</strong>
+                            <p style="font-size: 0.85rem; color: var(--gray); margin: 0;">Dados criptografados e protegidos</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('product-content').innerHTML = content;
+
+            const related = getAllProductsMerged()
+                .filter(p => p.category === product.category && p.id !== product.id)
+                .slice(0, 4);
+            document.getElementById('related-products').innerHTML = related.map(p => createProductCard(p)).join('');
+        });
+
+        function changeProductImage(image, button) {
+            const mainImage = document.getElementById('product-main-image');
+            if (!mainImage) return;
+            mainImage.src = image;
+            mainImage.style.display = 'block';
+            const fallback = mainImage.nextElementSibling;
+            if (fallback) fallback.style.display = 'none';
+            document.querySelectorAll('.product-gallery-thumb').forEach(item => {
+                item.classList.remove('active');
+            });
+            button.classList.add('active');
+        }
+
+        function changeQuantity(delta) {
+            const input = document.getElementById('quantity');
+            let val = parseInt(input.value) + delta;
+            if (val < 1) val = 1;
+            if (val > 10) val = 10;
+            input.value = val;
+        }
+
+        function addProductToCart() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = parseInt(urlParams.get('id'));
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const product = getProductById(productId);
+
+            Cart.add(productId, quantity);
+            showToast(`${quantity}x ${product.name} adicionado ao carrinho!`, 'success');
+        }
+
+        function buyNow() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const productId = parseInt(urlParams.get('id'));
+            const quantity = parseInt(document.getElementById('quantity').value);
+
+            Cart.add(productId, quantity);
+            window.location.href = 'carrinho.html';
+        }
+    </script>
+</body>
+
+</html>

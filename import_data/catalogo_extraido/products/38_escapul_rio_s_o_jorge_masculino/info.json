@@ -1,0 +1,30 @@
+{
+  "page": 38,
+  "title": "ESCAPULÁRIO SÃO JORGE MASCULINO",
+  "prices": [
+    {
+      "value": "269,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "269,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/38_escapul_rio_s_o_jorge_masculino/img_1.jpeg",
+      "width": 713,
+      "height": 853,
+      "rect": [
+        101.0,
+        193.5,
+        505.3,
+        678.2
+      ]
+    }
+  ],
+  "folder": "products/38_escapul_rio_s_o_jorge_masculino"
+}

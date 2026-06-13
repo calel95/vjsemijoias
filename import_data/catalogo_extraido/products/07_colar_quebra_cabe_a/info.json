@@ -1,0 +1,30 @@
+{
+  "page": 7,
+  "title": "COLAR QUEBRA-CABEÇA",
+  "prices": [
+    {
+      "value": "119,00",
+      "suffix": "CADA"
+    }
+  ],
+  "primary_price": "119,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/07_colar_quebra_cabe_a/img_1.jpeg",
+      "width": 654,
+      "height": 783,
+      "rect": [
+        100.8,
+        193.8,
+        505.0,
+        678.4
+      ]
+    }
+  ],
+  "folder": "products/07_colar_quebra_cabe_a"
+}

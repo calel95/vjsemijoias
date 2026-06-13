@@ -1,0 +1,30 @@
+{
+  "page": 51,
+  "title": "CORRENTE ELO GROUMET FLAT 0,6MM",
+  "prices": [
+    {
+      "value": "379,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "379,00",
+  "description": "Prata 925\n2 Anos de Garantia",
+  "description_lines": [
+    "Prata 925",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/51_corrente_elo_groumet_flat_0_6mm/img_1.jpeg",
+      "width": 655,
+      "height": 785,
+      "rect": [
+        100.7,
+        183.2,
+        514.0,
+        678.5
+      ]
+    }
+  ],
+  "folder": "products/51_corrente_elo_groumet_flat_0_6mm"
+}

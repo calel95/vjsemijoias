@@ -1,0 +1,30 @@
+{
+  "page": 30,
+  "title": "ANEL AJUSTAVEL CORAÇÃO E PONTO DE LUZ",
+  "prices": [
+    {
+      "value": "79,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "79,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/30_anel_ajustavel_cora_o_e_ponto_de_luz/img_1.jpeg",
+      "width": 629,
+      "height": 754,
+      "rect": [
+        101.1,
+        202.9,
+        497.3,
+        678.2
+      ]
+    }
+  ],
+  "folder": "products/30_anel_ajustavel_cora_o_e_ponto_de_luz"
+}

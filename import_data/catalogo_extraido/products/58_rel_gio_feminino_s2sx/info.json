@@ -1,0 +1,29 @@
+{
+  "page": 58,
+  "title": "RELÓGIO FEMININO S2SX",
+  "prices": [
+    {
+      "value": "299,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "299,00",
+  "description": "CÓD 18589",
+  "description_lines": [
+    "CÓD 18589"
+  ],
+  "images": [
+    {
+      "file": "products/58_rel_gio_feminino_s2sx/img_1.jpeg",
+      "width": 647,
+      "height": 780,
+      "rect": [
+        100.4,
+        170.4,
+        521.4,
+        678.3
+      ]
+    }
+  ],
+  "folder": "products/58_rel_gio_feminino_s2sx"
+}

@@ -1,0 +1,38 @@
+{
+  "page": 56,
+  "title": "SMARTWATCH RELÓGIO DIGITAL MASCULINO",
+  "prices": [
+    {
+      "value": "499,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "499,00",
+  "description": "",
+  "description_lines": [],
+  "images": [
+    {
+      "file": "products/56_smartwatch_rel_gio_digital_masculino/img_1.jpeg",
+      "width": 665,
+      "height": 800,
+      "rect": [
+        100.4,
+        204.0,
+        493.8,
+        678.4
+      ]
+    },
+    {
+      "file": "products/56_smartwatch_rel_gio_digital_masculino/img_2.jpeg",
+      "width": 631,
+      "height": 761,
+      "rect": [
+        993.1,
+        216.6,
+        1386.7,
+        691.3
+      ]
+    }
+  ],
+  "folder": "products/56_smartwatch_rel_gio_digital_masculino"
+}

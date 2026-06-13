@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text">
+                    <span class="logo-vj">VJ</span>
+                    <span class="logo-tagline">SEMIJOIAS</span>
+                </div>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="index.html">Ver Loja</a></li>
+                <li><a href="catalogo.html">Catálogo</a></li>
+                <li><a href="admin.html" class="active">Admin</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="index.html" class="nav-icon" title="Sair"><span>🚪</span></a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <!-- LOGIN (aparece se não autenticado) -->
+    <div id="login-screen" class="admin-login">
+        <div class="admin-login-card">
+            <img src="images/logo.png" alt="VJ" style="width: 80px; height: 80px; margin: 0 auto 1rem; display: block;">
+            <h2>Painel Administrativo</h2>
+            <p style="color: var(--gray); margin-bottom: 1.5rem;">VJ Semijoias</p>
+            <form id="login-form" onsubmit="handleAdminLogin(event)">
+                <div class="form-group">
+                    <label>Senha de Acesso</label>
+                    <input type="password" id="admin-password" placeholder="Digite a senha" required autofocus>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+                <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray);">
+                    Use a senha definida no arquivo <code>.env</code> do servidor.
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAINEL PRINCIPAL (aparece se autenticado) -->
+    <div id="admin-panel" style="display: none;">
+        <div class="admin-header">
+            <div class="container">
+                <h1>📦 Gerenciar Produtos</h1>
+                <p>Adicione, edite ou remova produtos do catálogo</p>
+            </div>
+        </div>
+
+        <div class="admin-container">
+            <!-- ESTATÍSTICAS -->
+            <div class="admin-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Total de Produtos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✨</div>
+                    <div class="stat-value" id="stat-custom">0</div>
+                    <div class="stat-label">Produtos Customizados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🏷️</div>
+                    <div class="stat-value" id="stat-categories">0</div>
+                    <div class="stat-label">Categorias</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value" id="stat-avg-price">R$ 0</div>
+                    <div class="stat-label">Preço Médio</div>
+                </div>
+            </div>
+
+            <div class="admin-grid">
+                <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
+                <div class="admin-card">
+                    <h2 id="form-title">➕ Adicionar Novo Produto</h2>
+                    <form id="product-form" onsubmit="handleProductSubmit(event)">
+                        <input type="hidden" id="product-id" name="id">
+
+                        <!-- UPLOAD DE IMAGEM -->
+                        <div class="form-group">
+                            <label>Foto do Produto</label>
+                            <div class="image-upload" id="image-upload">
+                                <input type="file" id="image-input" accept="image/*" onchange="handleImageUpload(event)">
+                                <div class="image-upload-preview" id="image-preview">
+                                    <div class="upload-placeholder">
+                                        <div style="font-size: 3rem;">📷</div>
+                                        <p>Clique ou arraste uma imagem</p>
+                                        <small>PNG, JPG até 5MB</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <small style="color: var(--gray); margin-top: 0.5rem; display: block;">
+                                💡 Ou cole uma URL de imagem abaixo
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ou URL da Imagem</label>
+                            <input type="url" id="image-url" name="image" placeholder="https://exemplo.com/foto.jpg" onchange="syncImageFromUrl()">
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nome do Produto <span class="required">*</span></label>
+                                <input type="text" id="product-name" name="name" required placeholder="Ex: Brinco Solitário Luxo">
+                            </div>
+                            <div class="form-group">
+                                <label>Categoria <span class="required">*</span></label>
+                                <select id="product-category" name="category" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="brincos">Brincos</option>
+                                    <option value="colares">Colares</option>
+                                    <option value="pulseiras">Pulseiras</option>
+                                    <option value="aneis">Anéis</option>
+                                    <option value="pingentes">Pingentes</option>
+                                    <option value="chaveiros">Chaveiros</option>
+                                    <option value="conjuntos">Conjuntos</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Preço (R$) <span class="required">*</span></label>
+                                <input type="number" id="product-price" name="price" step="0.01" min="0" required placeholder="199.90">
+                            </div>
+                            <div class="form-group">
+                                <label>Preço Antigo (opcional)</label>
+                                <input type="number" id="product-old-price" name="oldPrice" step="0.01" min="0" placeholder="249.90">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Ícone Emoji (opcional)</label>
+                                <input type="text" id="product-icon" name="icon" placeholder="💎" maxlength="2">
+                            </div>
+                            <div class="form-group">
+                                <label>Badge</label>
+                                <select id="product-badge" name="badge">
+                                    <option value="">Nenhum</option>
+                                    <option value="new">NOVO</option>
+                                    <option value="sale">OFERTA</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Descrição <span class="required">*</span></label>
+                            <textarea id="product-description" name="description" rows="3" required placeholder="Descreva o produto..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Características (uma por linha)</label>
+                            <textarea id="product-features" name="features" rows="4" placeholder="Banho de Ouro 18k&#10;Zircônia cristal&#10;Fecho de tarraxa&#10;Diâmetro: 2cm"></textarea>
+                            <small style="color: var(--gray); margin-top: 0.3rem; display: block;">
+                                💡 Comece cada item com ✓ (opcional)
+                            </small>
+                        </div>
+
+                        <div style="display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.5rem;">
+                            <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;">
+                                💾 Salvar Produto
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="resetForm()" style="flex: 1; min-width: 150px;">
+                                🔄 Limpar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- LISTA DE PRODUTOS -->
+                <div class="admin-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                        <h2 style="margin: 0;">📋 Produtos do Catálogo</h2>
+                        <input type="text" id="admin-search" placeholder="Buscar..." style="padding: 0.5rem 1rem; border: 2px solid var(--gray-light); border-radius: 30px; font-size: 0.9rem; max-width: 200px;">
+                    </div>
+
+                    <div class="admin-filters">
+                        <button class="filter-btn active" data-filter="all">Todos</button>
+                        <button class="filter-btn" data-filter="custom">Customizados</button>
+                        <button class="filter-btn" data-filter="brincos">Brincos</button>
+                        <button class="filter-btn" data-filter="colares">Colares</button>
+                        <button class="filter-btn" data-filter="pulseiras">Pulseiras</button>
+                        <button class="filter-btn" data-filter="aneis">Anéis</button>
+                        <button class="filter-btn" data-filter="pingentes">Pingentes</button>
+                        <button class="filter-btn" data-filter="chaveiros">Chaveiros</button>
+                    </div>
+
+                    <div id="admin-products-list" class="admin-products-list">
+                        <!-- Carregado via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÕES DE AÇÃO GLOBAIS -->
+            <div class="admin-actions">
+                <h3>🛠️ Ações Globais</h3>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" onclick="exportProducts()">
+                        📥 Exportar Produtos (JSON)
+                    </button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
+                        📤 Importar Pasta de Produtos
+                    </button>
+                    <input type="file" id="import-file" webkitdirectory directory multiple style="display: none;" onchange="importProducts(event)">
+                    <small style="color: var(--gray); align-self: center;">
+                        Selecione a pasta que contém manifest.json e products/
+                    </small>
+                    <button class="btn btn-outline" onclick="showAdminPanel()">
+                        Atualizar Catálogo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMAÇÃO -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal" style="max-width: 400px; text-align: center;">
+            <h3 id="confirm-title" style="margin-bottom: 1rem;">Confirmar</h3>
+            <p id="confirm-message" style="color: var(--gray); margin-bottom: 1.5rem;"></p>
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">Cancelar</button>
+                <button class="btn btn-primary" id="confirm-yes" style="background: var(--error);">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

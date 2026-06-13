@@ -1,0 +1,29 @@
+{
+  "page": 60,
+  "title": "RELÓGIO FEMININO C1KX",
+  "prices": [
+    {
+      "value": "399,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "399,00",
+  "description": "CÓD 18582",
+  "description_lines": [
+    "CÓD 18582"
+  ],
+  "images": [
+    {
+      "file": "products/60_rel_gio_feminino_c1kx/img_1.jpeg",
+      "width": 550,
+      "height": 662,
+      "rect": [
+        99.8,
+        170.1,
+        521.8,
+        678.6
+      ]
+    }
+  ],
+  "folder": "products/60_rel_gio_feminino_c1kx"
+}

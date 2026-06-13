@@ -1,0 +1,30 @@
+{
+  "page": 29,
+  "title": "ANEL APARADOR CRAVEJADO",
+  "prices": [
+    {
+      "value": "99,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "99,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/29_anel_aparador_cravejado/img_1.jpeg",
+      "width": 637,
+      "height": 764,
+      "rect": [
+        101.0,
+        189.6,
+        508.4,
+        678.4
+      ]
+    }
+  ],
+  "folder": "products/29_anel_aparador_cravejado"
+}

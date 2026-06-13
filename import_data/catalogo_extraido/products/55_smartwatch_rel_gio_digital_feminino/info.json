@@ -1,0 +1,38 @@
+{
+  "page": 55,
+  "title": "SMARTWATCH RELÓGIO DIGITAL FEMININO",
+  "prices": [
+    {
+      "value": "499,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "499,00",
+  "description": "",
+  "description_lines": [],
+  "images": [
+    {
+      "file": "products/55_smartwatch_rel_gio_digital_feminino/img_1.jpeg",
+      "width": 666,
+      "height": 800,
+      "rect": [
+        99.8,
+        204.0,
+        493.9,
+        678.4
+      ]
+    },
+    {
+      "file": "products/55_smartwatch_rel_gio_digital_feminino/img_2.jpeg",
+      "width": 630,
+      "height": 762,
+      "rect": [
+        993.6,
+        215.9,
+        1386.7,
+        691.1
+      ]
+    }
+  ],
+  "folder": "products/55_smartwatch_rel_gio_digital_feminino"
+}

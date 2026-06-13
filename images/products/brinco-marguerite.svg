@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
+  <defs>
+    <linearGradient id="bg-brinco-marguerite" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbf6ee;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#f3e7d1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e0c489;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="ring-brinco-marguerite" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#e0c489;stop-opacity:0" />
+      <stop offset="60%" style="stop-color:#c9a86a;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#a67c3d;stop-opacity:0.6" />
+    </radialGradient>
+    <filter id="shadow-brinco-marguerite">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8"/>
+      <feOffset dx="0" dy="4" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background gradient -->
+  <rect width="600" height="600" fill="url(#bg-brinco-marguerite)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="450" cy="150" r="80" fill="#f3e7d1" opacity="0.5"/>
+  <circle cx="150" cy="450" r="100" fill="#e9c5a0" opacity="0.3"/>
+  <circle cx="500" cy="500" r="60" fill="#e0c489" opacity="0.4"/>
+  
+  <!-- Big ring (decorative) -->
+  <circle cx="300" cy="300" r="180" fill="none" stroke="#c9a86a" stroke-width="3" opacity="0.4"/>
+  <circle cx="300" cy="300" r="160" fill="none" stroke="#a67c3d" stroke-width="1" opacity="0.3"/>
+  
+  <!-- Diamond shape on top -->
+  <g filter="url(#shadow-brinco-marguerite)">
+    <polygon points="300,80 280,100 300,140 320,100" fill="#a67c3d" opacity="0.7"/>
+    <line x1="280" y1="100" x2="320" y2="100" stroke="#c9a86a" stroke-width="2"/>
+  </g>
+  
+  <!-- Central icon (emoji) -->
+  <text x="300" y="330" font-size="180" text-anchor="middle" fill="#a67c3d" opacity="0.6" font-family="Arial, sans-serif">✨</text>
+  
+  <!-- Product name -->
+  <text x="300" y="450" font-size="28" font-weight="bold" text-anchor="middle" fill="#a67c3d" font-family="Georgia, serif">Brinco Marguerite</text>
+  
+  <!-- Category -->
+  <text x="300" y="490" font-size="16" text-anchor="middle" fill="#c9a86a" letter-spacing="3" font-family="Arial, sans-serif">BRINCOS</text>
+  
+  <!-- VJ logo subtle -->
+  <text x="300" y="555" font-size="14" text-anchor="middle" fill="#a67c3d" letter-spacing="5" font-family="Georgia, serif" opacity="0.5">VJ SEMIJOIAS</text>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "page": 36,
+  "title": "CORRENTE MASCULINA CRUZ",
+  "prices": [
+    {
+      "value": "159,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "159,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/36_corrente_masculina_cruz/img_1.jpeg",
+      "width": 506,
+      "height": 606,
+      "rect": [
+        100.8,
+        167.0,
+        527.8,
+        678.0
+      ]
+    }
+  ],
+  "folder": "products/36_corrente_masculina_cruz"
+}

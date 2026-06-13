@@ -1,0 +1,30 @@
+{
+  "page": 41,
+  "title": "CORRENTE ELO CARTIER MASCULINA",
+  "prices": [
+    {
+      "value": "299,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "299,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/41_corrente_elo_cartier_masculina/img_1.jpeg",
+      "width": 644,
+      "height": 772,
+      "rect": [
+        101.1,
+        196.7,
+        502.7,
+        678.5
+      ]
+    }
+  ],
+  "folder": "products/41_corrente_elo_cartier_masculina"
+}

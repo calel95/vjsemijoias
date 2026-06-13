@@ -1,0 +1,81 @@
+{
+  "page": 25,
+  "title": "CONJUNTO CORAÇÃO PRINCESS",
+  "prices": [
+    {
+      "value": "169,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "169,00",
+  "description": "Banhado a Prata\nVERDE\nROSA\nLILÁS\nAZUL",
+  "description_lines": [
+    "Banhado a Prata",
+    "VERDE",
+    "ROSA",
+    "LILÁS",
+    "AZUL"
+  ],
+  "images": [
+    {
+      "file": "products/25_conjunto_cora_o_princess/img_5.jpeg",
+      "width": 671,
+      "height": 805,
+      "rect": [
+        101.0,
+        187.3,
+        510.0,
+        678.1
+      ]
+    },
+    {
+      "file": "products/25_conjunto_cora_o_princess/img_2.jpeg",
+      "width": 507,
+      "height": 606,
+      "rect": [
+        111.4,
+        241.2,
+        384.6,
+        568.6
+      ]
+    },
+    {
+      "file": "products/25_conjunto_cora_o_princess/img_1.jpeg",
+      "width": 426,
+      "height": 510,
+      "rect": [
+        426.2,
+        241.2,
+        699.6,
+        568.6
+      ]
+    },
+    {
+      "file": "products/25_conjunto_cora_o_princess/img_3.jpeg",
+      "width": 533,
+      "height": 641,
+      "rect": [
+        1055.7,
+        241.3,
+        1328.3,
+        569.0
+      ]
+    },
+    {
+      "file": "products/25_conjunto_cora_o_princess/img_4.jpeg",
+      "width": 471,
+      "height": 563,
+      "rect": [
+        740.7,
+        241.4,
+        1014.0,
+        569.1
+      ]
+    }
+  ],
+  "folder": "products/25_conjunto_cora_o_princess",
+  "source_pages": [
+    24,
+    25
+  ]
+}

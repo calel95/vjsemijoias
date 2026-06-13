@@ -1,0 +1,30 @@
+{
+  "page": 13,
+  "title": "MEDALHA PERSONALIZADA FOTO REALISTA",
+  "prices": [
+    {
+      "value": "129,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "129,00",
+  "description": "Aço Inox\n1 Ano de Garantia",
+  "description_lines": [
+    "Aço Inox",
+    "1 Ano de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/13_medalha_personalizada_foto_realista/img_1.jpeg",
+      "width": 649,
+      "height": 780,
+      "rect": [
+        100.9,
+        193.1,
+        505.3,
+        678.4
+      ]
+    }
+  ],
+  "folder": "products/13_medalha_personalizada_foto_realista"
+}

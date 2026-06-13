@@ -1,0 +1,31 @@
+{
+  "page": 35,
+  "title": "COLAR CRUCIFIXO JESUS MASCULINO",
+  "prices": [
+    {
+      "value": "249,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "249,00",
+  "description": "Banho 18K\n2 Anos de Garantia\nCorrente: 60cm",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia",
+    "Corrente: 60cm"
+  ],
+  "images": [
+    {
+      "file": "products/35_colar_crucifixo_jesus_masculino/img_1.jpeg",
+      "width": 658,
+      "height": 787,
+      "rect": [
+        101.2,
+        194.7,
+        504.7,
+        678.0
+      ]
+    }
+  ],
+  "folder": "products/35_colar_crucifixo_jesus_masculino"
+}

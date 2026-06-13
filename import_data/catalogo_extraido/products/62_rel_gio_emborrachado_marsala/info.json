@@ -1,0 +1,29 @@
+{
+  "page": 62,
+  "title": "RELÓGIO EMBORRACHADO MARSALA",
+  "prices": [
+    {
+      "value": "399,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "399,00",
+  "description": "CÓD 15487",
+  "description_lines": [
+    "CÓD 15487"
+  ],
+  "images": [
+    {
+      "file": "products/62_rel_gio_emborrachado_marsala/img_1.jpeg",
+      "width": 819,
+      "height": 987,
+      "rect": [
+        100.1,
+        170.2,
+        521.8,
+        678.2
+      ]
+    }
+  ],
+  "folder": "products/62_rel_gio_emborrachado_marsala"
+}

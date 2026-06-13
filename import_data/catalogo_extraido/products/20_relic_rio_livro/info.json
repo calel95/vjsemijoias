@@ -1,0 +1,42 @@
+{
+  "page": 20,
+  "title": "RELICÁRIO LIVRO",
+  "prices": [
+    {
+      "value": "139,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "139,00",
+  "description": "Banho 18K\n2 Anos de Garantia\nFoto inclusa",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia",
+    "Foto inclusa"
+  ],
+  "images": [
+    {
+      "file": "products/20_relic_rio_livro/img_1.jpeg",
+      "width": 389,
+      "height": 466,
+      "rect": [
+        100.8,
+        286.2,
+        427.6,
+        678.1
+      ]
+    },
+    {
+      "file": "products/20_relic_rio_livro/img_2.jpeg",
+      "width": 533,
+      "height": 641,
+      "rect": [
+        715.1,
+        286.4,
+        1041.5,
+        678.3
+      ]
+    }
+  ],
+  "folder": "products/20_relic_rio_livro"
+}

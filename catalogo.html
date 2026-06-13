@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Catálogo VJ Semijoias - Brincos, colares, pulseiras, anéis e pingentes banhados a ouro 18k.">
+    <title>Catálogo - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="index.html" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text">
+                    <span class="logo-vj">VJ</span>
+                    <span class="logo-tagline">SEMIJOIAS</span>
+                </div>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="index.html">Início</a></li>
+                <li><a href="catalogo.html" class="active">Catálogo</a></li>
+                <li><a href="index.html#categorias">Categorias</a></li>
+                <li><a href="index.html#sobre">Sobre</a></li>
+                <li><a href="index.html#contato">Contato</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="login.html" class="nav-icon" title="Minha Conta" data-user-info><span>👤</span></a>
+                <a href="carrinho.html" class="nav-icon" title="Carrinho">
+                    <span>🛒</span>
+                    <span class="cart-badge">0</span>
+                </a>
+                <button class="hamburger"><span></span><span></span><span></span></button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <section class="catalog-hero">
+        <h1>Nosso <span>Catálogo</span></h1>
+        <p>Explore a coleção oficial de semijoias VJ banhadas a ouro 18k</p>
+        <div class="breadcrumb">
+            <a href="index.html">Início</a>
+            <span>›</span>
+            <span>Catálogo</span>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="section-container">
+            <!-- BARRA DE DOWNLOAD DO PDF -->
+            <div class="pdf-download-bar">
+                <p>
+                    <strong>📄 Baixe nosso catálogo oficial em PDF</strong>
+                    Acesse offline a coleção completa de semijoias VJ
+                </p>
+                <a href="pdf/catalogo-vj.pdf" download="catalogo-vj-semijoias.pdf" class="btn">
+                    ⬇️ Baixar PDF
+                </a>
+                <a href="pdf-visualizar.html" class="btn"
+                    style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
+                    👁️ Visualizar
+                </a>
+            </div>
+
+            <!-- FILTROS -->
+            <div class="filters">
+                <div class="filter-group" id="category-filters"></div>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Buscar produto...">
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem; color: var(--gray);">
+                <span id="products-count">0 produtos encontrados</span>
+            </div>
+
+            <div class="products-grid" id="products-grid"></div>
+            <div id="no-results" style="display: none; text-align: center; padding: 3rem;">
+                <div style="font-size: 4rem; opacity: 0.3;">🔍</div>
+                <h3 style="margin: 1rem 0;">Nenhum produto encontrado</h3>
+                <p style="color: var(--gray);">Tente outros termos ou filtros</p>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                <p>Semijoias finas banhadas a ouro 18k.</p>
+                <div class="social-links">
+                    <a href="#">📷</a><a href="#">📘</a><a href="#">💬</a><a href="#">🎵</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Categorias</h3>
+                <ul>
+                    <li><a href="catalogo.html?cat=brincos">Brincos</a></li>
+                    <li><a href="catalogo.html?cat=colares">Colares</a></li>
+                    <li><a href="catalogo.html?cat=pulseiras">Pulseiras</a></li>
+                    <li><a href="catalogo.html?cat=aneis">Anéis</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Institucional</h3>
+                <ul>
+                    <li><a href="index.html#sobre">Sobre Nós</a></li>
+                    <li><a href="#">Política de Troca</a></li>
+                    <li><a href="#">FAQ</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Contato</h3>
+                <ul>
+                    <li>📧 contato@vjsemijoias.com</li>
+                    <li>📱 (11) 99999-9999</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+    <script>
+        let currentCategory = 'all';
+        let currentSearch = '';
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const catFromURL = urlParams.get('cat');
+        if (catFromURL) currentCategory = catFromURL;
+
+        function renderFilters() {
+            const container = document.getElementById('category-filters');
+            container.innerHTML = CATEGORIES.map(cat => `
+                <button class="filter-btn ${cat.id === currentCategory ? 'active' : ''}" data-category="${cat.id}">
+                    ${cat.icon} ${cat.name}
+                </button>
+            `).join('');
+
+            container.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentCategory = btn.dataset.category;
+                    renderFilters();
+                    renderProducts();
+                    const newUrl = currentCategory === 'all' ? 'catalogo.html' : `catalogo.html?cat=${currentCategory}`;
+                    history.replaceState(null, '', newUrl);
+                });
+            });
+        }
+
+        function renderProducts() {
+            let products = getProductsByCategory(currentCategory);
+
+            if (currentSearch) {
+                const search = currentSearch.toLowerCase();
+                products = products.filter(p =>
+                    p.name.toLowerCase().includes(search) ||
+                    p.description.toLowerCase().includes(search) ||
+                    p.categoryName.toLowerCase().includes(search)
+                );
+            }
+
+            const grid = document.getElementById('products-grid');
+            const noResults = document.getElementById('no-results');
+            const count = document.getElementById('products-count');
+
+            if (products.length === 0) {
+                grid.innerHTML = '';
+                noResults.style.display = 'block';
+                count.textContent = '0 produtos encontrados';
+            } else {
+                noResults.style.display = 'none';
+                grid.innerHTML = products.map(p => createProductCard(p)).join('');
+                count.textContent = `${products.length} produto${products.length > 1 ? 's' : ''} encontrado${products.length > 1 ? 's' : ''}`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProductsFromAPI();
+            renderFilters();
+            renderProducts();
+
+            const searchInput = document.getElementById('search-input');
+            let timeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    currentSearch = e.target.value;
+                    renderProducts();
+                }, 300);
+            });
+        });
+    </script>
+</body>
+
+</html>

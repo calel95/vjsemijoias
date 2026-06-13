@@ -1,0 +1,30 @@
+{
+  "page": 46,
+  "title": "PULSEIRA MASCULINA GROUMET FLAT 22CM",
+  "prices": [
+    {
+      "value": "219,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "219,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/46_pulseira_masculina_groumet_flat_22cm/img_1.jpeg",
+      "width": 642,
+      "height": 770,
+      "rect": [
+        101.0,
+        186.5,
+        510.9,
+        678.1
+      ]
+    }
+  ],
+  "folder": "products/46_pulseira_masculina_groumet_flat_22cm"
+}

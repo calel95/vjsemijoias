@@ -1,0 +1,30 @@
+{
+  "page": 32,
+  "title": "BRINCO LOVE E PONTO DE LUZ.",
+  "prices": [
+    {
+      "value": "39,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "39,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/32_brinco_love_e_ponto_de_luz/img_1.jpeg",
+      "width": 639,
+      "height": 765,
+      "rect": [
+        100.9,
+        188.5,
+        509.2,
+        678.1
+      ]
+    }
+  ],
+  "folder": "products/32_brinco_love_e_ponto_de_luz"
+}

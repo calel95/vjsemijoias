@@ -1,0 +1,29 @@
+{
+  "page": 59,
+  "title": "RELÓGIO FEMININO C1KX",
+  "prices": [
+    {
+      "value": "399,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "399,00",
+  "description": "CÓD 12391",
+  "description_lines": [
+    "CÓD 12391"
+  ],
+  "images": [
+    {
+      "file": "products/59_rel_gio_feminino_c1kx/img_1.jpeg",
+      "width": 547,
+      "height": 660,
+      "rect": [
+        100.1,
+        169.9,
+        521.6,
+        678.5
+      ]
+    }
+  ],
+  "folder": "products/59_rel_gio_feminino_c1kx"
+}

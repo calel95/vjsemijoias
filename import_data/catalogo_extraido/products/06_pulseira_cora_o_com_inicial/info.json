@@ -1,0 +1,30 @@
+{
+  "page": 6,
+  "title": "PULSEIRA CORAÇÃO COM INICIAL",
+  "prices": [
+    {
+      "value": "115,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "115,00",
+  "description": "Banho 18K\n2 Anos de Garantia",
+  "description_lines": [
+    "Banho 18K",
+    "2 Anos de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/06_pulseira_cora_o_com_inicial/img_1.jpeg",
+      "width": 239,
+      "height": 285,
+      "rect": [
+        99.8,
+        178.1,
+        519.4,
+        679.0
+      ]
+    }
+  ],
+  "folder": "products/06_pulseira_cora_o_com_inicial"
+}

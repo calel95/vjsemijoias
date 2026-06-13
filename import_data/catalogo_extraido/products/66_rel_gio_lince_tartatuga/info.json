@@ -1,0 +1,33 @@
+{
+  "page": 66,
+  "title": "RELÓGIO LINCE TARTATUGA",
+  "prices": [
+    {
+      "value": "499,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "499,00",
+  "description": "CÓD 14053",
+  "description_lines": [
+    "CÓD 14053"
+  ],
+  "images": [
+    {
+      "file": "products/66_rel_gio_lince_tartatuga/img_1.jpeg",
+      "width": 595,
+      "height": 717,
+      "rect": [
+        99.9,
+        170.1,
+        521.7,
+        678.4
+      ]
+    }
+  ],
+  "folder": "products/66_rel_gio_lince_tartatuga",
+  "source_pages": [
+    66,
+    67
+  ]
+}

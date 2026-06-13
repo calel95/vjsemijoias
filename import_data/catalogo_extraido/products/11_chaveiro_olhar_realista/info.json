@@ -1,0 +1,29 @@
+{
+  "page": 11,
+  "title": "CHAVEIRO OLHAR REALISTA",
+  "prices": [
+    {
+      "value": "89,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "89,00",
+  "description": "Aço Inox",
+  "description_lines": [
+    "Aço Inox"
+  ],
+  "images": [
+    {
+      "file": "products/11_chaveiro_olhar_realista/img_1.jpeg",
+      "width": 747,
+      "height": 897,
+      "rect": [
+        101.2,
+        177.7,
+        518.0,
+        678.4
+      ]
+    }
+  ],
+  "folder": "products/11_chaveiro_olhar_realista"
+}

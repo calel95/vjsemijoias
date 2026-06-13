@@ -1,0 +1,396 @@
+/* ============================================
+   ADMIN - VJ Semijoias
+   ============================================ */
+
+.admin-login {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--cream) 0%, var(--gold-pale) 100%);
+    padding: 2rem;
+}
+
+.admin-login-card {
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: var(--shadow-hover);
+    padding: 3rem;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+}
+
+.admin-login-card h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.admin-header {
+    background: linear-gradient(135deg, var(--dark) 0%, var(--gray-dark) 100%);
+    color: var(--white);
+    padding: 3rem 2rem 2rem;
+    text-align: center;
+}
+
+.admin-header h1 {
+    color: var(--white);
+    font-size: 2.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.admin-header p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1.05rem;
+}
+
+.admin-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+    text-align: center;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+    border-color: var(--gold-primary);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--gold-dark);
+    margin-bottom: 0.3rem;
+}
+
+.stat-label {
+    color: var(--gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1024px) {
+    .admin-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.admin-card h2 {
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+    color: var(--gold-dark);
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gold-pale);
+}
+
+/* IMAGE UPLOAD */
+.image-upload {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 250px;
+    border: 3px dashed var(--gray-light);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--gray-pale);
+}
+
+.image-upload:hover {
+    border-color: var(--gold-primary);
+    background: var(--cream);
+}
+
+.image-upload.dragging {
+    border-color: var(--gold-primary);
+    background: var(--gold-pale);
+    transform: scale(1.02);
+}
+
+.image-upload input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.image-upload-preview {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-upload-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.5rem;
+    background: var(--white);
+}
+
+.upload-placeholder {
+    text-align: center;
+    color: var(--gray);
+    pointer-events: none;
+}
+
+.upload-placeholder p {
+    margin: 0.5rem 0 0.3rem;
+    font-weight: 600;
+    color: var(--gray-dark);
+}
+
+.upload-placeholder small {
+    color: var(--gray);
+    font-size: 0.8rem;
+}
+
+/* FORM ROW */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 600px) {
+    .form-row { grid-template-columns: 1fr; }
+}
+
+/* ADMIN FILTERS */
+.admin-filters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.admin-filters .filter-btn {
+    padding: 0.4rem 0.9rem;
+    font-size: 0.82rem;
+}
+
+/* PRODUCTS LIST */
+.admin-products-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-height: 700px;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+.admin-products-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-products-list::-webkit-scrollbar-track {
+    background: var(--gray-pale);
+    border-radius: 4px;
+}
+
+.admin-products-list::-webkit-scrollbar-thumb {
+    background: var(--gold-primary);
+    border-radius: 4px;
+}
+
+.admin-product-item {
+    display: grid;
+    grid-template-columns: 60px 1fr auto;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.8rem;
+    background: var(--gray-pale);
+    border-radius: 12px;
+    transition: var(--transition);
+    border: 2px solid transparent;
+}
+
+.admin-product-item:hover {
+    background: var(--cream);
+    border-color: var(--gold-primary);
+}
+
+.admin-product-thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, var(--cream), var(--gold-pale));
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+
+.admin-product-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 0.2rem;
+    background: var(--white);
+}
+
+.admin-product-info h4 {
+    font-size: 0.95rem;
+    margin-bottom: 0.2rem;
+    line-height: 1.2;
+}
+
+.admin-product-info p {
+    color: var(--gray);
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.admin-product-info .product-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+
+.admin-product-info .badge-mini {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 10px;
+    background: var(--gold-primary);
+    color: var(--white);
+    font-weight: 600;
+}
+
+.admin-product-info .badge-mini.custom {
+    background: var(--success);
+}
+
+.admin-product-info .badge-mini.fixed {
+    background: var(--gray);
+}
+
+.admin-product-price {
+    color: var(--gold-dark);
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.admin-product-actions {
+    display: flex;
+    gap: 0.4rem;
+}
+
+.admin-product-actions button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    border: none;
+    cursor: pointer;
+}
+
+.btn-edit {
+    background: var(--cream);
+    color: var(--gold-dark);
+}
+
+.btn-edit:hover {
+    background: var(--gold-primary);
+    color: var(--white);
+}
+
+.btn-delete {
+    background: #fee;
+    color: var(--error);
+}
+
+.btn-delete:hover {
+    background: var(--error);
+    color: var(--white);
+}
+
+.empty-admin-list {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--gray);
+}
+
+.empty-admin-list .icon {
+    font-size: 3rem;
+    opacity: 0.4;
+    margin-bottom: 1rem;
+}
+
+/* ADMIN ACTIONS */
+.admin-actions {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--shadow);
+}
+
+.admin-actions h3 {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: var(--gold-dark);
+}
+
+/* NOTIFICATION BADGE */
+.custom-badge {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-left: 0.5rem;
+}

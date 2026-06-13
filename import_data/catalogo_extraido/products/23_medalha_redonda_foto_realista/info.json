@@ -1,0 +1,41 @@
+{
+  "page": 23,
+  "title": "MEDALHA REDONDA FOTO REALISTA",
+  "prices": [
+    {
+      "value": "119,00",
+      "suffix": ""
+    }
+  ],
+  "primary_price": "119,00",
+  "description": "Aço inox\n1 Ano de Garantia",
+  "description_lines": [
+    "Aço inox",
+    "1 Ano de Garantia"
+  ],
+  "images": [
+    {
+      "file": "products/23_medalha_redonda_foto_realista/img_1.jpeg",
+      "width": 523,
+      "height": 627,
+      "rect": [
+        101.0,
+        286.2,
+        427.5,
+        678.5
+      ]
+    },
+    {
+      "file": "products/23_medalha_redonda_foto_realista/img_2.jpeg",
+      "width": 560,
+      "height": 671,
+      "rect": [
+        714.7,
+        286.6,
+        1041.3,
+        678.5
+      ]
+    }
+  ],
+  "folder": "products/23_medalha_redonda_foto_realista"
+}

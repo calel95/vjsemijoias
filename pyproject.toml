@@ -1,0 +1,23 @@
+[project]
+name = "vj-semijoias"
+version = "0.1.0"
+description = "Loja virtual VJ Semijoias com backend Flask"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1,<4",
+    "flask-cors>=5,<7",
+    "flask-jwt-extended>=4.7,<5",
+    "flask-sqlalchemy>=3.1,<4",
+    "python-dotenv>=1.1,<2",
+    "requests>=2.33,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -p no:cacheprovider"
