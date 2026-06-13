@@ -1,4 +1,5 @@
 import os
+import json
 from io import BytesIO
 
 from werkzeug.datastructures import MultiDict
@@ -39,6 +40,14 @@ def order_payload():
         'address_state': 'SP',
         'items': [{'id': 1, 'quantity': 1}],
     }
+
+
+def catalog_totals():
+    manifest = json.loads(
+        (DEFAULT_SOURCE / 'manifest.json').read_text(encoding='utf-8')
+    )
+    products = manifest.get('products') or []
+    return len(products), sum(len(product.get('images') or []) for product in products)
 
 
 def test_health():
@@ -129,9 +138,10 @@ def test_admin_can_import_complete_catalog_folder():
 
     assert response.status_code == 200
     data = response.get_json()
-    assert data['products'] == 19
-    assert data['images'] == 22
-    assert data['created'] == 19
+    expected_products, expected_images = catalog_totals()
+    assert data['products'] == expected_products
+    assert data['images'] == expected_images
+    assert data['created'] == expected_products
 
 
 def test_payment_config_exposes_infinitepay():
@@ -147,7 +157,8 @@ def test_payment_config_exposes_infinitepay():
 
 
 def test_create_infinitepay_checkout_returns_redirect(monkeypatch):
-    def fake_request(method, url, **kwargs):
+    def fake_request(self, method, url, **kwargs):
+        assert self.trust_env is False
         assert method == 'POST'
         assert url.endswith('/links')
         assert kwargs['json']['handle'] == 'vjsemijoias'
@@ -160,7 +171,7 @@ def test_create_infinitepay_checkout_returns_redirect(monkeypatch):
             'url': 'https://checkout.infinitepay.com.br/teste',
         })
 
-    monkeypatch.setattr('backend.infinitepay_client.requests.request', fake_request)
+    monkeypatch.setattr('backend.infinitepay_client.requests.Session.request', fake_request)
     response = app.test_client().post(
         '/api/payments/infinitepay/checkout',
         json=order_payload(),
@@ -175,7 +186,7 @@ def test_create_infinitepay_checkout_returns_redirect(monkeypatch):
 
 
 def test_infinitepay_return_confirms_payment(monkeypatch):
-    def fake_request(method, url, **kwargs):
+    def fake_request(self, method, url, **kwargs):
         if url.endswith('/links'):
             return FakeResponse({
                 'url': 'https://checkout.infinitepay.com.br/teste',
@@ -189,7 +200,7 @@ def test_infinitepay_return_confirms_payment(monkeypatch):
             'capture_method': 'credit_card',
         })
 
-    monkeypatch.setattr('backend.infinitepay_client.requests.request', fake_request)
+    monkeypatch.setattr('backend.infinitepay_client.requests.Session.request', fake_request)
     client = app.test_client()
     created = client.post(
         '/api/payments/infinitepay/checkout',
@@ -215,7 +226,7 @@ def test_infinitepay_return_confirms_payment(monkeypatch):
 
 
 def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
-    def fake_request(method, url, **kwargs):
+    def fake_request(self, method, url, **kwargs):
         if url.endswith('/links'):
             return FakeResponse({'url': 'https://checkout.infinitepay.com.br/teste'})
         return FakeResponse({
@@ -227,7 +238,7 @@ def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
             'capture_method': 'pix',
         })
 
-    monkeypatch.setattr('backend.infinitepay_client.requests.request', fake_request)
+    monkeypatch.setattr('backend.infinitepay_client.requests.Session.request', fake_request)
     client = app.test_client()
     created = client.post(
         '/api/payments/infinitepay/checkout',
@@ -256,6 +267,7 @@ def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
 
 def test_catalog_import_dry_run_is_complete():
     summary = import_catalog(DEFAULT_SOURCE, dry_run=True)
+    expected_products, expected_images = catalog_totals()
 
-    assert summary['products'] == 19
-    assert summary['images'] == 22
+    assert summary['products'] == expected_products
+    assert summary['images'] == expected_images

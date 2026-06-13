@@ -99,10 +99,23 @@ function maskCardExpiry(v) {
     return v.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').slice(0, 5);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('[data-mask="cpf"]').forEach(i => i.addEventListener('input', e => e.target.value = maskCPF(e.target.value)));
-    document.querySelectorAll('[data-mask="phone"]').forEach(i => i.addEventListener('input', e => e.target.value = maskPhone(e.target.value)));
-    document.querySelectorAll('[data-mask="cep"]').forEach(i => i.addEventListener('input', e => e.target.value = maskCEP(e.target.value)));
-    document.querySelectorAll('[data-mask="card"]').forEach(i => i.addEventListener('input', e => e.target.value = maskCardNumber(e.target.value)));
-    document.querySelectorAll('[data-mask="expiry"]').forEach(i => i.addEventListener('input', e => e.target.value = maskCardExpiry(e.target.value)));
-});
+function applyInputMasks() {
+    const masks = {
+        cpf: maskCPF,
+        phone: maskPhone,
+        cep: maskCEP,
+        card: maskCardNumber,
+        expiry: maskCardExpiry,
+    };
+
+    document.querySelectorAll('[data-mask]').forEach(input => {
+        const mask = masks[input.dataset.mask];
+        if (!mask || input.dataset.maskBound === 'true') return;
+        input.addEventListener('input', event => {
+            event.target.value = mask(event.target.value);
+        });
+        input.dataset.maskBound = 'true';
+    });
+}
+
+document.addEventListener('DOMContentLoaded', applyInputMasks);

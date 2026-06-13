@@ -14,6 +14,10 @@ class InfinitePayClient:
     def __init__(self, handle, api_base='https://api.checkout.infinitepay.io'):
         self.handle = str(handle or '').strip().lstrip('$')
         self.api_base = api_base.rstrip('/')
+        self.session = requests.Session()
+        # O ambiente local pode definir proxies para ferramentas internas.
+        # A API pública da InfinitePay deve ser acessada diretamente.
+        self.session.trust_env = False
 
     @property
     def configured(self):
@@ -38,7 +42,7 @@ class InfinitePayClient:
             raise InfinitePayError('InfinitePay não foi configurada', status_code=503)
 
         try:
-            response = requests.request(
+            response = self.session.request(
                 method,
                 f'{self.api_base}{path}',
                 json=json,
@@ -49,7 +53,10 @@ class InfinitePayClient:
                 timeout=20,
             )
         except requests.RequestException as exc:
-            raise InfinitePayError('Não foi possível conectar à InfinitePay') from exc
+            raise InfinitePayError(
+                'Não foi possível conectar à InfinitePay',
+                details={'reason': str(exc)},
+            ) from exc
 
         try:
             data = response.json()
