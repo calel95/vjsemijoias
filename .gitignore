@@ -1,7 +1,11 @@
 .env
 .venv/
+.uv-cache/
 __pycache__/
 .pytest_cache/
+.pytest-tmp*/
+.tmp/
+import_data/uploads/
 *.py[cod]
 instance/
 *.db
