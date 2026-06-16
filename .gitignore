@@ -10,5 +10,4 @@ import_data/uploads/
 instance/
 *.db
 output/
-import_data/catalog_manual/products/*
-import_data/catalog_extraido/*
+import_data/
