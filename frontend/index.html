@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="VJ Semijoias - Banhadas a Ouro 18k. Brincos, colares, pulseiras, anéis e pingentes com qualidade premium.">
+    <title>VJ Semijoias - Banhadas a Ouro 18k</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+</head>
+
+<body>
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text">
+                    <span class="logo-vj">VJ</span>
+                    <span class="logo-tagline">SEMIJOIAS</span>
+                </div>
+            </a>
+
+            <ul class="nav-menu">
+                <li><a href="/" class="active">Início</a></li>
+                <li><a href="/catalogo">Catálogo</a></li>
+                <li><a href="/#categorias">Categorias</a></li>
+                <li><a href="#sobre">Sobre</a></li>
+                <li><a href="#contato">Contato</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="/login" class="nav-icon" title="Minha Conta" data-user-info>
+                    <span>👤</span>
+                </a>
+                <a href="/carrinho" class="nav-icon" title="Carrinho">
+                    <span>🛒</span>
+                    <span class="cart-badge">0</span>
+                </a>
+                <button class="hamburger" aria-label="Menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1><span>A elegância está nos detalhes que você escolhe usar</span></h1>
+                <p>Descubra a coleção exclusiva da VJ Semijoias: peças banhadas a ouro 18k, com acabamento impecável e
+                    design atemporal para realçar sua beleza em cada detalhe.</p>
+                <div class="hero-buttons">
+                    <a href="/catalogo" class="btn btn-primary">Ver Catálogo</a>
+                    <a href="#destaques" class="btn btn-secondary">Mais Vendidos</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <img src="images/logo.png" alt="VJ Semijoias" class="hero-logo">
+            </div>
+        </div>
+    </section>
+
+    <!-- CATEGORIAS -->
+    <section class="section categories" id="categorias">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-tag">Explore</span>
+                <h2 class="section-title">Nossas <span>Categorias</span></h2>
+                <p class="section-subtitle">Encontre a peça perfeita para cada momento e estilo</p>
+            </div>
+
+            <div class="categories-grid">
+                <a href="/catalogo?cat=brincos" class="category-card">
+                    <div class="category-icon">✨</div>
+                    <h3>Brincos</h3>
+                    <p>Argolas, cravejados</p>
+                </a>
+                <a href="/catalogo?cat=colares" class="category-card">
+                    <div class="category-icon">📿</div>
+                    <h3>Colares</h3>
+                    <p>Com pingentes únicos</p>
+                </a>
+                <a href="/catalogo?cat=pulseiras" class="category-card">
+                    <div class="category-icon">⚜️</div>
+                    <h3>Pulseiras</h3>
+                    <p>Tennis, elos</p>
+                </a>
+                <a href="/catalogo?cat=aneis" class="category-card">
+                    <div class="category-icon">💍</div>
+                    <h3>Anéis</h3>
+                    <p>Ajustáveis, bicolores</p>
+                </a>
+                <a href="/catalogo?cat=pingentes" class="category-card">
+                    <div class="category-icon">🔮</div>
+                    <h3>Pingentes</h3>
+                    <p>Símbolos especiais</p>
+                </a>
+                <a href="/catalogo?cat=chaveiros" class="category-card">
+                    <div class="category-icon">🔑</div>
+                    <h3>Chaveiros</h3>
+                    <p>Presentes personalizados</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- DESTAQUES -->
+    <section class="section" id="destaques">
+        <div class="section-container">
+            <div class="section-header">
+                <span class="section-tag">Em Alta</span>
+                <h2 class="section-title">Nossa <span>Coleção</span></h2>
+                <p class="section-subtitle">Conheça todas as peças do nosso catálogo oficial</p>
+            </div>
+
+            <div class="products-grid" id="featured-products"></div>
+
+            <div style="text-align: center; margin-top: 3rem;">
+                <a href="/catalogo" class="btn btn-outline">Ver Catálogo Completo</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section features">
+        <div class="section-container">
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">✦</div>
+                    <h4>Ouro 18k Garantido</h4>
+                    <p>Todas as peças com banho de ouro 18k de alta qualidade</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🚚</div>
+                    <h4>Frete Grátis</h4>
+                    <p>Em todos os pedidos para todo o Brasil</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💳</div>
+                    <h4>Parcelamento</h4>
+                    <p>Em até 12x sem juros no cartão de crédito</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h4>Troca Garantida</h4>
+                    <p>30 dias para trocar ou devolver seu produto</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOBRE -->
+    <section class="section" id="sobre" style="background: var(--cream);">
+        <div class="section-container" style="max-width: 900px; text-align: center;">
+            <span class="section-tag">Sobre Nós</span>
+            <h2 class="section-title">A arte de <span>brilhar</span></h2>
+            <p style="font-size: 1.1rem; color: var(--gray-dark); line-height: 1.8; margin-bottom: 2rem;">
+                A <strong>VJ Semijoias</strong> nasceu para encantar mulheres que valorizam a elegância em cada detalhe.
+                Trabalhamos com peças banhadas a ouro 18k, selecionadas com critério e acabamento impecável, unindo
+                qualidade, design sofisticado e preço justo.
+            </p>
+            <p style="font-size: 1.1rem; color: var(--gray-dark); line-height: 1.8;">
+                Cada peça do nosso catálogo foi pensada para traduzir a sua personalidade única. Da seleção de cristais
+                ao banho dourado, tudo é feito para durar e encantar. <strong>VJ Semijoias — Brilhe em cada
+                    momento.</strong>
+            </p>
+        </div>
+    </section>
+
+    <!-- NEWSLETTER -->
+    <section class="section newsletter" id="contato">
+        <div class="section-container">
+            <h2>Receba nossas <span>novidades</span></h2>
+            <p>Cadastre-se e ganhe 10% de desconto na primeira compra, além de acesso exclusivo a lançamentos e
+                promoções.</p>
+            <form class="newsletter-form" onsubmit="handleNewsletter(event)">
+                <input type="email" placeholder="Seu melhor e-mail" required>
+                <button type="submit" class="btn btn-primary">Cadastrar</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                <p>Semijoias finas banhadas a ouro 18k. Elegância, qualidade e exclusividade em cada peça.</p>
+                <div class="social-links">
+                    <a href="#" aria-label="Instagram">📷</a>
+                    <a href="#" aria-label="Facebook">📘</a>
+                    <a href="#" aria-label="WhatsApp">💬</a>
+                    <a href="#" aria-label="TikTok">🎵</a>
+                </div>
+            </div>
+            <div class="footer-col">
+                <h3>Categorias</h3>
+                <ul>
+                    <li><a href="/catalogo?cat=brincos">Brincos</a></li>
+                    <li><a href="/catalogo?cat=colares">Colares</a></li>
+                    <li><a href="/catalogo?cat=pulseiras">Pulseiras</a></li>
+                    <li><a href="/catalogo?cat=aneis">Anéis</a></li>
+                    <li><a href="/catalogo?cat=pingentes">Pingentes</a></li>
+                    <li><a href="/catalogo?cat=chaveiros">Chaveiros</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Institucional</h3>
+                <ul>
+                    <li><a href="#sobre">Sobre Nós</a></li>
+                    <li><a href="#">Política de Troca</a></li>
+                    <li><a href="#">Política de Privacidade</a></li>
+                    <li><a href="#">Termos de Uso</a></li>
+                    <li><a href="#">FAQ</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h3>Contato</h3>
+                <ul>
+                    <li>📧 contato@vjsemijoias.com</li>
+                    <li>📱 (11) 99999-9999</li>
+                    <li>📍 São Paulo - SP</li>
+                    <li>🕐 Seg-Sex: 9h às 18h</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados. CNPJ: 00.000.000/0001-00</p>
+            <p style="margin-top: 0.5rem;"><a href="/admin" style="color: var(--gold-primary);">🔧 Painel
+                    Administrativo</a></p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const featured = document.getElementById('featured-products');
+            if (featured) {
+                // Tenta carregar da API primeiro
+                const apiProducts = await loadProductsFromAPI();
+                const products = apiProducts && apiProducts.length > 0 ? apiProducts : PRODUCTS;
+                featured.innerHTML = products.map(p => createProductCard(p)).join('');
+            }
+        });
+    </script>
+</body>
+
+</html>

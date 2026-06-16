@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo PDF - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+    <style>
+        .pdf-viewer {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow-hover);
+            overflow: hidden;
+        }
+        .pdf-header {
+            background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark));
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .pdf-header h2 { color: white; margin: 0; font-size: 1.5rem; }
+        .pdf-actions { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .pdf-actions .btn { background: white; color: var(--gold-dark); padding: 0.7rem 1.5rem; font-size: 0.9rem; }
+        .pdf-actions .btn:hover { background: var(--dark); color: white; }
+        .pdf-embed { width: 100%; height: 80vh; min-height: 600px; border: none; display: block; }
+        @media (max-width: 768px) {
+            .pdf-embed { height: 70vh; min-height: 500px; }
+            .pdf-header { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text"><span class="logo-vj">VJ</span><span class="logo-tagline">SEMIJOIAS</span></div>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/">Início</a></li>
+                <li><a href="/catalogo">Catálogo</a></li>
+                <li><a href="/#categorias">Categorias</a></li>
+                <li><a href="/#sobre">Sobre</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/login" class="nav-icon" data-user-info><span>👤</span></a>
+                <a href="/carrinho" class="nav-icon"><span>🛒</span><span class="cart-badge">0</span></a>
+                <button class="hamburger"><span></span><span></span><span></span></button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <main class="section">
+        <div class="pdf-viewer">
+            <div class="pdf-header">
+                <h2>📄 Catálogo Oficial VJ Semijoias 2024</h2>
+                <div class="pdf-actions">
+                    <a href="pdf/catalogo-vj.pdf" download="catalogo-vj-semijoias.pdf" class="btn">⬇️ Baixar PDF</a>
+                    <a href="pdf/catalogo-vj.pdf" target="_blank" class="btn">🔗 Abrir em Nova Aba</a>
+                    <a href="/catalogo" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">← Voltar</a>
+                </div>
+            </div>
+            
+            <iframe src="pdf/catalogo-vj.pdf" class="pdf-embed" title="Catálogo VJ Semijoias" loading="lazy">
+                <div style="padding: 4rem 2rem; text-align: center;">
+                    <div style="font-size: 5rem; margin-bottom: 1rem;">📄</div>
+                    <h2>Não foi possível exibir o PDF</h2>
+                    <p style="color: var(--gray); margin: 1rem 0 2rem;">Seu navegador não suporta a visualização direta. Clique no botão abaixo para baixar.</p>
+                    <a href="pdf/catalogo-vj.pdf" download="catalogo-vj-semijoias.pdf" class="btn btn-primary">⬇️ Baixar Catálogo PDF</a>
+                </div>
+            </iframe>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                <p>Semijoias finas banhadas a ouro 18k.</p>
+            </div>
+            <div class="footer-col">
+                <h3>Atendimento</h3>
+                <ul>
+                    <li>📧 contato@vjsemijoias.com</li>
+                    <li>📱 (11) 99999-9999</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+</body>
+</html>

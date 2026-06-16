@@ -1,0 +1,496 @@
+{
+  "products": [
+    {
+      "name": "Anel Face Reta 2 Linhas Zirconias",
+      "category": "aneis",
+      "price": "99,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/anel-face-reta-2 linhas-zirconias",
+      "images": [
+        "products/anel-face-reta-2 linhas-zirconias/WhatsApp Image 2026-06-15 at 14.03.54.jpeg",
+        "products/anel-face-reta-2 linhas-zirconias/WhatsApp Image 2026-06-15 at 14.03.55 (1).jpeg",
+        "products/anel-face-reta-2 linhas-zirconias/WhatsApp Image 2026-06-15 at 14.03.55.jpeg"
+      ]
+    },
+    {
+      "name": "Anel Face Reta Liso",
+      "category": "aneis",
+      "price": "99,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/anel-face-reta-liso",
+      "images": [
+        "products/anel-face-reta-liso/WhatsApp Image 2026-06-15 at 14.03.58.jpeg",
+        "products/anel-face-reta-liso/WhatsApp Image 2026-06-15 at 14.03.59 (1).jpeg",
+        "products/anel-face-reta-liso/WhatsApp Image 2026-06-15 at 14.03.59.jpeg"
+      ]
+    },
+    {
+      "name": "Anel Prata Coracao Amarelo Citrino",
+      "category": "aneis",
+      "price": "259,00",
+      "description": "",
+      "features": [],
+      "folder": "products/anel-prata-coracao-amarelo-citrino",
+      "images": [
+        "products/anel-prata-coracao-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.09.jpeg",
+        "products/anel-prata-coracao-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.10.jpeg",
+        "products/anel-prata-coracao-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.11.jpeg"
+      ]
+    },
+    {
+      "name": "Anel Prata Gota Amarelo Citrino",
+      "category": "aneis",
+      "price": "219,00",
+      "description": "",
+      "features": [],
+      "folder": "products/anel-prata-gota-amarelo-citrino",
+      "images": [
+        "products/anel-prata-gota-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.08 (1).jpeg",
+        "products/anel-prata-gota-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.08.jpeg"
+      ]
+    },
+    {
+      "name": "Anel Solitario Moissanite",
+      "category": "aneis",
+      "price": "139,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/anel-solitario-moissanite",
+      "images": [
+        "products/anel-solitario-moissanite/WhatsApp Image 2026-06-15 at 14.03.56.jpeg",
+        "products/anel-solitario-moissanite/WhatsApp Image 2026-06-15 at 14.03.57 (1).jpeg",
+        "products/anel-solitario-moissanite/WhatsApp Image 2026-06-15 at 14.03.57.jpeg"
+      ]
+    },
+    {
+      "name": "Anel Solitario Zirconia 10mm",
+      "category": "aneis",
+      "price": "139,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/anel-solitario-zirconia-10mm",
+      "images": [
+        "products/anel-solitario-zirconia-10mm/WhatsApp Image 2026-06-15 at 14.03.53 (1).jpeg",
+        "products/anel-solitario-zirconia-10mm/WhatsApp Image 2026-06-15 at 14.03.53.jpeg",
+        "products/anel-solitario-zirconia-10mm/WhatsApp Image 2026-06-15 at 14.03.54.jpeg"
+      ]
+    },
+    {
+      "name": "Argola Click Banhada A Prata Jateada",
+      "category": "brincos",
+      "price": "139,00",
+      "description": "",
+      "features": [],
+      "folder": "products/argola-click-banhada-a-prata-jateada",
+      "images": [
+        "products/argola-click-banhada-a-prata-jateada/WhatsApp Image 2026-06-15 at 14.04.11.jpeg",
+        "products/argola-click-banhada-a-prata-jateada/WhatsApp Image 2026-06-15 at 14.04.12.jpeg"
+      ]
+    },
+    {
+      "name": "Argola Click Bold Jateada",
+      "category": "brincos",
+      "price": "179,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/argola-click-bold-jateada",
+      "images": [
+        "products/argola-click-bold-jateada/WhatsApp Image 2026-06-15 at 14.03.48 (1).jpeg",
+        "products/argola-click-bold-jateada/WhatsApp Image 2026-06-15 at 14.03.48.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Azul Safira Zirconias No Contorno",
+      "category": "brincos",
+      "price": "69,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-azul-safira-zirconias-no-contorno",
+      "images": [
+        "products/brinco-azul-safira-zirconias-no-contorno/brinco-azul-safira-zirconias-no-contorno (2).jpeg",
+        "products/brinco-azul-safira-zirconias-no-contorno/brinco-azul-safira-zirconias-no-contorno.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Bandeira Brasil",
+      "category": "brincos",
+      "price": "99,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-bandeira-brasil",
+      "images": [
+        "products/brinco-bandeira-brasil/brinco-bandeira-brasil (2).jpeg",
+        "products/brinco-bandeira-brasil/brinco-bandeira-brasil (3).jpeg",
+        "products/brinco-bandeira-brasil/brinco-bandeira-brasil.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Banhado A Prata Ponto De Luz 7mm",
+      "category": "brincos",
+      "price": "79,00",
+      "description": "",
+      "features": [],
+      "folder": "products/brinco-banhado-a-prata-ponto-de-luz-7mm",
+      "images": [
+        "products/brinco-banhado-a-prata-ponto-de-luz-7mm/WhatsApp Image 2026-06-15 at 14.04.14.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Copa Amarelo Ponto De Luz",
+      "category": "brincos",
+      "price": "39,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-copa-amarelo-ponto-de-luz",
+      "images": [
+        "products/brinco-copa-amarelo-ponto-de-luz/brinco-copa-amarelo-ponto-de-luz.jpeg",
+        "products/brinco-copa-amarelo-ponto-de-luz/brinco-copa-gota-azul-ponto-de-luz (2).jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Copa Gota Azul Ponto De Luz",
+      "category": "brincos",
+      "price": "49,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-copa-gota-azul-ponto-de-luz",
+      "images": [
+        "products/brinco-copa-gota-azul-ponto-de-luz/brinco-copa-gota-azul-ponto-de-luz.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Copa Verde Ponto De Luz",
+      "category": "brincos",
+      "price": "49,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-copa-verde-ponto-de-luz",
+      "images": [
+        "products/brinco-copa-verde-ponto-de-luz/brinco-copa-verde-ponto-de-luz.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Coracao Banhado A Prata Amarelo Citrino",
+      "category": "brincos",
+      "price": "99,00",
+      "description": "",
+      "features": [],
+      "folder": "products/brinco-coracao-banhado-a-prata-amarelo-citrino",
+      "images": [
+        "products/brinco-coracao-banhado-a-prata-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.13 (1).jpeg",
+        "products/brinco-coracao-banhado-a-prata-amarelo-citrino/WhatsApp Image 2026-06-15 at 14.04.13.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Gota Ponto De Luz 5mm",
+      "category": "brincos",
+      "price": "49,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-gota-ponto-de-luz-5mm",
+      "images": [
+        "products/brinco-gota-ponto-de-luz-5mm/brinco-gota-ponto-de-luz-5mm (2).jpeg",
+        "products/brinco-gota-ponto-de-luz-5mm/brinco-gota-ponto-de-luz-5mm.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Oval Todo Cravejado",
+      "category": "brincos",
+      "price": "229,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-oval-todo-cravejado",
+      "images": [
+        "products/brinco-oval-todo-cravejado/WhatsApp Image 2026-06-15 at 14.03.43.jpeg",
+        "products/brinco-oval-todo-cravejado/WhatsApp Image 2026-06-15 at 14.03.44.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Ponto De Luz 8mm",
+      "category": "brincos",
+      "price": "69,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-ponto-de-luz-8mm",
+      "images": [
+        "products/brinco-ponto-de-luz-8mm/WhatsApp Image 2026-06-15 at 14.03.39 (1).jpeg",
+        "products/brinco-ponto-de-luz-8mm/WhatsApp Image 2026-06-15 at 14.03.39.jpeg"
+      ]
+    },
+    {
+      "name": "Brinco Verde Esmeralda Zirconias No Contorno",
+      "category": "brincos",
+      "price": "69,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/brinco-verde-esmeralda-zirconias-no-contorno",
+      "images": [
+        "products/brinco-verde-esmeralda-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.45 (1).jpeg",
+        "products/brinco-verde-esmeralda-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.45.jpeg"
+      ]
+    },
+    {
+      "name": "Chocker Aro",
+      "category": "colares",
+      "price": "189,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/chocker-aro",
+      "images": [
+        "products/chocker-aro/WhatsApp Image 2026-06-15 at 14.04.00.jpeg",
+        "products/chocker-aro/WhatsApp Image 2026-06-15 at 14.04.01.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Azul Safira Zirconias No Contorno",
+      "category": "colares",
+      "price": "119,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-azul-safira-zirconias-no-contorno",
+      "images": [
+        "products/colar-azul-safira-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.35.jpeg",
+        "products/colar-azul-safira-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.36.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Bandeira Brasil",
+      "category": "colares",
+      "price": "129,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-bandeira-brasil",
+      "images": [
+        "products/colar-bandeira-brasil/colar-bandeira-brasil (2).jpeg",
+        "products/colar-bandeira-brasil/colar-bandeira-brasil (3).jpeg",
+        "products/colar-bandeira-brasil/colar-bandeira-brasil.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Banhado A Prata Ponto De Luz 7mm",
+      "category": "colares",
+      "price": "99,00",
+      "description": "",
+      "features": [],
+      "folder": "products/colar-banhado-a-prata-ponto-de-luz-7mm",
+      "images": [
+        "products/colar-banhado-a-prata-ponto-de-luz-7mm/WhatsApp Image 2026-06-15 at 14.04.15.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Banhado A Prata Rivieira",
+      "category": "colares",
+      "price": "199,00",
+      "description": "",
+      "features": [],
+      "folder": "products/colar-banhado-a-prata-rivieira",
+      "images": [
+        "products/colar-banhado-a-prata-rivieira/WhatsApp Image 2026-06-15 at 14.04.05 (1).jpeg",
+        "products/colar-banhado-a-prata-rivieira/WhatsApp Image 2026-06-15 at 14.04.05.jpeg",
+        "products/colar-banhado-a-prata-rivieira/WhatsApp Image 2026-06-15 at 14.04.06.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Brasil Colors",
+      "category": "colares",
+      "price": "149,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-brasil-colors",
+      "images": [
+        "products/colar-brasil-colors/colar-brasil-colors (2).jpeg",
+        "products/colar-brasil-colors/colar-brasil-colors (3).jpeg",
+        "products/colar-brasil-colors/colar-brasil-colors.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Brasil Mapa",
+      "category": "colares",
+      "price": "169,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-brasil-mapa",
+      "images": [
+        "products/colar-brasil-mapa/WhatsApp Image 2026-06-15 at 14.03.49 (1).jpeg",
+        "products/colar-brasil-mapa/WhatsApp Image 2026-06-15 at 14.03.49.jpeg",
+        "products/colar-brasil-mapa/WhatsApp Image 2026-06-15 at 14.03.50.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Ponto De Luz Glam 8mm",
+      "category": "colares",
+      "price": "139,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-ponto-de-luz-glam-8mm",
+      "images": [
+        "products/colar-ponto-de-luz-glam-8mm/WhatsApp Image 2026-06-15 at 14.03.36.jpeg",
+        "products/colar-ponto-de-luz-glam-8mm/WhatsApp Image 2026-06-15 at 14.03.37.jpeg",
+        "products/colar-ponto-de-luz-glam-8mm/WhatsApp Image 2026-06-15 at 14.03.38.jpeg"
+      ]
+    },
+    {
+      "name": "Colar Verde Esmerallda Zirconias No Contorno",
+      "category": "colares",
+      "price": "119,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/colar-verde-esmerallda-zirconias-no-contorno",
+      "images": [
+        "products/colar-verde-esmerallda-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.46.jpeg",
+        "products/colar-verde-esmerallda-zirconias-no-contorno/WhatsApp Image 2026-06-15 at 14.03.47.jpeg"
+      ]
+    },
+    {
+      "name": "Conjunto Banhado A Prata Azul Safira",
+      "category": "conjuntos",
+      "price": "149,00",
+      "description": "",
+      "features": [],
+      "folder": "products/conjunto-banhado-a-prata-azul-safira",
+      "images": [
+        "products/conjunto-banhado-a-prata-azul-safira/WhatsApp Image 2026-06-15 at 14.04.07.jpeg"
+      ]
+    },
+    {
+      "name": "Corda De Violao 1,5M",
+      "category": "pulseiras",
+      "price": "349,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/corda-de-violao-1,5m",
+      "images": [
+        "products/corda-de-violao-1,5m/WhatsApp Image 2026-06-15 at 14.04.01.jpeg",
+        "products/corda-de-violao-1,5m/WhatsApp Image 2026-06-15 at 14.04.02 (1).jpeg",
+        "products/corda-de-violao-1,5m/WhatsApp Image 2026-06-15 at 14.04.02.jpeg"
+      ]
+    },
+    {
+      "name": "Piercing 4 Fileiras",
+      "category": "brincos",
+      "price": "219,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/piercing-4-fileiras",
+      "images": [
+        "products/piercing-4-fileiras/WhatsApp Image 2026-06-15 at 14.03.41.jpeg",
+        "products/piercing-4-fileiras/WhatsApp Image 2026-06-15 at 14.03.42 (1).jpeg",
+        "products/piercing-4-fileiras/WhatsApp Image 2026-06-15 at 14.03.42.jpeg"
+      ]
+    },
+    {
+      "name": "Piercing Fake Liso",
+      "category": "brincos",
+      "price": "29,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/piercing-fake-liso",
+      "images": [
+        "products/piercing-fake-liso/WhatsApp Image 2026-06-15 at 14.03.51 (1).jpeg",
+        "products/piercing-fake-liso/WhatsApp Image 2026-06-15 at 14.03.51.jpeg",
+        "products/piercing-fake-liso/WhatsApp Image 2026-06-15 at 14.03.52.jpeg"
+      ]
+    },
+    {
+      "name": "Pin Brasil",
+      "category": "",
+      "price": "39,00",
+      "description": "Banho 18k",
+      "features": [
+        "Banho 18k",
+        "2 Anos de Garantia"
+      ],
+      "folder": "products/pin-brasil",
+      "images": [
+        "products/pin-brasil/WhatsApp Image 2026-06-15 at 14.03.40.jpeg",
+        "products/pin-brasil/WhatsApp Image 2026-06-15 at 14.03.41.jpeg"
+      ]
+    },
+    {
+      "name": "Pulseira Banhado A Prata",
+      "category": "pulseiras",
+      "price": "159,00",
+      "description": "",
+      "features": [],
+      "folder": "products/pulseira-banhado-a-prata",
+      "images": [
+        "products/pulseira-banhado-a-prata/WhatsApp Image 2026-06-15 at 14.04.03.jpeg",
+        "products/pulseira-banhado-a-prata/WhatsApp Image 2026-06-15 at 14.04.04.jpeg"
+      ]
+    }
+  ]
+}

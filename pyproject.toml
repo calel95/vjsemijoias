@@ -1,23 +1,31 @@
 [project]
 name = "vj-semijoias"
 version = "0.1.0"
-description = "Loja virtual VJ Semijoias com backend Flask"
+description = "Loja virtual VJ Semijoias com backend FastAPI"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.1,<4",
-    "flask-cors>=5,<7",
-    "flask-jwt-extended>=4.7,<5",
-    "flask-sqlalchemy>=3.1,<4",
+    "fastapi>=0.115,<1",
+    "pyjwt>=2.10,<3",
     "python-dotenv>=1.1,<2",
+    "python-multipart>=0.0.20,<1",
+    "pillow>=11,<13",
+    "pypdf>=5,<7",
     "requests>=2.33,<3",
+    "reportlab>=4.4,<5",
+    "sqlalchemy>=2.0,<3",
+    "uvicorn>=0.34,<1",
+    "werkzeug>=3.1,<4",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4,<10",
+    "httpx>=0.28,<1",
+    "pymupdf>=1.26,<2",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q -p no:cacheprovider"
+pythonpath = ["."]

@@ -1,0 +1,22 @@
+{
+  "name": "VJ Semijoias",
+  "short_name": "VJ",
+  "description": "Catálogo e loja de semijoias banhadas a ouro 18k",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf6ee",
+  "theme_color": "#a67c3d",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "images/logo-medium.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

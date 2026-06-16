@@ -9,3 +9,6 @@ import_data/uploads/
 *.py[cod]
 instance/
 *.db
+output/
+import_data/catalog_manual/products/*
+import_data/catalog_extraido/*

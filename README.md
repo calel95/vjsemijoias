@@ -1,12 +1,12 @@
 # VJ Semijoias
 
 Loja virtual de semijoias com vitrine responsiva, carrinho, checkout, login,
-catálogo administrável, pagamentos InfinitePay e backend Python com Flask.
+catálogo administrável, pagamentos InfinitePay e backend Python com FastAPI.
 
 ## Tecnologias
 
 - Frontend: HTML, CSS e JavaScript
-- Backend: Python 3.12 e Flask
+- Backend: Python 3.12, FastAPI e SQLAlchemy 2
 - Banco: SQLite
 - Dependências e ambiente: `uv`
 - Autenticação: JWT
@@ -34,13 +34,36 @@ PUBLIC_BASE_URL=https://seu-dominio.com
 
 ```powershell
 uv sync
-uv run python backend/app.py
+uv run uvicorn backend.app:app --host 0.0.0.0 --port 5000 --reload
 ```
 
 5. Acesse `http://localhost:5000`.
 
-O Flask serve tanto a API em `/api` quanto os arquivos do site. Não é
+O FastAPI serve tanto a API em `/api` quanto os arquivos do site. Não é
 necessário abrir outro servidor para o frontend.
+
+A documentação interativa fica disponível em `http://localhost:5000/docs`.
+
+No grupo **Admin - Catálogo PDF**, o endpoint `POST /api/admin/catalog-pdf`
+permite enviar imagens e gerar o catálogo final diretamente pelo Swagger. Faça
+login administrativo, use o token no botão **Authorize** e envie os metadados
+opcionais separados por `|`, respeitando a ordem das imagens.
+
+As páginas também possuem URLs sem extensão, como `/admin`, `/catalogo`,
+`/produto` e `/checkout`. Os endereços antigos com `.html` continuam válidos.
+
+## Estrutura do projeto
+
+```text
+backend/        API FastAPI, banco e importacao de produtos
+frontend/       HTML, CSS, JavaScript, imagens, PWA e PDFs publicos
+import_data/    arquivos-fonte usados nas importacoes
+tests/          testes automatizados
+tools/          scripts de geracao e manutencao
+.agent/skills/  skills locais para extrair e gerar catalogos
+```
+
+Mantenha na raiz apenas arquivos de configuracao e documentacao do projeto.
 
 ## Testes
 
@@ -49,6 +72,8 @@ uv run pytest
 ```
 
 ## Importar catálogo
+
+### A partir do PDF extraído
 
 Coloque o catálogo extraído em `import_data/catalogo_extraido` com esta
 estrutura:
@@ -74,7 +99,7 @@ uv run python -m backend.import_products
 
 O processo é idempotente: a página e a pasta de origem identificam o produto,
 portanto executar novamente atualiza os registros sem duplicá-los. As imagens
-são copiadas para `images/catalog/` e produtos com várias fotos recebem uma
+são copiadas para `frontend/images/catalog/` e produtos com várias fotos recebem uma
 galeria na página de detalhes.
 
 Também é possível importar pelo painel administrativo:
@@ -86,6 +111,46 @@ Também é possível importar pelo painel administrativo:
 Essa pasta deve conter `manifest.json` e a pasta `products/` com todas as
 imagens referenciadas. O arquivo `products.csv` e os arquivos `info.json` podem
 estar presentes, mas são opcionais para a importação.
+
+### Catálogo manual por pastas
+
+Quando você quiser montar o catálogo manualmente, use
+`import_data/catalogo_manual`:
+
+```text
+import_data/catalogo_manual/
+  manifest.json
+  products/
+    colar-coracao-personalizado/
+      img_1.jpeg
+      img_2.jpeg
+```
+
+Crie uma pasta para cada produto dentro de `products/` e coloque as fotos
+dentro dela. Depois gere um manifest inicial com as imagens já preenchidas:
+
+```powershell
+uv run python tools/generate_manual_manifest.py import_data/catalogo_manual
+```
+
+Edite `import_data/catalogo_manual/manifest.json` e preencha nome, categoria,
+preço, descrição e detalhes. Um exemplo fica em
+`import_data/catalogo_manual/manifest.example.json`.
+
+Confira sem alterar o banco:
+
+```powershell
+uv run python -m backend.import_products import_data/catalogo_manual --dry-run
+```
+
+Importe:
+
+```powershell
+uv run python -m backend.import_products import_data/catalogo_manual
+```
+
+Esse formato manual também pode ser enviado pelo admin em **Importar Pasta de
+Produtos**, selecionando a pasta completa `catalogo_manual`.
 
 ## Rotas principais
 
