@@ -14,6 +14,9 @@ class Base(DeclarativeBase):
 engine_options = {}
 if settings.database_url.startswith("sqlite"):
     engine_options["connect_args"] = {"check_same_thread": False}
+else:
+    engine_options["pool_pre_ping"] = True
+    engine_options["pool_recycle"] = 300
 if settings.database_url == "sqlite://":
     engine_options["poolclass"] = StaticPool
 

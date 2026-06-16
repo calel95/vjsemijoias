@@ -299,20 +299,37 @@
             <!-- BOTÕES DE AÇÃO GLOBAIS -->
             <div class="admin-actions">
                 <h3>🛠️ Ações Globais</h3>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div class="admin-action-toolbar">
                     <button class="btn btn-secondary" onclick="exportProducts()">
                         📥 Exportar Produtos (JSON)
                     </button>
                     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
                         📤 Importar Pasta de Produtos
                     </button>
-                    <input type="file" id="import-file" webkitdirectory directory multiple style="display: none;" onchange="importProducts(event)">
+                    <input type="file" id="import-file" webkitdirectory directory multiple style="display: none;" onchange="handleImportFolderSelection(event)">
+                    <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImportProducts()" disabled>
+                        Importar Catalogo Validado
+                    </button>
+                    <button class="btn btn-outline" id="import-clear-btn" onclick="clearImportPreview()" style="display: none;">
+                        Limpar Preview
+                    </button>
                     <small style="color: var(--gray); align-self: center;">
                         Selecione a pasta que contém manifest.json e products/
                     </small>
                     <button class="btn btn-outline" onclick="showAdminPanel()">
                         Atualizar Catálogo
                     </button>
+                </div>
+                <p class="import-help-text">
+                    Selecione a pasta completa que contem <code>manifest.json</code> e <code>products/</code>.
+                    O painel valida tudo antes de enviar para o backend.
+                </p>
+                <div id="import-preview" class="import-preview empty">
+                    <div class="empty-admin-list">
+                        <div class="icon">CSV</div>
+                        <p>Nenhuma pasta selecionada ainda.</p>
+                        <small>O preview vai validar manifest.json, produtos e imagens antes da importacao.</small>
+                    </div>
                 </div>
             </div>
         </div>

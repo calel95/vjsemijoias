@@ -1,7 +1,10 @@
+import base64
+import binascii
 import json
 import re
 import secrets
 import shutil
+import unicodedata
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path, PurePosixPath
@@ -50,6 +53,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+ADMIN_CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog" / "admin"
+ADMIN_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+DATA_URL_IMAGE_RE = re.compile(r"^data:(image/[-+.a-z0-9]+);base64,(.+)$", re.IGNORECASE | re.DOTALL)
+IMAGE_EXTENSIONS = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_request, exc):
@@ -76,6 +90,54 @@ def product_image_list(data):
         return [str(image).strip() for image in images if str(image).strip()]
     image = data.get("image")
     return [str(image).strip()] if image else []
+
+
+def storage_slug(value):
+    normalized = unicodedata.normalize("NFKD", str(value or "produto"))
+    ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
+    slug = "-".join(
+        part
+        for part in "".join(
+            char.lower() if char.isalnum() else " " for char in ascii_value
+        ).split()
+        if part
+    )
+    return slug or "produto"
+
+
+def save_admin_image(product, image_data, position):
+    match = DATA_URL_IMAGE_RE.match(image_data)
+    if not match:
+        return image_data
+
+    content_type = match.group(1).lower()
+    extension = IMAGE_EXTENSIONS.get(content_type)
+    if not extension:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Formato de imagem nao suportado: {content_type}",
+        )
+
+    try:
+        content = base64.b64decode(match.group(2), validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Imagem enviada em base64 invalida") from exc
+
+    if not content:
+        raise HTTPException(status_code=400, detail="Imagem vazia")
+    if len(content) > ADMIN_IMAGE_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Imagem maior que 8 MB")
+
+    product_folder = f"{int(product.id):06d}-{storage_slug(product.name)}"
+    destination_dir = ADMIN_CATALOG_IMAGE_ROOT / product_folder
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination_path = destination_dir / f"img_{position + 1}{extension}"
+    destination_path.write_bytes(content)
+    return destination_path.relative_to(FRONTEND_ROOT).as_posix()
+
+
+def store_admin_gallery_images(product, images):
+    return [save_admin_image(product, image, position) for position, image in enumerate(images)]
 
 
 def replace_product_gallery(product, images):
@@ -268,22 +330,22 @@ def create_product(
             status_code=400,
             detail="Campos obrigatórios: name, category, price, description",
         )
-    images = product_image_list(data)
     product = Product(
         name=data["name"],
         category=data["category"],
         categoryName=data.get("categoryName", data["category"].capitalize()),
         price=float(data["price"]),
         oldPrice=float(data["oldPrice"]) if data.get("oldPrice") else None,
-        image=images[0] if images else None,
         icon=data.get("icon", "💎"),
         badge=data.get("badge"),
         description=data["description"],
         features=json.dumps(data.get("features", []), ensure_ascii=False),
         custom=True,
     )
-    replace_product_gallery(product, images)
     db.add(product)
+    db.flush()
+    images = store_admin_gallery_images(product, product_image_list(data))
+    replace_product_gallery(product, images)
     db.commit()
     return product.to_dict()
 
@@ -304,7 +366,8 @@ def update_product(
     if "oldPrice" in data:
         product.oldPrice = float(data["oldPrice"]) if data["oldPrice"] else None
     if "images" in data or "image" in data:
-        replace_product_gallery(product, product_image_list(data))
+        images = store_admin_gallery_images(product, product_image_list(data))
+        replace_product_gallery(product, images)
     if data.get("features") is not None:
         product.features = json.dumps(data["features"], ensure_ascii=False)
     db.commit()
@@ -498,7 +561,7 @@ def create_infinitepay_checkout(
     db.flush()
     payload = {
         "order_nsu": order.id,
-        "redirect_url": public_url(request, "checkout.html"),
+        "redirect_url": public_url(request, "checkout"),
         "webhook_url": public_url(request, "api/payments/webhook/infinitepay"),
         "items": [
             {

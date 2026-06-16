@@ -11,6 +11,8 @@ let imageUploadInitialized = false;
 let catalogPdfInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
+let importFolderFiles = [];
+let importPreviewState = null;
 
 // ============================================
 // AUTENTICAÇÃO
@@ -461,7 +463,285 @@ function exportProducts() {
     showToast('Produtos exportados!', 'success', '📥 Download');
 }
 
-async function importProducts(event) {
+function importFilePath(file) {
+    return String(file.webkitRelativePath || file.name || '').replaceAll('\\', '/').replace(/^\/+/, '');
+}
+
+function relativeToImportRoot(path, root) {
+    if (!root || root === '.') return path;
+    return path.startsWith(`${root}/`) ? path.slice(root.length + 1) : path;
+}
+
+function manifestImagePath(image) {
+    if (typeof image === 'string') {
+        return image.replaceAll('\\', '/').replace(/^\/+/, '');
+    }
+    if (image && typeof image === 'object' && image.file) {
+        return String(image.file).replaceAll('\\', '/').replace(/^\/+/, '');
+    }
+    return '';
+}
+
+function manifestProductTitle(product, index) {
+    return String(product.name || product.title || product.nome || `Produto ${index + 1}`).trim();
+}
+
+function manifestProductPrice(product) {
+    return product.price || product.primary_price || product.preco || '';
+}
+
+function manifestProductFolder(product) {
+    return String(product.folder || product.source_folder || '').replaceAll('\\', '/').replace(/^\/+|\/+$/g, '');
+}
+
+async function analyzeImportFolder(files) {
+    const paths = files.map(importFilePath);
+    const manifestFiles = files.filter(file => importFilePath(file).split('/').pop() === 'manifest.json');
+    const errors = [];
+    const warnings = [];
+
+    if (manifestFiles.length !== 1) {
+        errors.push(
+            manifestFiles.length === 0
+                ? 'Nenhum manifest.json foi encontrado na pasta selecionada.'
+                : 'Mais de um manifest.json foi encontrado. Selecione apenas uma pasta de catalogo.'
+        );
+        return { errors, warnings, products: [], files, imageCount: 0 };
+    }
+
+    const manifestPath = importFilePath(manifestFiles[0]);
+    const importRoot = manifestPath.includes('/')
+        ? manifestPath.split('/').slice(0, -1).join('/')
+        : '.';
+    const relativeFiles = new Set(paths.map(path => relativeToImportRoot(path, importRoot)));
+
+    let manifest;
+    try {
+        manifest = JSON.parse(await manifestFiles[0].text());
+    } catch (error) {
+        errors.push(`manifest.json invalido: ${error.message}`);
+        return { errors, warnings, products: [], files, imageCount: 0 };
+    }
+
+    const products = Array.isArray(manifest.products) ? manifest.products : [];
+    if (products.length === 0) {
+        errors.push('O manifest.json precisa conter uma lista products com pelo menos um produto.');
+    }
+
+    let imageCount = 0;
+    const previewProducts = products.map((product, index) => {
+        const title = manifestProductTitle(product, index);
+        const price = manifestProductPrice(product);
+        const category = product.category || product.category_id || product.categoria || '';
+        const description = product.description || product.descricao || '';
+        const folder = manifestProductFolder(product);
+        const rawImages = Array.isArray(product.images) ? product.images : [];
+        const imagePaths = rawImages.map(manifestImagePath).filter(Boolean);
+        const missingImages = [];
+
+        if (!product.name && !product.title && !product.nome) {
+            errors.push(`Produto #${index + 1} esta sem nome.`);
+        }
+        if (!String(price).trim()) {
+            errors.push(`Produto "${title}" esta sem preco.`);
+        }
+        if (!String(category).trim()) {
+            warnings.push(`Produto "${title}" esta sem categoria; o importador vai tentar inferir.`);
+        }
+        if (!String(description).trim()) {
+            warnings.push(`Produto "${title}" esta sem descricao; o importador vai usar o nome.`);
+        }
+        if (imagePaths.length === 0) {
+            warnings.push(`Produto "${title}" nao possui imagens no manifest.`);
+        }
+
+        imagePaths.forEach(imagePath => {
+            const folderPath = folder ? `${folder}/${imagePath}` : imagePath;
+            if (!relativeFiles.has(imagePath) && !relativeFiles.has(folderPath)) {
+                missingImages.push(imagePath);
+                errors.push(`Imagem nao encontrada para "${title}": ${imagePath}`);
+            }
+        });
+
+        imageCount += imagePaths.length;
+        return {
+            title,
+            price,
+            category,
+            description,
+            folder,
+            imageCount: imagePaths.length,
+            missingImages,
+            status: missingImages.length ? 'error' : 'ok',
+        };
+    });
+
+    return {
+        errors,
+        warnings,
+        products: previewProducts,
+        files,
+        imageCount,
+        manifestPath,
+        importRoot,
+    };
+}
+
+function renderImportPreview(state) {
+    const container = document.getElementById('import-preview');
+    const confirmButton = document.getElementById('import-confirm-btn');
+    const clearButton = document.getElementById('import-clear-btn');
+    if (!container || !confirmButton || !clearButton) return;
+
+    importPreviewState = state;
+    confirmButton.disabled = !state || state.errors.length > 0 || state.products.length === 0;
+    clearButton.style.display = state ? 'inline-flex' : 'none';
+
+    if (!state) {
+        container.className = 'import-preview empty';
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">CSV</div>
+                <p>Nenhuma pasta selecionada ainda.</p>
+                <small>O preview vai validar manifest.json, produtos e imagens antes da importacao.</small>
+            </div>
+        `;
+        return;
+    }
+
+    const statusClass = state.errors.length ? 'has-errors' : 'ready';
+    const extraWarnings = Math.max(0, state.warnings.length - 8);
+    const issueItems = [
+        ...state.errors.map(error => ({ type: 'error', text: error })),
+        ...state.warnings.slice(0, 8).map(warning => ({ type: 'warning', text: warning })),
+    ];
+    const productsHtml = state.products.slice(0, 12).map(product => `
+        <div class="import-product-row ${product.status}">
+            <div>
+                <strong>${escapeCatalogValue(product.title)}</strong>
+                <span>${escapeCatalogValue(product.category || 'Categoria pendente')}</span>
+            </div>
+            <div class="import-price">${escapeCatalogValue(String(product.price || 'Preco pendente'))}</div>
+            <div class="import-count">${product.imageCount} img</div>
+            <div><span class="import-row-status ${product.missingImages.length ? 'error' : 'ok'}">${product.missingImages.length ? 'Corrigir' : 'OK'}</span></div>
+        </div>
+    `).join('');
+
+    container.className = `import-preview ${statusClass}`;
+    container.innerHTML = `
+        <div class="import-preview-header">
+            <div>
+                <span class="import-kicker">Preview da importacao</span>
+                <h4>${state.errors.length ? 'A pasta precisa de ajustes' : 'Catalogo pronto para importar'}</h4>
+            </div>
+            <span class="import-status-pill ${statusClass}">
+                ${state.errors.length ? `${state.errors.length} erro(s)` : 'Validado'}
+            </span>
+        </div>
+        <div class="import-summary-grid">
+            <div><strong>${state.products.length}</strong><span>Produtos</span></div>
+            <div><strong>${state.imageCount}</strong><span>Imagens citadas</span></div>
+            <div><strong>${state.files.length}</strong><span>Arquivos</span></div>
+            <div><strong>${state.errors.length}</strong><span>Erros</span></div>
+        </div>
+        <div class="import-preview-status">
+            <div>
+                ${state.errors.length
+                    ? '<strong>Corrija os erros antes de importar.</strong>'
+                    : '<strong>Estrutura validada. Pronto para importar.</strong>'}
+                <small>Manifest: ${escapeCatalogValue(state.manifestPath || 'manifest.json')}</small>
+            </div>
+        </div>
+        ${issueItems.length ? `
+            <div class="import-issues">
+                ${issueItems.map(item => `
+                    <div class="${item.type}">${escapeCatalogValue(item.text)}</div>
+                `).join('')}
+                ${extraWarnings ? `<small class="import-more">Mais ${extraWarnings} aviso(s) ocultos para manter o preview compacto.</small>` : ''}
+            </div>
+        ` : ''}
+        <div class="import-products-card">
+            <div class="import-products-head">
+                <span>Produto</span>
+                <span>Preco</span>
+                <span>Fotos</span>
+                <span>Status</span>
+            </div>
+            <div class="import-products-preview">
+                ${productsHtml || '<p>Nenhum produto para mostrar.</p>'}
+            </div>
+        </div>
+        ${state.products.length > 12 ? `<small class="import-more">Mostrando 12 de ${state.products.length} produtos.</small>` : ''}
+    `;
+}
+
+async function handleImportFolderSelection(event) {
+    const files = Array.from(event.target.files || []);
+    importFolderFiles = files;
+    if (files.length === 0) {
+        renderImportPreview(null);
+        return;
+    }
+
+    try {
+        const state = await analyzeImportFolder(files);
+        renderImportPreview(state);
+        if (state.errors.length) {
+            showToast('A pasta tem erros. Veja o preview antes de importar.', 'error', 'Validacao falhou');
+        } else {
+            showToast(`${state.products.length} produtos validados.`, 'success', 'Preview pronto');
+        }
+    } catch (error) {
+        renderImportPreview({
+            errors: [`Nao foi possivel validar a pasta: ${error.message}`],
+            warnings: [],
+            products: [],
+            files,
+            imageCount: 0,
+        });
+    }
+}
+
+function clearImportPreview() {
+    importFolderFiles = [];
+    importPreviewState = null;
+    const input = document.getElementById('import-file');
+    if (input) input.value = '';
+    renderImportPreview(null);
+}
+
+async function confirmImportProducts() {
+    if (!importPreviewState || importPreviewState.errors.length > 0 || importFolderFiles.length === 0) {
+        showToast('Selecione uma pasta valida antes de importar', 'error', 'Importacao bloqueada');
+        return;
+    }
+
+    await uploadValidatedImport(importFolderFiles);
+}
+
+async function uploadValidatedImport(files) {
+    showToast(
+        `Enviando ${files.length} arquivos...`,
+        'info',
+        'Importando catalogo'
+    );
+    const result = await API.importProductFolder(files);
+
+    if (!result.success) {
+        showToast(result.error, 'error', 'Erro na importacao');
+        return;
+    }
+
+    clearImportPreview();
+    await showAdminPanel();
+    showToast(
+        `${result.data.products} produtos processados, ${result.data.images} imagens.`,
+        'success',
+        'Catalogo importado'
+    );
+}
+
+async function legacyImportProducts(event) {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 

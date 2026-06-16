@@ -18,6 +18,10 @@ def database_url():
     value = os.getenv("DATABASE_URL", "sqlite:///vjsemijoias.db")
     if value == "sqlite://":
         return value
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
     if value.startswith("sqlite:///") and not value.startswith("sqlite:////"):
         path = Path(value.removeprefix("sqlite:///"))
         if not path.is_absolute():

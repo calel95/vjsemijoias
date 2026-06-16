@@ -104,7 +104,7 @@ galeria na página de detalhes.
 
 Também é possível importar pelo painel administrativo:
 
-1. Acesse `admin.html` e faça login.
+1. Acesse `/admin` e faça login.
 2. Clique em **Importar Pasta de Produtos**.
 3. Selecione a pasta completa `catalogo_extraido`.
 
@@ -185,5 +185,6 @@ https://seu-dominio.com/api/payments/webhook/infinitepay
   consulta `payment_check` na InfinitePay e confere o valor pago.
 - O catálogo continua disponível offline, mas login, cadastro, admin e checkout
   exigem conexão com o backend.
-- Imagens enviadas pelo admin ainda são armazenadas como Data URL no banco.
-  Para produção, use armazenamento de objetos, como S3 ou Cloudflare R2.
+- Imagens enviadas pelo admin são salvas em `frontend/images/catalog/admin/`
+  e o banco armazena apenas os caminhos. Para produção com múltiplas instâncias,
+  prefira armazenamento de objetos, como S3 ou Cloudflare R2.

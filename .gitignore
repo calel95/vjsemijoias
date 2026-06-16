@@ -11,3 +11,6 @@ instance/
 *.db
 output/
 import_data/
+
+# Imagens importadas/geradas do catálogo ficam apenas no ambiente local.
+frontend/images/catalog/

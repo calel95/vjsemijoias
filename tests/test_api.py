@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 from io import BytesIO
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
@@ -14,11 +15,13 @@ os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 
 from backend.app import app
+from backend.config import FRONTEND_ROOT, database_url
 from backend.import_products import DEFAULT_SOURCE, import_catalog
 from tools.generate_manual_manifest import build_manifest
 
 
 client = TestClient(app)
+TINY_GIF_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
 
 
 class FakeResponse:
@@ -61,6 +64,17 @@ def test_health():
 
     assert response.status_code == 200
     assert response.json()['status'] == 'ok'
+
+
+def test_database_url_uses_psycopg_for_postgresql(monkeypatch):
+    monkeypatch.setenv(
+        'DATABASE_URL',
+        'postgresql://user:password@example.neon.tech/neondb?sslmode=require',
+    )
+
+    assert database_url() == (
+        'postgresql+psycopg://user:password@example.neon.tech/neondb?sslmode=require'
+    )
 
 
 def test_frontend_files_are_served():
@@ -156,37 +170,51 @@ def test_admin_can_create_product_with_api_token():
 def test_admin_can_create_and_update_product_gallery():
     login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
     token = login.json()['token']
+    created_folder = None
+    admin_image_root = FRONTEND_ROOT / 'images' / 'catalog' / 'admin'
 
-    created = client.post(
-        '/api/products',
-        headers={'Authorization': f'Bearer {token}'},
-        json={
-            'name': 'Colar Galeria',
-            'category': 'colares',
-            'categoryName': 'Colares',
-            'price': 199.9,
-            'description': 'Produto com mais de uma foto.',
-            'images': ['data:image/jpeg;base64,AAA', 'data:image/jpeg;base64,BBB'],
-        },
-    )
+    try:
+        created = client.post(
+            '/api/products',
+            headers={'Authorization': f'Bearer {token}'},
+            json={
+                'name': 'Colar Galeria',
+                'category': 'colares',
+                'categoryName': 'Colares',
+                'price': 199.9,
+                'description': 'Produto com mais de uma foto.',
+                'images': [TINY_GIF_DATA_URL, TINY_GIF_DATA_URL],
+            },
+        )
 
-    assert created.status_code == 201
-    product = created.json()
-    assert product['image'] == 'data:image/jpeg;base64,AAA'
-    assert product['images'] == ['data:image/jpeg;base64,AAA', 'data:image/jpeg;base64,BBB']
+        assert created.status_code == 201
+        product = created.json()
+        created_folder = (FRONTEND_ROOT / Path(product['image'])).parent
+        assert product['image'].startswith('images/catalog/admin/')
+        assert product['image'].endswith('/img_1.gif')
+        assert product['images'][0] == product['image']
+        assert product['images'][1].endswith('/img_2.gif')
+        assert not product['image'].startswith('data:image/')
+        assert (FRONTEND_ROOT / Path(product['image'])).is_file()
 
-    updated = client.put(
-        f"/api/products/{product['id']}",
-        headers={'Authorization': f'Bearer {token}'},
-        json={
-            'images': ['data:image/jpeg;base64,CCC', 'data:image/jpeg;base64,DDD'],
-        },
-    )
+        updated = client.put(
+            f"/api/products/{product['id']}",
+            headers={'Authorization': f'Bearer {token}'},
+            json={
+                'images': [product['image'], TINY_GIF_DATA_URL],
+            },
+        )
 
-    assert updated.status_code == 200
-    product = updated.json()
-    assert product['image'] == 'data:image/jpeg;base64,CCC'
-    assert product['images'] == ['data:image/jpeg;base64,CCC', 'data:image/jpeg;base64,DDD']
+        assert updated.status_code == 200
+        product = updated.json()
+        assert product['image'].startswith('images/catalog/admin/')
+        assert product['images'][0] == product['image']
+        assert product['images'][1].endswith('/img_2.gif')
+        assert all(not image.startswith('data:image/') for image in product['images'])
+        assert (FRONTEND_ROOT / Path(product['images'][1])).is_file()
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
 
 
 def test_admin_can_import_complete_catalog_folder():
@@ -274,7 +302,7 @@ def test_create_infinitepay_checkout_returns_redirect(monkeypatch):
         assert url.endswith('/links')
         assert kwargs['json']['handle'] == 'vjsemijoias'
         assert kwargs['json']['items'][0]['price'] == 14990
-        assert kwargs['json']['redirect_url'] == 'https://vj.example.com/checkout.html'
+        assert kwargs['json']['redirect_url'] == 'https://vj.example.com/checkout'
         assert kwargs['json']['webhook_url'] == (
             'https://vj.example.com/api/payments/webhook/infinitepay'
         )
@@ -382,37 +410,41 @@ def test_catalog_import_dry_run_is_complete():
     assert summary['images'] == expected_images
 
 
-def test_manual_catalog_manifest_import_and_generator(tmp_path):
-    source = tmp_path / 'catalogo_manual'
-    product_folder = source / 'products' / 'colar-coracao-personalizado'
-    product_folder.mkdir(parents=True)
-    image = (
-        DEFAULT_SOURCE
-        / 'products'
-        / '02_medalha_personalizada_iniciais_data'
-        / 'img_1.jpeg'
-    )
-    shutil.copy2(image, product_folder / 'img_1.jpeg')
+def test_manual_catalog_manifest_import_and_generator():
+    source = Path('.tmp/test-manual-catalog').resolve()
+    shutil.rmtree(source, ignore_errors=True)
+    try:
+        product_folder = source / 'products' / 'colar-coracao-personalizado'
+        product_folder.mkdir(parents=True)
+        image = (
+            DEFAULT_SOURCE
+            / 'products'
+            / '02_medalha_personalizada_iniciais_data'
+            / 'img_1.jpeg'
+        )
+        shutil.copy2(image, product_folder / 'img_1.jpeg')
 
-    manifest = build_manifest(source)
-    manifest['products'][0].update({
-        'name': 'Colar Coracao Personalizado',
-        'category': 'colares',
-        'price': '139,00',
-        'description': 'Colar personalizado com banho 18K.',
-        'features': ['Banho 18K', 'Garantia de 2 anos'],
-    })
-    (source / 'manifest.json').write_text(
-        json.dumps(manifest, ensure_ascii=False),
-        encoding='utf-8',
-    )
+        manifest = build_manifest(source)
+        manifest['products'][0].update({
+            'name': 'Colar Coracao Personalizado',
+            'category': 'colares',
+            'price': '139,00',
+            'description': 'Colar personalizado com banho 18K.',
+            'features': ['Banho 18K', 'Garantia de 2 anos'],
+        })
+        (source / 'manifest.json').write_text(
+            json.dumps(manifest, ensure_ascii=False),
+            encoding='utf-8',
+        )
 
-    summary = import_catalog(source, dry_run=True)
+        summary = import_catalog(source, dry_run=True)
 
-    assert manifest['products'][0]['folder'] == 'products/colar-coracao-personalizado'
-    assert manifest['products'][0]['images'] == [
-        'products/colar-coracao-personalizado/img_1.jpeg',
-    ]
-    assert summary['products'] == 1
-    assert summary['images'] == 1
-    assert summary['created'] == 1
+        assert manifest['products'][0]['folder'] == 'products/colar-coracao-personalizado'
+        assert manifest['products'][0]['images'] == [
+            'products/colar-coracao-personalizado/img_1.jpeg',
+        ]
+        assert summary['products'] == 1
+        assert summary['images'] == 1
+        assert summary['created'] == 1
+    finally:
+        shutil.rmtree(source, ignore_errors=True)
