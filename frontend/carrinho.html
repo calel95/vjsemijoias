@@ -49,7 +49,7 @@
         <div class="footer-container">
             <div class="footer-col">
                 <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p>Semijoias finas banhadas a ouro 18k.</p>
+                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
             </div>
             <div class="footer-col">
                 <h3>Categorias</h3>
@@ -62,23 +62,24 @@
             <div class="footer-col">
                 <h3>Contato</h3>
                 <ul>
-                    <li>📧 contato@vjsemijoias.com</li>
-                    <li>📱 (11) 99999-9999</li>
+                    <li data-store-email>📧 contato@vjsemijoias.com</li>
+                    <li data-store-phone>📱 (11) 99999-9999</li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
         </div>
     </footer>
 
     <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
     <script src="js/offline.js"></script>
     <script>
-        function renderCart() {
+        async function renderCart() {
             const container = document.getElementById('cart-content');
 
             if (Cart.items.length === 0) {
@@ -92,6 +93,7 @@
                 return;
             }
 
+            await Cart.refreshPricing();
             const itemsHTML = Cart.items.map(item => `
                 <div class="cart-item">
                     <div class="cart-item-image">
@@ -122,6 +124,7 @@
             const discount = Cart.getDiscount();
             const total = Cart.getFinalTotal();
             const subtotal = Cart.getSubtotal();
+            const couponCode = Cart.getCouponCode();
 
             container.innerHTML = `
                 <div class="cart-grid">
@@ -150,7 +153,7 @@
                         
                         ${discount > 0 ? `
                             <div class="summary-row" style="color: var(--success);">
-                                <span>Desconto (VJ10):</span>
+                                <span>Desconto (${couponCode}):</span>
                                 <span>-${formatPrice(discount)}</span>
                             </div>
                         ` : ''}
@@ -166,7 +169,7 @@
                         </div>
                         
                         <div style="background: #d4edda; color: #155724; padding: 0.8rem; border-radius: 8px; margin: 1rem 0; font-size: 0.85rem; text-align: center;">
-                            Frete grátis em todos os pedidos.
+                            ${Cart.getShippingMessage()}
                         </div>
                         
                         <a href="/checkout" class="btn btn-primary btn-block" style="margin-top: 1rem;">
@@ -193,8 +196,8 @@
             `;
         }
 
-        function updateItemQty(id, qty) { Cart.updateQuantity(id, qty); renderCart(); }
-        function removeItem(id) { Cart.remove(id); renderCart(); showToast('Item removido do carrinho', 'info'); }
+        async function updateItemQty(id, qty) { Cart.updateQuantity(id, qty); await renderCart(); }
+        async function removeItem(id) { Cart.remove(id); await renderCart(); showToast('Item removido do carrinho', 'info'); }
         function clearCartConfirm() {
             if (confirm('Deseja realmente limpar o carrinho?')) {
                 Cart.clear();
@@ -209,26 +212,29 @@
 
             if (code === '') {
                 localStorage.removeItem('vj_coupon');
-                renderCart();
+                localStorage.removeItem('vj_coupon_percent');
+                await renderCart();
                 return;
             }
 
             const result = await API.validateCoupon(code);
             if (result.success && result.data.valid) {
                 localStorage.setItem('vj_coupon', result.data.code);
+                localStorage.setItem('vj_coupon_percent', String(result.data.discount_percent || 0));
                 showToast(result.data.message, 'success', 'Cupom aplicado');
-                renderCart();
+                await renderCart();
                 return;
             }
 
             localStorage.removeItem('vj_coupon');
+            localStorage.removeItem('vj_coupon_percent');
             showToast(result.error || result.data?.message || 'Cupom inválido', 'error', 'Ops!');
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProductsFromAPI();
             Cart.syncProductData();
-            renderCart();
+            await renderCart();
         });
     </script>
 </body>

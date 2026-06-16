@@ -72,16 +72,33 @@
             <!-- FILTROS -->
             <div class="filters">
                 <div class="filter-group" id="category-filters"></div>
-                <div class="search-box">
-                    <input type="text" id="search-input" placeholder="Buscar produto...">
+                <div class="catalog-controls">
+                    <div class="search-box">
+                        <input type="text" id="search-input" placeholder="Buscar produto...">
+                    </div>
+                    <select id="sort-select" class="sort-select" aria-label="Ordenar produtos">
+                        <option value="newest">Mais recentes</option>
+                        <option value="name_asc">Nome A-Z</option>
+                        <option value="price_asc">Menor preco</option>
+                        <option value="price_desc">Maior preco</option>
+                    </select>
+                    <button type="button" class="btn-reset-filters" id="reset-filters">
+                        Limpar filtros
+                    </button>
                 </div>
             </div>
 
-            <div style="margin-bottom: 2rem; color: var(--gray);">
+            <div class="catalog-results-bar">
                 <span id="products-count">0 produtos encontrados</span>
+                <span id="products-page-info"></span>
             </div>
 
             <div class="products-grid" id="products-grid"></div>
+            <div class="catalog-load-more">
+                <button type="button" class="btn btn-secondary" id="load-more-products" style="display: none;">
+                    Carregar mais produtos
+                </button>
+            </div>
             <div id="no-results" style="display: none; text-align: center; padding: 3rem;">
                 <div style="font-size: 4rem; opacity: 0.3;">🔍</div>
                 <h3 style="margin: 1rem 0;">Nenhum produto encontrado</h3>
@@ -94,7 +111,7 @@
         <div class="footer-container">
             <div class="footer-col">
                 <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p>Semijoias finas banhadas a ouro 18k.</p>
+                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
                 <div class="social-links">
                     <a href="#">📷</a><a href="#">📘</a><a href="#">💬</a><a href="#">🎵</a>
                 </div>
@@ -119,17 +136,18 @@
             <div class="footer-col">
                 <h3>Contato</h3>
                 <ul>
-                    <li>📧 contato@vjsemijoias.com</li>
-                    <li>📱 (11) 99999-9999</li>
+                    <li data-store-email>📧 contato@vjsemijoias.com</li>
+                    <li data-store-phone>📱 (11) 99999-9999</li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
         </div>
     </footer>
 
     <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
@@ -137,10 +155,41 @@
     <script>
         let currentCategory = 'all';
         let currentSearch = '';
+        let currentSort = 'newest';
+        let visibleCount = 12;
+        const PRODUCTS_PER_PAGE = 12;
 
         const urlParams = new URLSearchParams(window.location.search);
         const catFromURL = urlParams.get('cat');
         if (catFromURL) currentCategory = catFromURL;
+        const searchFromURL = urlParams.get('q');
+        if (searchFromURL) currentSearch = searchFromURL;
+        const sortFromURL = urlParams.get('sort');
+        if (sortFromURL) currentSort = sortFromURL;
+
+        function updateCatalogURL() {
+            const params = new URLSearchParams();
+            if (currentCategory !== 'all') params.set('cat', currentCategory);
+            if (currentSearch) params.set('q', currentSearch);
+            if (currentSort !== 'newest') params.set('sort', currentSort);
+            const query = params.toString();
+            history.replaceState(null, '', query ? `/catalogo?${query}` : '/catalogo');
+        }
+
+        function resetVisibleProducts() {
+            visibleCount = PRODUCTS_PER_PAGE;
+        }
+
+        function sortedProducts(products) {
+            const sorted = [...products];
+            const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'pt-BR');
+            const byPrice = (a, b) => Number(a.price || 0) - Number(b.price || 0);
+
+            if (currentSort === 'name_asc') return sorted.sort(byName);
+            if (currentSort === 'price_asc') return sorted.sort(byPrice);
+            if (currentSort === 'price_desc') return sorted.sort((a, b) => byPrice(b, a));
+            return sorted.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+        }
 
         function renderFilters() {
             const container = document.getElementById('category-filters');
@@ -153,15 +202,15 @@
             container.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
                     currentCategory = btn.dataset.category;
+                    resetVisibleProducts();
                     renderFilters();
                     renderProducts();
-                    const newUrl = currentCategory === 'all' ? '/catalogo' : `/catalogo?cat=${currentCategory}`;
-                    history.replaceState(null, '', newUrl);
+                    updateCatalogURL();
                 });
             });
         }
 
-        function renderProducts() {
+        function getFilteredProducts() {
             let products = getProductsByCategory(currentCategory);
 
             if (currentSearch) {
@@ -173,18 +222,31 @@
                 );
             }
 
+            return sortedProducts(products);
+        }
+
+        function renderProducts() {
+            const products = getFilteredProducts();
+            const visibleProducts = products.slice(0, visibleCount);
+
             const grid = document.getElementById('products-grid');
             const noResults = document.getElementById('no-results');
             const count = document.getElementById('products-count');
+            const pageInfo = document.getElementById('products-page-info');
+            const loadMore = document.getElementById('load-more-products');
 
             if (products.length === 0) {
                 grid.innerHTML = '';
                 noResults.style.display = 'block';
                 count.textContent = '0 produtos encontrados';
+                pageInfo.textContent = '';
+                loadMore.style.display = 'none';
             } else {
                 noResults.style.display = 'none';
-                grid.innerHTML = products.map(p => createProductCard(p)).join('');
+                grid.innerHTML = visibleProducts.map(p => createProductCard(p)).join('');
                 count.textContent = `${products.length} produto${products.length > 1 ? 's' : ''} encontrado${products.length > 1 ? 's' : ''}`;
+                pageInfo.textContent = `Mostrando ${visibleProducts.length} de ${products.length}`;
+                loadMore.style.display = visibleProducts.length < products.length ? 'inline-flex' : 'none';
             }
         }
 
@@ -194,13 +256,46 @@
             renderProducts();
 
             const searchInput = document.getElementById('search-input');
+            const sortSelect = document.getElementById('sort-select');
+            const resetButton = document.getElementById('reset-filters');
+            const loadMore = document.getElementById('load-more-products');
+
+            searchInput.value = currentSearch;
+            sortSelect.value = currentSort;
+
             let timeout;
             searchInput.addEventListener('input', (e) => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
-                    currentSearch = e.target.value;
+                    currentSearch = e.target.value.trim();
+                    resetVisibleProducts();
                     renderProducts();
+                    updateCatalogURL();
                 }, 300);
+            });
+
+            sortSelect.addEventListener('change', (event) => {
+                currentSort = event.target.value;
+                resetVisibleProducts();
+                renderProducts();
+                updateCatalogURL();
+            });
+
+            resetButton.addEventListener('click', () => {
+                currentCategory = 'all';
+                currentSearch = '';
+                currentSort = 'newest';
+                searchInput.value = '';
+                sortSelect.value = currentSort;
+                resetVisibleProducts();
+                renderFilters();
+                renderProducts();
+                updateCatalogURL();
+            });
+
+            loadMore.addEventListener('click', () => {
+                visibleCount += PRODUCTS_PER_PAGE;
+                renderProducts();
             });
         });
     </script>

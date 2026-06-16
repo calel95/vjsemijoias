@@ -56,7 +56,7 @@
         <div class="footer-container">
             <div class="footer-col">
                 <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p>Semijoias finas banhadas a ouro 18k.</p>
+                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
                 <div class="social-links">
                     <a href="#">📷</a><a href="#">📘</a><a href="#">💬</a>
                 </div>
@@ -72,17 +72,18 @@
             <div class="footer-col">
                 <h3>Contato</h3>
                 <ul>
-                    <li>📧 contato@vjsemijoias.com</li>
-                    <li>📱 (11) 99999-9999</li>
+                    <li data-store-email>📧 contato@vjsemijoias.com</li>
+                    <li data-store-phone>📱 (11) 99999-9999</li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
         </div>
     </footer>
 
     <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
@@ -106,6 +107,10 @@
 
             document.getElementById('breadcrumb-product').textContent = product.name;
             document.title = `${product.name} - VJ Semijoias`;
+            const shippingResult = await API.calculateShipping(product.price || 0);
+            const shippingMessage = shippingResult.success
+                ? shippingResult.data.message
+                : 'Frete calculado no carrinho';
 
             const productImages = Array.isArray(product.images) && product.images.length
                 ? product.images
@@ -138,6 +143,18 @@
                     </div>
                 `
                 : '';
+            const badgeLabels = {
+                new: 'NOVO',
+                sale: 'OFERTA',
+                bestseller: 'MAIS VENDIDO',
+            };
+            const badgeHTML = product.badge && badgeLabels[product.badge]
+                ? `<span class="product-badge ${product.badge}" style="position: static; display: inline-block; margin-bottom: 1rem;">${badgeLabels[product.badge]}</span>`
+                : '';
+            const isOutOfStock = product.stock_status === 'out_of_stock';
+            const stockHTML = isOutOfStock
+                ? '<p class="stock-note unavailable detail">Produto sem estoque no momento</p>'
+                : (product.stock_status === 'preorder' ? '<p class="stock-note preorder detail">Produto sob encomenda</p>' : '');
 
             const content = `
                 <div class="product-gallery ${productImages.length > 1 ? 'has-thumbnails' : ''}">
@@ -149,10 +166,11 @@
                 <div class="product-detail-info">
                     <span class="product-category">${product.categoryName}</span>
                     <h1>${product.name}</h1>
-                    ${product.badge === 'new' ? '<span class="product-badge new" style="position: static; display: inline-block; margin-bottom: 1rem;">NOVO</span>' : ''}
+                    ${badgeHTML}
                     <div class="product-price">${formatPrice(product.price)}</div>
                     <p class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</p>
-                    <p class="product-installment" style="color: var(--success); font-weight: 600;">✓ Frete grátis em todos os pedidos</p>
+                    ${stockHTML}
+                    <p class="product-installment" style="color: var(--success); font-weight: 600;">${shippingMessage}</p>
                     
                     <p class="product-description">${product.description}</p>
                     
@@ -173,10 +191,10 @@
                     </div>
                     
                     <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="addProductToCart()" style="flex: 1; min-width: 200px;">
+                        <button class="btn btn-primary" onclick="addProductToCart()" style="flex: 1; min-width: 200px;" ${isOutOfStock ? 'disabled' : ''}>
                             🛒 Adicionar ao Carrinho
                         </button>
-                        <button class="btn btn-secondary" onclick="buyNow()" style="flex: 1; min-width: 200px;">
+                        <button class="btn btn-secondary" onclick="buyNow()" style="flex: 1; min-width: 200px;" ${isOutOfStock ? 'disabled' : ''}>
                             ⚡ Comprar Agora
                         </button>
                     </div>
@@ -225,6 +243,10 @@
             const productId = parseInt(urlParams.get('id'));
             const quantity = parseInt(document.getElementById('quantity').value);
             const product = getProductById(productId);
+            if (!product || product.stock_status === 'out_of_stock') {
+                showToast('Produto sem estoque no momento', 'error');
+                return;
+            }
 
             Cart.add(productId, quantity);
             showToast(`${quantity}x ${product.name} adicionado ao carrinho!`, 'success');
@@ -234,6 +256,11 @@
             const urlParams = new URLSearchParams(window.location.search);
             const productId = parseInt(urlParams.get('id'));
             const quantity = parseInt(document.getElementById('quantity').value);
+            const product = getProductById(productId);
+            if (!product || product.stock_status === 'out_of_stock') {
+                showToast('Produto sem estoque no momento', 'error');
+                return;
+            }
 
             Cart.add(productId, quantity);
             window.location.href = '/carrinho';

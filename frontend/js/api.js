@@ -83,6 +83,10 @@ const API = {
         return this.request('GET', endpoint);
     },
 
+    async getAdminProducts() {
+        return this.request('GET', '/admin/products');
+    },
+
     async getProduct(id) {
         return this.request('GET', `/products/${id}`);
     },
@@ -231,6 +235,10 @@ const API = {
         return this.request('GET', '/payments/config');
     },
 
+    async getStoreConfig() {
+        return this.request('GET', '/store/config');
+    },
+
     async createInfinitePayCheckout(orderData) {
         return this.request('POST', '/payments/infinitepay/checkout', orderData);
     },
@@ -252,6 +260,10 @@ const API = {
 
     async getOrder(orderId) {
         return this.request('GET', `/orders/${orderId}`);
+    },
+
+    async updateOrderStatus(orderId, status) {
+        return this.request('PUT', `/admin/orders/${encodeURIComponent(orderId)}/status`, { status });
     },
 
     // ============================================

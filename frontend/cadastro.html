@@ -17,7 +17,7 @@
         </div>
         
         <h2>Criar Conta</h2>
-        <p>Cadastre-se e ganhe 10% de desconto na primeira compra</p>
+        <p>Cadastre-se para receber novidades e beneficios ativos da loja</p>
         
         <form class="auth-form" id="register-form" onsubmit="handleRegister(event)">
             <div class="form-group">
@@ -81,6 +81,7 @@
     </div>
 
     <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
@@ -102,7 +103,7 @@
             else { numberReq.classList.remove('valid'); numberReq.classList.add('invalid'); }
         }
 
-        function handleRegister(event) {
+        async function handleRegister(event) {
             event.preventDefault();
             const formData = new FormData(event.target);
             const data = Object.fromEntries(formData);
@@ -117,11 +118,22 @@
                 return;
             }
             
-            const result = Auth.register(data);
+            const result = await Auth.register(data);
             
             if (result.success) {
-                showToast(result.message + ' Você ganhou 10% de desconto!', 'success', '🎉 Bem-vinda!');
-                localStorage.setItem('vj_coupon', 'VJ10');
+                const config = await API.getStoreConfig();
+                const coupon = config.success ? config.data.coupon : null;
+                if (coupon?.enabled && coupon.code) {
+                    localStorage.setItem('vj_coupon', coupon.code);
+                    localStorage.setItem('vj_coupon_percent', String(coupon.discount_percent || 0));
+                    showToast(
+                        `${result.message} Voce ganhou ${coupon.discount_percent}% de desconto!`,
+                        'success',
+                        'Bem-vinda!'
+                    );
+                } else {
+                    showToast(result.message, 'success', 'Bem-vinda!');
+                }
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1500);

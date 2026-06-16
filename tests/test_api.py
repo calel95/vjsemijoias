@@ -17,6 +17,7 @@ os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 from backend.app import app
 from backend.config import FRONTEND_ROOT, database_url
 from backend.import_products import DEFAULT_SOURCE, import_catalog
+from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
 
 
@@ -140,6 +141,66 @@ def test_shipping_is_free_below_old_threshold():
     assert shipping_response.json()['shipping'] == 0
 
 
+def test_store_config_exposes_shipping_and_coupon_settings():
+    response = client.get('/api/store/config')
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['brand']['name'] == 'VJ Semijoias'
+    assert data['contact']['instagram'] == 'vj_semijoias'
+    assert data['catalog']['filename'] == 'catalogo-vj-semijoias.pdf'
+    assert data['shipping']['mode'] == 'free'
+    assert data['coupon']['enabled'] is True
+    assert data['coupon']['code'] == 'VJ10'
+
+
+def test_fixed_shipping_can_be_configured_by_environment():
+    original_mode = store_settings.shipping.mode
+    original_value = store_settings.shipping.fixed_value
+    try:
+        object.__setattr__(store_settings.shipping, 'mode', 'fixed')
+        object.__setattr__(store_settings.shipping, 'fixed_value', '19.90')
+
+        response = client.post('/api/shipping/calculate', json={
+            'total': 99.9,
+            'zip_code': '01001000',
+        })
+
+        assert response.status_code == 200
+        assert response.json()['shipping'] == 19.9
+    finally:
+        object.__setattr__(store_settings.shipping, 'mode', original_mode)
+        object.__setattr__(store_settings.shipping, 'fixed_value', original_value)
+
+
+def test_admin_can_update_order_status():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+    order_response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Status',
+        'customer_email': 'status@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': 2, 'quantity': 1}],
+    })
+    order_id = order_response.json()['id']
+
+    updated = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'status': 'processing'},
+    )
+    invalid = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'status': 'inventado'},
+    )
+
+    assert order_response.status_code == 201
+    assert updated.status_code == 200
+    assert updated.json()['status'] == 'processing'
+    assert invalid.status_code == 400
+
+
 def test_admin_route_requires_token():
     response = client.post('/api/products', json={})
 
@@ -165,6 +226,68 @@ def test_admin_can_create_product_with_api_token():
 
     assert response.status_code == 201
     assert response.json()['name'] == 'Brinco Teste'
+
+
+def test_inactive_product_is_hidden_from_public_catalog_but_visible_to_admin():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Inativo Teste',
+            'category': 'colares',
+            'categoryName': 'Colares',
+            'price': 129.9,
+            'description': 'Produto oculto da vitrine.',
+            'is_active': False,
+            'stock_status': 'available',
+        },
+    )
+
+    assert created.status_code == 201
+    product = created.json()
+    assert product['is_active'] is False
+
+    public_products = client.get('/api/products').json()
+    admin_products = client.get(
+        '/api/admin/products',
+        headers={'Authorization': f'Bearer {token}'},
+    ).json()
+
+    assert all(item['id'] != product['id'] for item in public_products)
+    assert any(item['id'] == product['id'] for item in admin_products)
+    assert client.get(f"/api/products/{product['id']}").status_code == 404
+
+
+def test_out_of_stock_product_cannot_be_ordered():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Sem Estoque Teste',
+            'category': 'aneis',
+            'categoryName': 'Aneis',
+            'price': 99.9,
+            'description': 'Produto indisponivel.',
+            'stock_status': 'out_of_stock',
+        },
+    )
+    product = created.json()
+
+    response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Teste',
+        'customer_email': 'cliente@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': product['id'], 'quantity': 1}],
+    })
+
+    assert created.status_code == 201
+    assert response.status_code == 400
+    assert 'dispon' in response.json()['error']
 
 
 def test_admin_can_create_and_update_product_gallery():
@@ -288,11 +411,12 @@ def test_payment_config_exposes_infinitepay():
     response = client.get('/api/payments/config')
 
     assert response.status_code == 200
-    assert response.json() == {
-        'provider': 'infinitepay',
-        'enabled': True,
-        'max_installments': 12,
-    }
+    data = response.json()
+    assert data['provider'] == 'infinitepay'
+    assert data['enabled'] is True
+    assert data['max_installments'] == 12
+    assert data['store']['name'] == 'VJ Semijoias'
+    assert data['store']['public_base_url'] == 'https://vj.example.com'
 
 
 def test_create_infinitepay_checkout_returns_redirect(monkeypatch):

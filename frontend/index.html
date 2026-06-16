@@ -180,8 +180,7 @@
     <section class="section newsletter" id="contato">
         <div class="section-container">
             <h2>Receba nossas <span>novidades</span></h2>
-            <p>Cadastre-se e ganhe 10% de desconto na primeira compra, além de acesso exclusivo a lançamentos e
-                promoções.</p>
+            <p>Cadastre-se para receber ofertas, novidades e acesso exclusivo a lancamentos e promocoes.</p>
             <form class="newsletter-form" onsubmit="handleNewsletter(event)">
                 <input type="email" placeholder="Seu melhor e-mail" required>
                 <button type="submit" class="btn btn-primary">Cadastrar</button>
@@ -194,10 +193,10 @@
         <div class="footer-container">
             <div class="footer-col">
                 <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p>Semijoias finas banhadas a ouro 18k. Elegância, qualidade e exclusividade em cada peça.</p>
+                <p data-store-description>Semijoias finas banhadas a ouro 18k. Elegância, qualidade e exclusividade em cada peça.</p>
                 <div class="social-links">
-                    <a href="#" aria-label="Instagram">📷</a>
-                    <a href="#" aria-label="WhatsApp">💬</a>
+                    <a href="#" aria-label="Instagram" data-store-instagram-link>📷</a>
+                    <a href="#" aria-label="WhatsApp" data-store-whatsapp-link>💬</a>
 
                 </div>
             </div>
@@ -225,21 +224,22 @@
             <div class="footer-col">
                 <h3>Contato</h3>
                 <ul>
-                    <li>📧 contato@vjsemijoias.com</li>
-                    <li>📱 (51) 98211-0842</li>
+                    <li data-store-email>📧 contato@vjsemijoias.com</li>
+                    <li data-store-phone>📱 (51) 98211-0842</li>
                     <li>📍 Canoas - RS</li>
                     <li>🕐 Seg-Sex: 9h às 18h</li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <p>&copy; 2026 VJ Semijoias. Todos os direitos reservados. CNPJ: 00.000.000/0001-00</p>
+            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
             <p style="margin-top: 0.5rem;"><a href="/admin" style="color: var(--gold-primary);">🔧 Painel
                     Administrativo</a></p>
         </div>
     </footer>
 
     <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>

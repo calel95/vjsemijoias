@@ -161,6 +161,7 @@ Produtos**, selecionando a pasta completa `catalogo_manual`.
 - `POST /api/auth/login`: login
 - `POST /api/orders`: cria um pedido
 - `GET /api/payments/config`: configuração pública do checkout
+- `GET /api/store/config`: configuração pública de frete e cupom
 - `POST /api/payments/infinitepay/checkout`: cria o link de pagamento
 - `POST /api/payments/infinitepay/confirm`: valida o retorno do checkout
 - `GET /api/payments/<pedido>/status`: consulta segura do pagamento
@@ -188,3 +189,60 @@ https://seu-dominio.com/api/payments/webhook/infinitepay
 - Imagens enviadas pelo admin são salvas em `frontend/images/catalog/admin/`
   e o banco armazena apenas os caminhos. Para produção com múltiplas instâncias,
   prefira armazenamento de objetos, como S3 ou Cloudflare R2.
+
+## Configuracoes da loja
+
+As configuracoes de marca, contato e catalogo ficam separadas das variaveis
+tecnicas:
+
+```env
+STORE_NAME=VJ Semijoias
+STORE_SHORT_NAME=VJ
+STORE_TAGLINE=SEMIJOIAS
+STORE_DESCRIPTION=Semijoias finas banhadas a ouro 18k.
+STORE_SLOGAN=Brilhe em cada momento
+STORE_LOGO_PATH=images/logo.png
+STORE_EMAIL=contato@vjsemijoias.com
+STORE_PHONE=(51) 98211-0842
+STORE_WHATSAPP=51 982110842
+STORE_INSTAGRAM=vj_semijoias
+STORE_WEBSITE=www.vjsemijoias.com
+STORE_CNPJ=
+STORE_CATALOG_TITLE=CATALOGO VJ SEMIJOIAS
+STORE_CATALOG_COLLECTION=Colecao Banhada a Ouro 18k
+STORE_CATALOG_FILENAME=catalogo-vj-semijoias.pdf
+```
+
+O endpoint `GET /api/store/config` expõe a configuracao publica da loja para o
+frontend: marca, contato, catalogo, frete e cupom.
+
+## Frete e desconto por ambiente
+
+Configure no `.env` local ou nas variaveis de ambiente do deploy:
+
+```env
+SHIPPING_MODE=free
+SHIPPING_FIXED_VALUE=0
+SHIPPING_FREE_MINIMUM=0
+SHIPPING_ESTIMATED_DAYS=5-10
+
+COUPONS_ENABLED=true
+COUPON_CODE=VJ10
+COUPON_DISCOUNT_PERCENT=10
+COUPON_USAGE_LIMIT=100
+```
+
+Modos de frete:
+
+- `free`: frete gratis.
+- `fixed`: usa sempre `SHIPPING_FIXED_VALUE`.
+- `threshold`: usa `SHIPPING_FIXED_VALUE`, mas zera o frete quando o subtotal for maior ou igual a `SHIPPING_FREE_MINIMUM`.
+
+Exemplo para producao sem desconto e com frete fixo:
+
+```env
+SHIPPING_MODE=fixed
+SHIPPING_FIXED_VALUE=19.90
+SHIPPING_ESTIMATED_DAYS=5-10
+COUPONS_ENABLED=false
+```

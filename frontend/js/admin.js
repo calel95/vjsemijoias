@@ -5,9 +5,13 @@
 
 let currentFilter = 'all';
 let currentSearch = '';
+let currentOrderFilter = 'all';
+let currentOrderSearch = '';
 let editingId = null;
 let adminProducts = [];
+let adminOrders = [];
 let imageUploadInitialized = false;
+let productPreviewInitialized = false;
 let catalogPdfInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
@@ -46,7 +50,7 @@ function logout() {
 async function showAdminPanel() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
-    const result = await API.getProducts();
+    const result = await API.getAdminProducts();
     if (!result.success) {
         showToast(result.error || 'Falha ao carregar produtos', 'error');
         logout();
@@ -55,15 +59,45 @@ async function showAdminPanel() {
     adminProducts = result.data;
     apiProductsCache = result.data;
     apiLoaded = true;
+    await applyStoreEnvironmentConfig();
     renderAdminProducts();
+    await loadAdminOrders();
     await updateStats();
     if (!imageUploadInitialized) {
         setupImageUpload();
         imageUploadInitialized = true;
     }
+    if (!productPreviewInitialized) {
+        setupProductFormPreview();
+        productPreviewInitialized = true;
+    }
     if (!catalogPdfInitialized) {
         setupCatalogPdfDropzone();
         catalogPdfInitialized = true;
+    }
+}
+
+async function applyStoreEnvironmentConfig() {
+    const result = await API.getStoreConfig();
+    if (!result.success) return;
+    const titleInput = document.getElementById('catalog-pdf-title');
+    const collectionInput = document.getElementById('catalog-pdf-collection');
+    const sloganInput = document.getElementById('catalog-pdf-slogan');
+    const contactInput = document.getElementById('catalog-pdf-contact');
+    const couponInput = document.getElementById('catalog-pdf-coupon');
+    const filenameInput = document.getElementById('catalog-pdf-filename');
+    const catalog = result.data.catalog || {};
+    const brand = result.data.brand || {};
+    const coupon = result.data.coupon;
+    if (titleInput && catalog.title) titleInput.value = catalog.title;
+    if (collectionInput && catalog.collection) collectionInput.value = catalog.collection;
+    if (sloganInput && brand.slogan) sloganInput.value = brand.slogan;
+    if (contactInput && catalog.contact_line) contactInput.value = catalog.contact_line;
+    if (filenameInput && catalog.filename) filenameInput.value = catalog.filename;
+    if (couponInput && coupon?.enabled && coupon.code) {
+        couponInput.value = `${coupon.code} = ${coupon.discount_percent}% OFF`;
+    } else if (couponInput) {
+        couponInput.value = '';
     }
 }
 
@@ -118,6 +152,7 @@ function addProductImageFiles(files) {
             productGalleryImages.push(e.target.result);
             syncProductImageUrlField();
             renderProductGalleryPreview();
+            renderProductFormPreview();
         };
         reader.readAsDataURL(file);
     });
@@ -131,6 +166,7 @@ function setProductGalleryImages(images) {
     productGalleryImages = [...new Set((images || []).map(item => String(item || '').trim()).filter(Boolean))];
     syncProductImageUrlField();
     renderProductGalleryPreview();
+    renderProductFormPreview();
 }
 
 function syncProductImageUrlField() {
@@ -141,6 +177,7 @@ function removeProductGalleryImage(index) {
     productGalleryImages.splice(index, 1);
     syncProductImageUrlField();
     renderProductGalleryPreview();
+    renderProductFormPreview();
 }
 
 function moveProductGalleryImage(index, direction) {
@@ -150,6 +187,7 @@ function moveProductGalleryImage(index, direction) {
     productGalleryImages.splice(target, 0, image);
     syncProductImageUrlField();
     renderProductGalleryPreview();
+    renderProductFormPreview();
 }
 
 function renderProductGalleryPreview() {
@@ -194,6 +232,113 @@ function syncImageFromUrl() {
 // FORMULÁRIO
 // ============================================
 
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function badgeLabel(badge) {
+    return {
+        new: 'NOVO',
+        sale: 'OFERTA',
+        bestseller: 'MAIS VENDIDO',
+    }[badge] || '';
+}
+
+function stockLabel(stockStatus) {
+    return {
+        available: 'Disponivel',
+        preorder: 'Sob encomenda',
+        out_of_stock: 'Sem estoque',
+    }[stockStatus] || 'Disponivel';
+}
+
+function setupProductFormPreview() {
+    const form = document.getElementById('product-form');
+    if (!form) return;
+    form.querySelectorAll('input, select, textarea').forEach(field => {
+        field.addEventListener('input', renderProductFormPreview);
+        field.addEventListener('change', renderProductFormPreview);
+    });
+    renderProductFormPreview();
+}
+
+function currentFormProduct() {
+    const category = document.getElementById('product-category').value || 'semijoias';
+    const categoryMap = {
+        brincos: 'Brincos',
+        colares: 'Colares',
+        pulseiras: 'Pulseiras',
+        aneis: 'Aneis',
+        pingentes: 'Pingentes',
+        chaveiros: 'Chaveiros',
+        conjuntos: 'Conjuntos',
+    };
+    return {
+        id: editingId || 0,
+        name: document.getElementById('product-name').value.trim(),
+        category,
+        categoryName: categoryMap[category] || category,
+        price: parseFloat(document.getElementById('product-price').value) || 0,
+        oldPrice: parseFloat(document.getElementById('product-old-price').value) || null,
+        image: productGalleryImages[0] || '',
+        icon: document.getElementById('product-icon').value.trim() || '💎',
+        badge: document.getElementById('product-badge').value || null,
+        is_active: document.getElementById('product-active')?.checked ?? true,
+        stock_status: document.getElementById('product-stock-status')?.value || 'available',
+        description: document.getElementById('product-description').value.trim(),
+    };
+}
+
+function renderProductFormPreview() {
+    const container = document.getElementById('product-card-preview');
+    if (!container) return;
+    const product = currentFormProduct();
+    if (!product.name && !product.price && !product.image && !product.description) {
+        container.className = 'admin-product-preview empty';
+        container.textContent = 'Preencha os dados para visualizar o card.';
+        return;
+    }
+
+    const badge = badgeLabel(product.badge);
+    const badgeHTML = badge
+        ? `<span class="product-badge ${product.badge}">${badge}</span>`
+        : '';
+    const statusHTML = !product.is_active
+        ? '<span class="preview-status inactive">Inativo no site</span>'
+        : `<span class="preview-status ${product.stock_status}">${stockLabel(product.stock_status)}</span>`;
+    const imageHTML = product.image
+        ? `<img src="${escapeHTML(product.image)}" alt="${escapeHTML(product.name || 'Produto')}">`
+        : `<div class="placeholder">${escapeHTML(product.icon || '💎')}</div>`;
+    const priceHTML = product.price ? formatPrice(product.price) : 'R$ 0,00';
+    const oldPriceHTML = product.oldPrice
+        ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
+        : '';
+
+    container.className = 'admin-product-preview';
+    container.innerHTML = `
+        <div class="preview-card">
+            <div class="preview-image">
+                ${badgeHTML}
+                ${imageHTML}
+            </div>
+            <div class="preview-info">
+                <div class="preview-topline">
+                    <span>${escapeHTML(product.categoryName)}</span>
+                    ${statusHTML}
+                </div>
+                <strong>${escapeHTML(product.name || 'Nome do produto')}</strong>
+                <p>${escapeHTML(product.description || 'Descricao curta do produto.')}</p>
+                <div class="preview-price">${oldPriceHTML}${priceHTML}</div>
+            </div>
+        </div>
+    `;
+}
+
 async function handleProductSubmit(event) {
     event.preventDefault();
     
@@ -235,6 +380,8 @@ async function handleProductSubmit(event) {
     // Converte preços
     data.price = parseFloat(data.price) || 0;
     data.oldPrice = data.oldPrice ? parseFloat(data.oldPrice) : null;
+    data.is_active = document.getElementById('product-active')?.checked ?? true;
+    data.stock_status = document.getElementById('product-stock-status')?.value || 'available';
     
     // Converte badge
     if (!data.badge) data.badge = null;
@@ -280,9 +427,12 @@ async function handleProductSubmit(event) {
 
 function resetForm() {
     document.getElementById('product-form').reset();
+    document.getElementById('product-active').checked = true;
+    document.getElementById('product-stock-status').value = 'available';
     setProductGalleryImages([]);
     document.getElementById('form-title').textContent = '➕ Adicionar Novo Produto';
     editingId = null;
+    renderProductFormPreview();
 }
 
 function editProduct(id) {
@@ -299,6 +449,8 @@ function editProduct(id) {
     document.getElementById('product-old-price').value = product.oldPrice || '';
     document.getElementById('product-icon').value = product.icon || '';
     document.getElementById('product-badge').value = product.badge || '';
+    document.getElementById('product-active').checked = product.is_active !== false;
+    document.getElementById('product-stock-status').value = product.stock_status || 'available';
     document.getElementById('product-description').value = product.description;
     document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^✓\s*/, '')).join('\n');
     setProductGalleryImages(
@@ -306,6 +458,7 @@ function editProduct(id) {
             ? product.images
             : (product.image ? [product.image] : [])
     );
+    renderProductFormPreview();
     
     // Scroll para o form
     document.getElementById('product-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -338,6 +491,10 @@ function renderAdminProducts() {
     // Aplica filtro
     if (currentFilter === 'custom') {
         products = products.filter(p => p.custom);
+    } else if (currentFilter === 'inactive') {
+        products = products.filter(p => p.is_active === false);
+    } else if (currentFilter === 'out_of_stock') {
+        products = products.filter(p => p.stock_status === 'out_of_stock');
     } else if (currentFilter !== 'all') {
         products = products.filter(p => p.category === currentFilter);
     }
@@ -370,8 +527,14 @@ function renderAdminProducts() {
             ? '<span class="badge-mini custom">NOVO</span>'
             : '<span class="badge-mini fixed">CATÁLOGO</span>';
         
-        const novoBadge = p.badge === 'new' ? '<span class="badge-mini" style="background: #28a745;">NOVO</span>' : '';
-        const saleBadge = p.badge === 'sale' ? '<span class="badge-mini" style="background: #dc3545;">OFERTA</span>' : '';
+        const storefrontBadgeLabel = badgeLabel(p.badge);
+        const storefrontBadge = storefrontBadgeLabel
+            ? `<span class="badge-mini storefront ${p.badge}">${storefrontBadgeLabel}</span>`
+            : '';
+        const activeBadge = p.is_active === false
+            ? '<span class="badge-mini inactive">INATIVO</span>'
+            : '<span class="badge-mini active">ATIVO</span>';
+        const stockBadge = `<span class="badge-mini stock ${p.stock_status || 'available'}">${stockLabel(p.stock_status)}</span>`;
         
         return `
             <div class="admin-product-item">
@@ -380,8 +543,9 @@ function renderAdminProducts() {
                     <h4>${p.name}</h4>
                     <div class="product-meta">
                         <span class="admin-product-price">${formatPrice(p.price)}</span>
-                        ${novoBadge}
-                        ${saleBadge}
+                        ${storefrontBadge}
+                        ${activeBadge}
+                        ${stockBadge}
                         ${badgeHTML}
                     </div>
                 </div>
@@ -404,6 +568,125 @@ async function updateStats() {
     document.getElementById('stat-custom').textContent = custom.length;
     document.getElementById('stat-categories').textContent = categories;
     document.getElementById('stat-avg-price').textContent = formatPrice(avgPrice);
+    document.getElementById('stat-orders-pending').textContent =
+        adminOrders.filter(order => order.status === 'pending').length;
+    document.getElementById('stat-orders-paid').textContent =
+        adminOrders.filter(order => ['paid', 'processing', 'shipped', 'delivered'].includes(order.status)).length;
+}
+
+// ============================================
+// PEDIDOS
+// ============================================
+
+function orderStatusLabel(status) {
+    return {
+        pending: 'Pendente',
+        paid: 'Pago',
+        processing: 'Em separacao',
+        shipped: 'Enviado',
+        delivered: 'Entregue',
+        canceled: 'Cancelado',
+        failed: 'Falhou',
+    }[status] || status || 'Pendente';
+}
+
+function formatOrderDate(value) {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function orderItemsSummary(order) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.length) return 'Sem itens';
+    return items
+        .slice(0, 3)
+        .map(item => `${item.quantity || 1}x ${item.name || `Produto ${item.id}`}`)
+        .join(', ') + (items.length > 3 ? ` +${items.length - 3}` : '');
+}
+
+async function loadAdminOrders() {
+    const result = await API.getOrders();
+    if (!result.success) {
+        showToast(result.error || 'Falha ao carregar pedidos', 'error');
+        return;
+    }
+    adminOrders = result.data || [];
+    renderAdminOrders();
+}
+
+function renderAdminOrders() {
+    const container = document.getElementById('admin-orders-list');
+    if (!container) return;
+
+    let orders = [...adminOrders];
+    if (currentOrderFilter !== 'all') {
+        orders = orders.filter(order => order.status === currentOrderFilter);
+    }
+    if (currentOrderSearch) {
+        const search = currentOrderSearch.toLowerCase();
+        orders = orders.filter(order =>
+            String(order.id || '').toLowerCase().includes(search) ||
+            String(order.customer_name || '').toLowerCase().includes(search) ||
+            String(order.customer_email || '').toLowerCase().includes(search)
+        );
+    }
+
+    if (!orders.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">PED</div>
+                <p>Nenhum pedido encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = orders.map(order => `
+        <article class="admin-order-item">
+            <div class="order-main">
+                <div>
+                    <strong>${escapeHTML(order.id)}</strong>
+                    <span>${formatOrderDate(order.created_at)}</span>
+                </div>
+                <span class="order-status ${order.status}">${orderStatusLabel(order.status)}</span>
+            </div>
+            <div class="order-customer">
+                <strong>${escapeHTML(order.customer_name || 'Cliente')}</strong>
+                <span>${escapeHTML(order.customer_email || '')}</span>
+                <span>${escapeHTML(order.customer_phone || '')}</span>
+            </div>
+            <p class="order-items-summary">${escapeHTML(orderItemsSummary(order))}</p>
+            <div class="order-footer">
+                <strong>${formatPrice(order.total || 0)}</strong>
+                <select onchange="changeOrderStatus('${escapeHTML(order.id)}', this.value)">
+                    ${['pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'].map(status => `
+                        <option value="${status}" ${order.status === status ? 'selected' : ''}>${orderStatusLabel(status)}</option>
+                    `).join('')}
+                </select>
+            </div>
+        </article>
+    `).join('');
+}
+
+async function changeOrderStatus(orderId, status) {
+    const result = await API.updateOrderStatus(orderId, status);
+    if (!result.success) {
+        showToast(result.error || 'Erro ao atualizar pedido', 'error');
+        return;
+    }
+    const index = adminOrders.findIndex(order => order.id === orderId);
+    if (index >= 0) adminOrders[index] = result.data;
+    renderAdminOrders();
+    updateStats();
+    showToast('Status do pedido atualizado', 'success');
 }
 
 // ============================================
@@ -443,6 +726,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 currentSearch = e.target.value;
                 renderAdminProducts();
             }, 300);
+        });
+    }
+
+    const ordersSearch = document.getElementById('orders-search');
+    if (ordersSearch) {
+        let orderTimeout;
+        ordersSearch.addEventListener('input', (e) => {
+            clearTimeout(orderTimeout);
+            orderTimeout = setTimeout(() => {
+                currentOrderSearch = e.target.value;
+                renderAdminOrders();
+            }, 300);
+        });
+    }
+
+    const ordersFilter = document.getElementById('orders-filter');
+    if (ordersFilter) {
+        ordersFilter.addEventListener('change', (e) => {
+            currentOrderFilter = e.target.value;
+            renderAdminOrders();
         });
     }
 });

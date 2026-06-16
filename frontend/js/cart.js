@@ -7,9 +7,18 @@ const CART_KEY = 'vj_cart';
 const USER_KEY = 'vj_user';
 const ORDERS_KEY = 'vj_orders';
 const COUPON_KEY = 'vj_coupon';
+const COUPON_PERCENT_KEY = 'vj_coupon_percent';
 
 const Cart = {
     items: [],
+    pricing: {
+        shipping: 0,
+        shippingMessage: 'Frete Gratis!',
+        discount: 0,
+        discountCode: '',
+        discountPercent: 0,
+        loaded: false,
+    },
 
     init() {
         const stored = localStorage.getItem(CART_KEY);
@@ -107,15 +116,68 @@ const Cart = {
     getSubtotal() { return this.getTotal(); },
 
     getShipping() {
-        return 0;
+        return this.pricing.shipping || 0;
     },
 
     getDiscount() {
-        const coupon = localStorage.getItem(COUPON_KEY);
-        if (coupon === 'VJ10') {
-            return this.getSubtotal() * 0.1;
+        if (typeof this.pricing.discount === 'number') {
+            return this.pricing.discount;
         }
-        return 0;
+        const percent = parseFloat(localStorage.getItem(COUPON_PERCENT_KEY) || '0');
+        return percent > 0 ? this.getSubtotal() * (percent / 100) : 0;
+    },
+
+    getCouponCode() {
+        return this.pricing.discountCode || localStorage.getItem(COUPON_KEY) || '';
+    },
+
+    getShippingMessage() {
+        return this.pricing.shippingMessage || 'Frete calculado no checkout';
+    },
+
+    async refreshPricing(zipCode = '') {
+        const subtotal = this.getSubtotal();
+        const [shippingResult, couponResult] = await Promise.all([
+            API.calculateShipping(subtotal, zipCode),
+            this.refreshCoupon(subtotal),
+        ]);
+
+        if (shippingResult.success) {
+            this.pricing.shipping = Number(shippingResult.data.shipping || 0);
+            this.pricing.shippingMessage = shippingResult.data.message || '';
+        } else {
+            this.pricing.shipping = 0;
+            this.pricing.shippingMessage = 'Frete calculado no fechamento do pedido';
+        }
+
+        this.pricing.discount = couponResult.discount;
+        this.pricing.discountCode = couponResult.code;
+        this.pricing.discountPercent = couponResult.percent;
+        this.pricing.loaded = true;
+    },
+
+    async refreshCoupon(subtotal) {
+        const code = (localStorage.getItem(COUPON_KEY) || '').trim().toUpperCase();
+        if (!code) {
+            localStorage.removeItem(COUPON_PERCENT_KEY);
+            return { code: '', percent: 0, discount: 0 };
+        }
+
+        const result = await API.validateCoupon(code);
+        if (!result.success || !result.data.valid) {
+            localStorage.removeItem(COUPON_KEY);
+            localStorage.removeItem(COUPON_PERCENT_KEY);
+            return { code: '', percent: 0, discount: 0 };
+        }
+
+        const percent = Number(result.data.discount_percent || 0);
+        localStorage.setItem(COUPON_KEY, result.data.code);
+        localStorage.setItem(COUPON_PERCENT_KEY, String(percent));
+        return {
+            code: result.data.code,
+            percent,
+            discount: subtotal * (percent / 100),
+        };
     },
 
     getFinalTotal() {

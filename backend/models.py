@@ -23,6 +23,8 @@ class Product(Base):
     image: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
     badge: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    stock_status: Mapped[str] = mapped_column(String(30), default="available")
     description: Mapped[str] = mapped_column(Text)
     features: Mapped[str | None] = mapped_column(Text, nullable=True)
     custom: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -60,6 +62,8 @@ class Product(Base):
             "images": images,
             "icon": self.icon or "💎",
             "badge": self.badge,
+            "is_active": self.is_active,
+            "stock_status": self.stock_status or "available",
             "description": self.description,
             "features": features,
             "custom": self.custom,

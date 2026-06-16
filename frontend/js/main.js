@@ -3,8 +3,17 @@
 // ============================================
 
 function createProductCard(product) {
+    const badgeLabels = {
+        new: 'NOVO',
+        sale: 'OFERTA',
+        bestseller: 'MAIS VENDIDO',
+    };
     const badgeHTML = product.badge ?
-        `<span class="product-badge ${product.badge}">${product.badge === 'new' ? 'NOVO' : 'OFERTA'}</span>` : '';
+        `<span class="product-badge ${product.badge}">${badgeLabels[product.badge] || product.badge}</span>` : '';
+    const isOutOfStock = product.stock_status === 'out_of_stock';
+    const stockHTML = isOutOfStock
+        ? '<div class="stock-note unavailable">Sem estoque no momento</div>'
+        : (product.stock_status === 'preorder' ? '<div class="stock-note preorder">Sob encomenda</div>' : '');
 
     const priceHTML = product.oldPrice ?
         `<div class="product-price">
@@ -37,11 +46,12 @@ function createProductCard(product) {
                     <h3 class="product-title">${product.name}</h3>
                 </a>
                 <p class="product-description">${product.description}</p>
+                ${stockHTML}
                 <div class="product-footer">
                     <div>
                         ${priceHTML}
                     </div>
-                    <button class="btn-add-cart" onclick="addToCart(${product.id})" title="Adicionar ao carrinho">
+                    <button class="btn-add-cart" onclick="addToCart(${product.id})" title="Adicionar ao carrinho" ${isOutOfStock ? 'disabled' : ''}>
                         🛒 Add
                     </button>
                 </div>
@@ -51,9 +61,13 @@ function createProductCard(product) {
 }
 
 function addToCart(productId) {
+    const product = getProductById(productId);
+    if (!product || product.stock_status === 'out_of_stock') {
+        showToast('Produto sem estoque no momento', 'error');
+        return;
+    }
     const success = Cart.add(productId, 1);
     if (success) {
-        const product = getProductById(productId);
         if (product) {
             showToast(`${product.name} adicionado ao carrinho!`, 'success');
         }
@@ -70,15 +84,16 @@ async function handleNewsletter(event) {
             if (result.success) {
                 showToast(result.data.message || 'E-mail cadastrado!', 'success', 'Bem-vinda!');
                 event.target.reset();
-                localStorage.setItem('vj_coupon', 'VJ10');
+                if (result.data.coupon) {
+                    localStorage.setItem('vj_coupon', result.data.coupon);
+                }
                 return;
             }
         } catch (e) { }
 
         // Fallback offline
-        showToast('E-mail cadastrado! Use o cupom VJ10 e ganhe 10% off', 'success', 'Bem-vinda!');
+        showToast('E-mail cadastrado! Confira os descontos ativos no carrinho.', 'success', 'Bem-vinda!');
         event.target.reset();
-        localStorage.setItem('vj_coupon', 'VJ10');
     }
 }
 

@@ -9,6 +9,8 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfgen import canvas
 
+from backend.store_config import store_settings
+
 
 GOLD_DARK = HexColor("#a67c3d")
 GOLD = HexColor("#c9a86a")
@@ -21,11 +23,8 @@ GRAY = HexColor("#7a6e64")
 IMAGE_PLACEHOLDER = HexColor("#f7f4ef")
 PAGE_W, PAGE_H = A4
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-BRAND_LOGO_PATH = PROJECT_ROOT / "frontend" / "images" / "logo.png"
-DEFAULT_CONTACT = (
-    "www.vjsemijoias.com | Instagram: @vj_semijoias | "
-    "WhatsApp: (51) 98211-0842"
-)
+BRAND_LOGO_PATH = store_settings.logo_file
+DEFAULT_CONTACT = store_settings.catalog_contact_line
 
 
 @dataclass
@@ -39,11 +38,11 @@ class CatalogProduct:
 
 @dataclass
 class CatalogOptions:
-    title: str = "CATÁLOGO VJ SEMIJOIAS"
-    collection: str = "Coleção Banhada a Ouro 18k"
-    slogan: str = "Brilhe em cada momento"
+    title: str = store_settings.catalog.title
+    collection: str = store_settings.catalog.collection
+    slogan: str = store_settings.brand.slogan
     contact: str = DEFAULT_CONTACT
-    coupon: str = "VJ10 = 10% OFF"
+    coupon: str = store_settings.coupon_label
     products_per_page: int = 6
 
 
@@ -182,8 +181,6 @@ def draw_cover(c, options: CatalogOptions):
     c.setFillColor(white)
     c.setFont("Helvetica", 10)
     c.drawCentredString(PAGE_W / 2, 3.75 * cm, options.contact)
-    c.setFont("Helvetica-Bold", 11)
-    c.drawCentredString(PAGE_W / 2, 3.15 * cm, "Instagram: @vj_semijoias")
 
 def draw_header(c, options: CatalogOptions, page_num: int, total_pages: int):
     c.setFillColor(GOLD)

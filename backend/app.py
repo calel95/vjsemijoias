@@ -16,7 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select, text
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -42,6 +42,7 @@ from backend.models import (
     ProductImage,
     User,
 )
+from backend.store_config import store_settings
 
 
 app = FastAPI(title="VJ Semijoias API", version="1.0.0")
@@ -62,6 +63,16 @@ IMAGE_EXTENSIONS = {
     "image/png": ".png",
     "image/webp": ".webp",
     "image/gif": ".gif",
+}
+STOCK_STATUSES = {"available", "out_of_stock", "preorder"}
+ORDER_STATUSES = {
+    "pending",
+    "paid",
+    "processing",
+    "shipped",
+    "delivered",
+    "canceled",
+    "failed",
 }
 
 
@@ -90,6 +101,30 @@ def product_image_list(data):
         return [str(image).strip() for image in images if str(image).strip()]
     image = data.get("image")
     return [str(image).strip()] if image else []
+
+
+def normalize_stock_status(value):
+    stock_status = str(value or "available").strip()
+    if stock_status not in STOCK_STATUSES:
+        raise HTTPException(status_code=400, detail="Status de estoque invalido")
+    return stock_status
+
+
+def normalize_bool(value, default=True):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() not in {"0", "false", "no", "off", ""}
+    return bool(value)
+
+
+def normalize_order_status(value):
+    status = str(value or "").strip().lower()
+    if status not in ORDER_STATUSES:
+        raise HTTPException(status_code=400, detail="Status de pedido invalido")
+    return status
 
 
 def storage_slug(value):
@@ -154,6 +189,35 @@ def money(value):
         raise ValueError("Valor monetário inválido") from exc
 
 
+def configured_shipping(subtotal):
+    subtotal = money(subtotal)
+    mode = settings.shipping_mode
+    fixed_value = money(settings.shipping_fixed_value)
+    free_minimum = money(settings.shipping_free_minimum)
+
+    if mode == "free":
+        shipping = Decimal("0.00")
+        message = "Frete Gratis!"
+    elif mode == "fixed":
+        shipping = fixed_value
+        message = f"Frete fixo de R$ {shipping:.2f}"
+    elif mode == "threshold":
+        if subtotal >= free_minimum:
+            shipping = Decimal("0.00")
+            message = f"Frete gratis acima de R$ {free_minimum:.2f}"
+        else:
+            shipping = fixed_value
+            message = f"Frete fixo de R$ {shipping:.2f}"
+    else:
+        raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
+
+    return {
+        "shipping": shipping,
+        "message": message,
+        "estimated_days": settings.shipping_estimated_days,
+    }
+
+
 def calculate_order(db: Session, items, coupon_code=""):
     if not isinstance(items, list) or not items:
         raise ValueError("O pedido deve conter ao menos um produto")
@@ -173,7 +237,13 @@ def calculate_order(db: Session, items, coupon_code=""):
             quantities[product_id] = 0
         quantities[product_id] += quantity
 
-    products = db.scalars(select(Product).where(Product.id.in_(product_ids))).all()
+    products = db.scalars(
+        select(Product).where(
+            Product.id.in_(product_ids),
+            Product.is_active.is_(True),
+            Product.stock_status != "out_of_stock",
+        )
+    ).all()
     products_by_id = {product.id: product for product in products}
     if len(products_by_id) != len(product_ids):
         raise ValueError("Um ou mais produtos não estão disponíveis")
@@ -196,21 +266,25 @@ def calculate_order(db: Session, items, coupon_code=""):
             }
         )
 
-    shipping = Decimal("0.00")
+    shipping_data = configured_shipping(subtotal)
+    shipping = shipping_data["shipping"]
     coupon_code = str(coupon_code or "").strip().upper()
     discount = Decimal("0.00")
     if coupon_code:
-        coupon = db.scalar(
-            select(Coupon).where(
-                Coupon.code == coupon_code,
-                Coupon.is_active.is_(True),
+        if not settings.coupons_enabled:
+            coupon_code = ""
+        else:
+            coupon = db.scalar(
+                select(Coupon).where(
+                    Coupon.code == coupon_code,
+                    Coupon.is_active.is_(True),
+                )
             )
-        )
-        if not coupon or coupon.used_count >= coupon.usage_limit:
-            raise ValueError("Cupom inválido, expirado ou esgotado")
-        discount = (subtotal * money(coupon.discount_percent) / Decimal("100")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
+            if not coupon or coupon.used_count >= coupon.usage_limit:
+                raise ValueError("Cupom inválido, expirado ou esgotado")
+            discount = (subtotal * money(coupon.discount_percent) / Decimal("100")).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
     return {
         "items": normalized_items,
@@ -300,7 +374,7 @@ def get_products(
     search: str = "",
     db: Session = Depends(get_db),
 ):
-    statement = select(Product).order_by(Product.id)
+    statement = select(Product).where(Product.is_active.is_(True)).order_by(Product.id)
     if category and category != "all":
         statement = statement.where(Product.category == category)
     products = db.scalars(statement).unique().all()
@@ -314,9 +388,21 @@ def get_products(
     return [product.to_dict() for product in products]
 
 
+@app.get("/api/admin/products")
+def get_admin_products(
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    products = db.scalars(select(Product).order_by(Product.id)).unique().all()
+    return [product.to_dict() for product in products]
+
+
 @app.get("/api/products/{product_id}")
 def get_product(product_id: int, db: Session = Depends(get_db)):
-    return get_or_404(db, Product, product_id).to_dict()
+    product = get_or_404(db, Product, product_id)
+    if not product.is_active:
+        raise HTTPException(status_code=404, detail="Produto nao encontrado")
+    return product.to_dict()
 
 
 @app.post("/api/products", status_code=201)
@@ -338,6 +424,8 @@ def create_product(
         oldPrice=float(data["oldPrice"]) if data.get("oldPrice") else None,
         icon=data.get("icon", "💎"),
         badge=data.get("badge"),
+        is_active=normalize_bool(data.get("is_active"), True),
+        stock_status=normalize_stock_status(data.get("stock_status")),
         description=data["description"],
         features=json.dumps(data.get("features", []), ensure_ascii=False),
         custom=True,
@@ -361,6 +449,10 @@ def update_product(
     for field in ["name", "category", "categoryName", "icon", "badge", "description"]:
         if data.get(field) is not None:
             setattr(product, field, data[field])
+    if "is_active" in data:
+        product.is_active = normalize_bool(data["is_active"], True)
+    if "stock_status" in data:
+        product.stock_status = normalize_stock_status(data["stock_status"])
     if data.get("price") is not None:
         product.price = float(data["price"])
     if "oldPrice" in data:
@@ -523,6 +615,10 @@ def payment_config():
         "provider": "infinitepay",
         "enabled": bool(settings.infinitepay_handle),
         "max_installments": 12,
+        "store": {
+            "name": store_settings.brand.name,
+            "public_base_url": settings.public_base_url,
+        },
     }
 
 
@@ -719,6 +815,19 @@ def get_order(
     return order.to_dict()
 
 
+@app.put("/api/admin/orders/{order_id}/status")
+def update_order_status(
+    order_id: str,
+    data: dict[str, Any] = Body(default_factory=dict),
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    order = get_or_404(db, Order, order_id)
+    order.status = normalize_order_status(data.get("status"))
+    db.commit()
+    return order.to_dict()
+
+
 @app.post("/api/newsletter")
 def subscribe_newsletter(
     data: dict[str, Any] = Body(default_factory=dict),
@@ -727,18 +836,29 @@ def subscribe_newsletter(
     email = data.get("email", "")
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="E-mail inválido")
+    coupon_percent = float(money(settings.coupon_discount_percent))
     if db.scalar(select(Newsletter).where(Newsletter.email == email)):
+        if not settings.coupons_enabled or not settings.coupon_code:
+            return {"message": "E-mail já cadastrado!"}
         return {
-            "message": "E-mail já cadastrado! Use o cupom VJ10 para 10% off",
-            "coupon": "VJ10",
+            "message": (
+                f"E-mail já cadastrado! Use o cupom {settings.coupon_code} "
+                f"para {coupon_percent:.0f}% off"
+            ),
+            "coupon": settings.coupon_code,
         }
-    db.add(Newsletter(email=email, coupon="VJ10"))
+    db.add(Newsletter(email=email, coupon=settings.coupon_code if settings.coupons_enabled else ""))
     db.commit()
+    if not settings.coupons_enabled or not settings.coupon_code:
+        return JSONResponse(status_code=201, content={"message": "E-mail cadastrado!"})
     return JSONResponse(
         status_code=201,
         content={
-            "message": "E-mail cadastrado! Use o cupom VJ10 e ganhe 10% off",
-            "coupon": "VJ10",
+            "message": (
+                f"E-mail cadastrado! Use o cupom {settings.coupon_code} e ganhe "
+                f"{coupon_percent:.0f}% off"
+            ),
+            "coupon": settings.coupon_code,
         },
     )
 
@@ -749,17 +869,12 @@ def validate_coupon(
     db: Session = Depends(get_db),
 ):
     code = data.get("code", "").upper()
+    if not settings.coupons_enabled:
+        raise HTTPException(status_code=404, detail="Cupons desativados")
     coupon = db.scalar(
         select(Coupon).where(Coupon.code == code, Coupon.is_active.is_(True))
     )
     if not coupon:
-        if code == "VJ10":
-            return {
-                "valid": True,
-                "code": "VJ10",
-                "discount_percent": 10,
-                "message": "Cupom VJ10 aplicado! 10% de desconto",
-            }
         raise HTTPException(status_code=404, detail="Cupom inválido ou expirado")
     if coupon.used_count >= coupon.usage_limit:
         raise HTTPException(status_code=400, detail="Cupom esgotado")
@@ -773,7 +888,32 @@ def validate_coupon(
 
 @app.post("/api/shipping/calculate")
 def calculate_shipping(data: dict[str, Any] = Body(default_factory=dict)):
-    return {"shipping": 0, "message": "Frete Gratis!", "estimated_days": "5-10"}
+    try:
+        shipping_data = configured_shipping(data.get("total", 0))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {
+        "shipping": float(shipping_data["shipping"]),
+        "message": shipping_data["message"],
+        "estimated_days": shipping_data["estimated_days"],
+    }
+
+
+@app.get("/api/store/config")
+def store_config():
+    data = store_settings.public_dict()
+    data["shipping"].update(
+        {
+            "fixed_value": float(money(store_settings.shipping.fixed_value)),
+            "free_minimum": float(money(store_settings.shipping.free_minimum)),
+        }
+    )
+    data["coupon"]["discount_percent"] = (
+        float(money(store_settings.coupon.discount_percent))
+        if store_settings.coupon.enabled
+        else 0
+    )
+    return data
 
 
 @app.get("/api/admin/stats")
@@ -830,18 +970,18 @@ def generate_catalog_pdf_endpoint(
         "",
         description="Descrições separadas por |, na ordem das imagens.",
     ),
-    catalog_title: str = Form("CATÁLOGO VJ SEMIJOIAS"),
-    collection: str = Form("Coleção Banhada a Ouro 18k"),
-    slogan: str = Form("Brilhe em cada momento"),
+    catalog_title: str = Form(""),
+    collection: str = Form(""),
+    slogan: str = Form(""),
     contact: str = Form(
-        "www.vjsemijoias.com | Instagram: @vj_semijoias | WhatsApp: (51) 98211-0842"
+        ""
     ),
-    coupon: str = Form("VJ10 = 10% OFF"),
+    coupon: str = Form(""),
     products_per_page: int = Form(
         6,
         description="Use 4 para cards maiores ou 6 para o layout padrão 2x3.",
     ),
-    output_filename: str = Form("catalogo-vj-semijoias.pdf"),
+    output_filename: str = Form(""),
     _claims=Depends(admin_claims),
 ):
     if not images:
@@ -895,10 +1035,11 @@ def generate_catalog_pdf_endpoint(
                 )
             )
 
+        output_name = output_filename.strip() or store_settings.catalog.filename
         safe_filename = re.sub(
             r"[^A-Za-z0-9._-]+",
             "-",
-            Path(output_filename).name,
+            Path(output_name).name,
         ).strip("-")
         if not safe_filename.lower().endswith(".pdf"):
             safe_filename += ".pdf"
@@ -907,15 +1048,11 @@ def generate_catalog_pdf_endpoint(
             products,
             output_path,
             CatalogOptions(
-                title=catalog_title.strip() or "CATÁLOGO VJ SEMIJOIAS",
-                collection=collection.strip() or "Coleção Banhada a Ouro 18k",
-                slogan=slogan.strip() or "Brilhe em cada momento",
-                contact=contact.strip()
-                or (
-                    "www.vjsemijoias.com | Instagram: @vj_semijoias | "
-                    "WhatsApp: (51) 98211-0842"
-                ),
-                coupon=coupon.strip() or "VJ10 = 10% OFF",
+                title=catalog_title.strip() or store_settings.catalog.title,
+                collection=collection.strip() or store_settings.catalog.collection,
+                slogan=slogan.strip() or store_settings.brand.slogan,
+                contact=contact.strip() or store_settings.catalog_contact_line,
+                coupon=coupon.strip() or store_settings.coupon_label,
                 products_per_page=products_per_page,
             ),
         )
@@ -1003,13 +1140,54 @@ def seed_products(db: Session):
         )
         product.gallery_images.append(ProductImage(path=image, position=0))
         db.add(product)
-    db.add(Coupon(code="VJ10", discount_percent=10, is_active=True))
     db.commit()
 
 
+def sync_default_coupon(db: Session):
+    if not settings.coupon_code:
+        return
+    coupon = db.scalar(select(Coupon).where(Coupon.code == settings.coupon_code))
+    if not coupon:
+        coupon = Coupon(code=settings.coupon_code)
+        db.add(coupon)
+    coupon.discount_percent = float(money(settings.coupon_discount_percent))
+    coupon.usage_limit = settings.coupon_usage_limit
+    coupon.is_active = settings.coupons_enabled
+    db.commit()
+
+
+def ensure_product_schema():
+    inspector = inspect(engine)
+    if "products" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("products")}
+    dialect = engine.dialect.name
+    statements = []
+    if "is_active" not in existing_columns:
+        default = "TRUE" if dialect != "sqlite" else "1"
+        statements.append(
+            f"ALTER TABLE products ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT {default}"
+        )
+    if "stock_status" not in existing_columns:
+        statements.append(
+            "ALTER TABLE products ADD COLUMN stock_status VARCHAR(30) "
+            "NOT NULL DEFAULT 'available'"
+        )
+
+    if not statements:
+        return
+
+    with engine.begin() as connection:
+        for statement in statements:
+            connection.execute(text(statement))
+
+
 Base.metadata.create_all(engine)
+ensure_product_schema()
 with SessionLocal() as startup_db:
     seed_products(startup_db)
+    sync_default_coupon(startup_db)
 
 app.mount("/", StaticFiles(directory=FRONTEND_ROOT, html=True), name="frontend")
 

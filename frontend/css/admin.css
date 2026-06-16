@@ -121,6 +121,132 @@
     border-bottom: 2px solid var(--gold-pale);
 }
 
+.orders-card {
+    margin-bottom: 2rem;
+}
+
+.orders-header {
+    align-items: flex-start;
+    border-bottom: 2px solid var(--gold-pale);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+}
+
+.orders-header h2 {
+    border: 0;
+    margin: 0 0 0.35rem;
+    padding: 0;
+}
+
+.orders-header p {
+    color: var(--gray);
+    margin: 0;
+}
+
+.orders-toolbar {
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: 1fr 220px;
+    margin-bottom: 1rem;
+}
+
+.orders-toolbar input,
+.orders-toolbar select {
+    border: 2px solid var(--gray-light);
+    border-radius: 999px;
+    padding: 0.75rem 1rem;
+}
+
+.admin-orders-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.admin-order-item {
+    background: var(--gray-pale);
+    border: 1px solid var(--gray-light);
+    border-radius: 16px;
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: 1.2fr 1fr 1.2fr auto;
+    padding: 1rem;
+}
+
+.order-main,
+.order-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.order-main span,
+.order-customer span,
+.order-items-summary {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.order-customer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.order-items-summary {
+    margin: 0;
+}
+
+.order-status {
+    align-self: flex-start;
+    border-radius: 999px;
+    color: var(--white);
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.28rem 0.7rem;
+    text-transform: uppercase;
+}
+
+.order-status.pending { background: var(--gold-dark); }
+.order-status.paid,
+.order-status.processing,
+.order-status.shipped,
+.order-status.delivered { background: var(--success); }
+.order-status.canceled,
+.order-status.failed { background: var(--error); }
+
+.order-footer {
+    align-items: flex-end;
+}
+
+.order-footer strong {
+    color: var(--gold-dark);
+    font-size: 1rem;
+}
+
+.order-footer select {
+    border: 2px solid var(--gray-light);
+    border-radius: 10px;
+    padding: 0.45rem 0.6rem;
+}
+
+@media (max-width: 900px) {
+    .admin-order-item,
+    .orders-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .orders-header {
+        flex-direction: column;
+    }
+
+    .order-footer {
+        align-items: stretch;
+    }
+}
+
 /* IMAGE UPLOAD */
 .image-upload {
     position: relative;
@@ -256,6 +382,161 @@
     color: var(--white);
 }
 
+.admin-toggle {
+    align-items: center;
+    background: var(--gray-pale);
+    border: 2px solid var(--gray-light);
+    border-radius: 14px;
+    cursor: pointer;
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 0.9rem;
+    transition: var(--transition);
+}
+
+.admin-toggle input {
+    display: none;
+}
+
+.admin-toggle span {
+    background: var(--gray-light);
+    border-radius: 999px;
+    height: 24px;
+    position: relative;
+    transition: var(--transition);
+    width: 46px;
+}
+
+.admin-toggle span::after {
+    background: var(--white);
+    border-radius: 50%;
+    content: "";
+    height: 18px;
+    left: 3px;
+    position: absolute;
+    top: 3px;
+    transition: var(--transition);
+    width: 18px;
+}
+
+.admin-toggle input:checked + span {
+    background: var(--gold-primary);
+}
+
+.admin-toggle input:checked + span::after {
+    transform: translateX(22px);
+}
+
+.admin-product-preview {
+    background: linear-gradient(135deg, var(--cream), var(--white));
+    border: 2px solid var(--gold-pale);
+    border-radius: 18px;
+    padding: 1rem;
+}
+
+.admin-product-preview.empty {
+    color: var(--gray);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.preview-card {
+    background: var(--white);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    overflow: hidden;
+}
+
+.preview-image {
+    align-items: center;
+    background: var(--gray-pale);
+    display: flex;
+    justify-content: center;
+    min-height: 140px;
+    position: relative;
+}
+
+.preview-image img {
+    height: 100%;
+    object-fit: contain;
+    padding: 0.6rem;
+    width: 100%;
+}
+
+.preview-image .placeholder {
+    font-size: 3rem;
+}
+
+.preview-info {
+    padding: 1rem;
+}
+
+.preview-topline {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.preview-topline > span:first-child {
+    color: var(--gold-dark);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.preview-info strong {
+    color: var(--dark);
+    display: block;
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    margin-bottom: 0.35rem;
+}
+
+.preview-info p {
+    color: var(--gray);
+    font-size: 0.86rem;
+    line-height: 1.4;
+    margin: 0 0 0.75rem;
+}
+
+.preview-price {
+    color: var(--gold-dark);
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.preview-price .old-price {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin-right: 0.5rem;
+    text-decoration: line-through;
+}
+
+.preview-status {
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.25rem 0.55rem;
+    text-transform: uppercase;
+}
+
+.preview-status.available,
+.preview-status.preorder {
+    background: #e7f8ec;
+    color: var(--success);
+}
+
+.preview-status.out_of_stock,
+.preview-status.inactive {
+    background: #ffe8e8;
+    color: var(--error);
+}
+
 /* FORM ROW */
 .form-row {
     display: grid;
@@ -380,6 +661,23 @@
 
 .admin-product-info .badge-mini.fixed {
     background: var(--gray);
+}
+
+.admin-product-info .badge-mini.storefront.new,
+.admin-product-info .badge-mini.active,
+.admin-product-info .badge-mini.stock.available {
+    background: var(--success);
+}
+
+.admin-product-info .badge-mini.storefront.sale,
+.admin-product-info .badge-mini.inactive,
+.admin-product-info .badge-mini.stock.out_of_stock {
+    background: var(--error);
+}
+
+.admin-product-info .badge-mini.storefront.bestseller,
+.admin-product-info .badge-mini.stock.preorder {
+    background: var(--gold-dark);
 }
 
 .admin-product-price {
