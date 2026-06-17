@@ -33,14 +33,18 @@ PUBLIC_BASE_URL=https://seu-dominio.com
 4. Instale as dependências e inicie a aplicação:
 
 ```powershell
-uv sync
-uv run uvicorn backend.app:app --host 0.0.0.0 --port 5000 --reload
+uv --cache-dir .uv-cache sync
+uv --cache-dir .uv-cache run uvicorn backend.app:app --host 0.0.0.0 --port 5000
 ```
 
 5. Acesse `http://localhost:5000`.
 
 O FastAPI serve tanto a API em `/api` quanto os arquivos do site. Não é
 necessário abrir outro servidor para o frontend.
+
+Se quiser recarregamento automatico em desenvolvimento, adicione `--reload`.
+Em alguns ambientes Windows ele pode falhar por permissao de processo; nesse
+caso rode sem `--reload`.
 
 A documentação interativa fica disponível em `http://localhost:5000/docs`.
 
@@ -58,7 +62,7 @@ O projeto usa Alembic para versionar alteracoes no banco. Depois de configurar
 `DATABASE_URL`, aplique as migrations:
 
 ```powershell
-uv run alembic upgrade head
+uv --cache-dir .uv-cache run alembic upgrade head
 ```
 
 Para um banco novo, esse comando cria todas as tabelas atuais.
@@ -67,15 +71,15 @@ Se o banco ja existe porque foi criado antes pelo app, marque a migration base
 como aplicada e depois rode as proximas:
 
 ```powershell
-uv run alembic stamp 20260617_0001
-uv run alembic upgrade head
+uv --cache-dir .uv-cache run alembic stamp 20260617_0001
+uv --cache-dir .uv-cache run alembic upgrade head
 ```
 
 Quando alterar modelos em `backend/models.py`, crie uma nova migration:
 
 ```powershell
-uv run alembic revision --autogenerate -m "descricao da alteracao"
-uv run alembic upgrade head
+uv --cache-dir .uv-cache run alembic revision --autogenerate -m "descricao da alteracao"
+uv --cache-dir .uv-cache run alembic upgrade head
 ```
 
 ## Seguranca do admin
