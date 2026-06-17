@@ -125,6 +125,34 @@
     margin-bottom: 2rem;
 }
 
+.store-config-card {
+    margin-bottom: 2rem;
+}
+
+.store-config-card h3 {
+    border-bottom: 1px solid var(--gray-light);
+    color: var(--gold-dark);
+    font-size: 1rem;
+    margin: 1.4rem 0 1rem;
+    padding-bottom: 0.55rem;
+}
+
+.store-config-card h3:first-of-type {
+    margin-top: 0;
+}
+
+.store-config-toggle {
+    margin: 0.5rem 0 1rem;
+}
+
+.store-config-actions {
+    align-items: end;
+}
+
+.store-config-actions .btn {
+    min-height: 46px;
+}
+
 .orders-header {
     align-items: flex-start;
     border-bottom: 2px solid var(--gold-pale);

@@ -25,9 +25,18 @@ dev = [
     "pytest>=8.4,<10",
     "httpx>=0.28,<1",
     "pymupdf>=1.26,<2",
+    "pytest-cov>=6,<8",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q -p no:cacheprovider"
 pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["backend", "tools"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

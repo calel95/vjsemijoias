@@ -250,6 +250,14 @@ const API = {
         return this.request('GET', '/store/config');
     },
 
+    async getAdminStoreConfig() {
+        return this.request('GET', '/admin/store-config');
+    },
+
+    async updateAdminStoreConfig(values) {
+        return this.request('PUT', '/admin/store-config', { values });
+    },
+
     async createInfinitePayCheckout(orderData) {
         return this.request('POST', '/payments/infinitepay/checkout', orderData);
     },

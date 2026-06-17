@@ -3,7 +3,8 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v23';
+const CACHE_NAME = 'vj-semijoias-v24';
+const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
     '/catalogo',
@@ -54,9 +55,10 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(cacheNames => {
+            const validCaches = [CACHE_NAME, API_CACHE_NAME];
             return Promise.all(
                 cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME) {
+                    if (!validCaches.includes(cacheName)) {
                         return caches.delete(cacheName);
                     }
                 })
@@ -67,12 +69,71 @@ self.addEventListener('activate', event => {
 });
 
 // Navegações e API usam a rede primeiro; assets estáticos usam o cache.
+function productImageUrls(products) {
+    const urls = new Set();
+    products.forEach(product => {
+        const images = Array.isArray(product.images) && product.images.length
+            ? product.images
+            : (product.image ? [product.image] : []);
+        images.forEach(image => {
+            try {
+                const imageUrl = new URL(image, self.location.origin);
+                if (imageUrl.origin === self.location.origin) {
+                    urls.add(imageUrl.href);
+                }
+            } catch (_) {
+                // Ignora caminhos invalidos vindos do catalogo.
+            }
+        });
+    });
+    return [...urls];
+}
+
+async function cacheProductImages(products) {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled(
+        productImageUrls(products).map(async url => {
+            const response = await fetch(url);
+            if (response.ok) {
+                await cache.put(url, response);
+            }
+        })
+    );
+}
+
+async function networkFirstProducts(request, event) {
+    const cache = await caches.open(API_CACHE_NAME);
+    try {
+        const response = await fetch(request);
+        if (response.ok) {
+            await cache.put(request, response.clone());
+            const imageCacheTask = response.clone().json()
+                .then(products => Array.isArray(products) && cacheProductImages(products))
+                .catch(() => {});
+            event.waitUntil(imageCacheTask);
+            return response;
+        }
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        return response;
+    } catch (error) {
+        const cached = await cache.match(request);
+        if (cached) return cached;
+        throw error;
+    }
+}
+
 self.addEventListener('fetch', event => {
     if (event.request.method !== 'GET') return;
 
     const url = new URL(event.request.url);
     if (url.origin !== self.location.origin) {
         event.respondWith(fetch(event.request));
+        return;
+    }
+
+    if (url.pathname === '/api/products') {
+        event.respondWith(networkFirstProducts(event.request, event));
         return;
     }
 

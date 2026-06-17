@@ -248,9 +248,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const featured = document.getElementById('featured-products');
             if (featured) {
-                // Tenta carregar da API primeiro
-                const apiProducts = await loadProductsFromAPI();
-                const products = apiProducts && apiProducts.length > 0 ? apiProducts : PRODUCTS;
+                const products = await loadProductsFromAPI();
                 featured.innerHTML = products.map(p => createProductCard(p)).join('');
             }
         });

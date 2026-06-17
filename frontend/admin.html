@@ -127,6 +127,142 @@
                 </div>
             </div>
 
+            <div class="admin-card store-config-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Configuracoes da loja</h2>
+                        <p>Atualize identidade, contato, catalogo, frete e cupom sem alterar o deploy.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminStoreConfig()">Recarregar</button>
+                </div>
+
+                <form id="store-config-form">
+                    <h3>Marca</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome da loja</label>
+                            <input type="text" data-store-config="STORE_NAME">
+                        </div>
+                        <div class="form-group">
+                            <label>Nome curto</label>
+                            <input type="text" data-store-config="STORE_SHORT_NAME">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tagline</label>
+                            <input type="text" data-store-config="STORE_TAGLINE">
+                        </div>
+                        <div class="form-group">
+                            <label>Slogan</label>
+                            <input type="text" data-store-config="STORE_SLOGAN">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descricao</label>
+                        <textarea rows="2" data-store-config="STORE_DESCRIPTION"></textarea>
+                    </div>
+
+                    <h3>Contato</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" data-store-config="STORE_EMAIL">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="text" data-store-config="STORE_PHONE">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>WhatsApp</label>
+                            <input type="text" data-store-config="STORE_WHATSAPP">
+                        </div>
+                        <div class="form-group">
+                            <label>Instagram</label>
+                            <input type="text" data-store-config="STORE_INSTAGRAM">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Site</label>
+                            <input type="text" data-store-config="STORE_WEBSITE">
+                        </div>
+                        <div class="form-group">
+                            <label>CNPJ</label>
+                            <input type="text" data-store-config="STORE_CNPJ">
+                        </div>
+                    </div>
+
+                    <h3>Catalogo e PDF</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Titulo do catalogo</label>
+                            <input type="text" data-store-config="STORE_CATALOG_TITLE">
+                        </div>
+                        <div class="form-group">
+                            <label>Colecao</label>
+                            <input type="text" data-store-config="STORE_CATALOG_COLLECTION">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome do arquivo PDF</label>
+                        <input type="text" data-store-config="STORE_CATALOG_FILENAME">
+                    </div>
+
+                    <h3>Frete e cupom</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Modo de frete</label>
+                            <select data-store-config="SHIPPING_MODE">
+                                <option value="free">Gratis</option>
+                                <option value="fixed">Fixo</option>
+                                <option value="threshold">Gratis por valor minimo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Prazo estimado</label>
+                            <input type="text" data-store-config="SHIPPING_ESTIMATED_DAYS">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Frete fixo (R$)</label>
+                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
+                        </div>
+                        <div class="form-group">
+                            <label>Gratis acima de (R$)</label>
+                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FREE_MINIMUM">
+                        </div>
+                    </div>
+                    <label class="admin-toggle store-config-toggle">
+                        <input type="checkbox" data-store-config="COUPONS_ENABLED">
+                        <span></span>
+                        Cupons ativos
+                    </label>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Codigo do cupom</label>
+                            <input type="text" data-store-config="COUPON_CODE">
+                        </div>
+                        <div class="form-group">
+                            <label>Desconto (%)</label>
+                            <input type="number" min="0" max="100" step="0.01" data-store-config="COUPON_DISCOUNT_PERCENT">
+                        </div>
+                    </div>
+                    <div class="form-row store-config-actions">
+                        <div class="form-group">
+                            <label>Limite de uso</label>
+                            <input type="number" min="0" step="1" data-store-config="COUPON_USAGE_LIMIT">
+                        </div>
+                        <button class="btn btn-primary" id="store-config-submit" type="submit">
+                            Salvar configuracoes
+                        </button>
+                    </div>
+                </form>
+            </div>
+
             <div class="admin-grid">
                 <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
                 <div class="admin-card">

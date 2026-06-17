@@ -86,6 +86,7 @@ uv --cache-dir .uv-cache run alembic upgrade head
 | `uv run pytest -v` | Executar testes com output verboso (mostra nome de cada teste) |
 | `uv run pytest tests/test_api.py` | Executar apenas os testes da API |
 | `uv run pytest -k "nome_do_teste"` | Executar testes que contenham o termo no nome |
+| `uv run pytest --cov --cov-report=term-missing` | Executar testes com relatorio de cobertura |
 | `uv run python tools/e2e_smoke.py` | Executar smoke test ponta a ponta (não afeta banco real nem InfinitePay) |
 
 ---

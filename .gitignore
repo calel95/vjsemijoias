@@ -4,6 +4,9 @@
 __pycache__/
 .pytest_cache/
 .pytest-tmp*/
+.coverage
+coverage.xml
+htmlcov/
 .tmp/
 import_data/uploads/
 *.py[cod]

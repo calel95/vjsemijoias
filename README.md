@@ -101,13 +101,22 @@ uma `JWT_SECRET_KEY` longa e aleatoria.
 ## Estrutura do projeto
 
 ```text
-backend/        API FastAPI, banco e importacao de produtos
-frontend/       HTML, CSS, JavaScript, imagens, PWA e PDFs publicos
-import_data/    arquivos-fonte usados nas importacoes
-tests/          testes automatizados
-tools/          scripts de geracao e manutencao
-.agent/skills/  skills locais para extrair e gerar catalogos
+backend/app.py       cria o FastAPI, registra middlewares, routers e arquivos estaticos
+backend/routers/     endpoints FastAPI separados por dominio
+backend/services/    regras reutilizaveis de pedido, pagamento, imagens e startup
+backend/models.py    modelos SQLAlchemy
+backend/database.py  engine, sessao e dependencia de banco
+frontend/            HTML, CSS, JavaScript, imagens, PWA e PDFs publicos
+import_data/         arquivos-fonte usados nas importacoes
+tests/               testes automatizados
+tools/               scripts de geracao e manutencao
+.agent/skills/       skills locais para extrair e gerar catalogos
 ```
+
+Ao criar novas funcionalidades, prefira adicionar o endpoint em
+`backend/routers/` e deixar regras de negocio compartilhadas em
+`backend/services/`. O `backend/app.py` deve continuar pequeno e focado apenas
+na montagem da aplicacao.
 
 Mantenha na raiz apenas arquivos de configuracao e documentacao do projeto.
 
@@ -115,6 +124,12 @@ Mantenha na raiz apenas arquivos de configuracao e documentacao do projeto.
 
 ```powershell
 uv run pytest
+```
+
+Para medir cobertura dos testes em `backend/` e `tools/`:
+
+```powershell
+uv run pytest --cov --cov-report=term-missing
 ```
 
 Para validar os principais fluxos ponta a ponta sem tocar no banco real nem na

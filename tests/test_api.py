@@ -16,7 +16,9 @@ os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 from backend.config import FRONTEND_ROOT, database_url, settings
+from backend.database import SessionLocal
 from backend.import_products import DEFAULT_SOURCE, import_catalog
+from backend.models import StoreSetting
 from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
 
@@ -60,11 +62,36 @@ def catalog_totals():
     return len(products), sum(len(product.get('images') or []) for product in products)
 
 
+def clear_store_setting_overrides():
+    with SessionLocal() as db:
+        db.query(StoreSetting).delete()
+        db.commit()
+
+
 def test_health():
     response = client.get('/api/health')
 
     assert response.status_code == 200
     assert response.json()['status'] == 'ok'
+
+
+def test_unhandled_exception_returns_generic_json():
+    path = '/api/__test/unhandled-error'
+    if not any(getattr(route, 'path', None) == path for route in app.routes):
+        @app.get(path, include_in_schema=False)
+        def raise_unhandled_error():
+            raise RuntimeError('segredo sensivel do servidor')
+        app.router.routes.insert(0, app.router.routes.pop())
+
+    safe_client = TestClient(app, raise_server_exceptions=False)
+    response = safe_client.get(path)
+
+    assert response.status_code == 500
+    data = response.json()
+    assert data['error'] == 'Erro interno no servidor'
+    assert data['error_id']
+    assert 'segredo sensivel' not in response.text
+    assert 'Traceback' not in response.text
 
 
 def test_database_url_uses_psycopg_for_postgresql(monkeypatch):
@@ -128,6 +155,19 @@ def test_frontend_files_are_served():
     assert legacy_catalog_response.status_code == 200
     assert manifest_response.status_code == 200
     assert service_worker_response.status_code == 200
+
+
+def test_public_catalog_uses_api_cache_instead_of_hardcoded_products():
+    products_js = (FRONTEND_ROOT / 'js' / 'products.js').read_text(encoding='utf-8')
+    service_worker = (FRONTEND_ROOT / 'service-worker.js').read_text(encoding='utf-8')
+    index_html = (FRONTEND_ROOT / 'index.html').read_text(encoding='utf-8')
+
+    assert 'const PRODUCTS' not in products_js
+    assert 'Brinco Marguerite' not in products_js
+    assert "url.pathname === '/api/products'" in service_worker
+    assert 'networkFirstProducts(event.request, event)' in service_worker
+    assert 'API_CACHE_NAME' in service_worker
+    assert 'apiProducts && apiProducts.length > 0 ? apiProducts : PRODUCTS' not in index_html
 
 
 def test_catalog_has_seed_products():
@@ -205,6 +245,64 @@ def test_fixed_shipping_can_be_configured_by_environment():
     finally:
         object.__setattr__(store_settings.shipping, 'mode', original_mode)
         object.__setattr__(store_settings.shipping, 'fixed_value', original_value)
+
+
+def test_admin_store_config_requires_admin_token():
+    response = client.get('/api/admin/store-config')
+
+    assert response.status_code == 401
+
+
+def test_admin_can_update_store_config_and_runtime_uses_overrides():
+    clear_store_setting_overrides()
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+    headers = {'Authorization': f'Bearer {token}'}
+    try:
+        update_response = client.put(
+            '/api/admin/store-config',
+            headers=headers,
+            json={
+                'values': {
+                    'STORE_NAME': 'VJ Teste Admin',
+                    'STORE_CATALOG_FILENAME': 'catalogo-admin.pdf',
+                    'SHIPPING_MODE': 'fixed',
+                    'SHIPPING_FIXED_VALUE': '19.90',
+                    'COUPONS_ENABLED': True,
+                    'COUPON_CODE': 'ADM15',
+                    'COUPON_DISCOUNT_PERCENT': '15',
+                    'COUPON_USAGE_LIMIT': '3',
+                }
+            },
+        )
+        public_config = client.get('/api/store/config')
+        shipping = client.post('/api/shipping/calculate', json={'total': 99.90})
+        payment_config = client.get('/api/payments/config')
+        coupon = client.post('/api/coupons/validate', json={'code': 'adm15'})
+
+        assert update_response.status_code == 200
+        assert update_response.json()['values']['STORE_NAME'] == 'VJ Teste Admin'
+        assert public_config.json()['brand']['name'] == 'VJ Teste Admin'
+        assert public_config.json()['catalog']['filename'] == 'catalogo-admin.pdf'
+        assert public_config.json()['shipping']['fixed_value'] == 19.9
+        assert shipping.json()['shipping'] == 19.9
+        assert payment_config.json()['store']['name'] == 'VJ Teste Admin'
+        assert coupon.status_code == 200
+        assert coupon.json()['discount_percent'] == 15.0
+    finally:
+        clear_store_setting_overrides()
+
+
+def test_admin_store_config_rejects_invalid_values():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+    response = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'SHIPPING_MODE': 'teleport'}},
+    )
+
+    assert response.status_code == 400
 
 
 def test_admin_can_update_order_status():

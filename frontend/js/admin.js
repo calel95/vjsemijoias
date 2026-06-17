@@ -13,6 +13,7 @@ let adminOrders = [];
 let imageUploadInitialized = false;
 let productPreviewInitialized = false;
 let catalogPdfInitialized = false;
+let storeConfigInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
 let importFolderFiles = [];
@@ -60,6 +61,7 @@ async function showAdminPanel() {
     apiProductsCache = result.data;
     apiLoaded = true;
     await applyStoreEnvironmentConfig();
+    await loadAdminStoreConfig();
     renderAdminProducts();
     await loadAdminOrders();
     await updateStats();
@@ -74,6 +76,10 @@ async function showAdminPanel() {
     if (!catalogPdfInitialized) {
         setupCatalogPdfDropzone();
         catalogPdfInitialized = true;
+    }
+    if (!storeConfigInitialized) {
+        setupStoreConfigForm();
+        storeConfigInitialized = true;
     }
 }
 
@@ -99,6 +105,70 @@ async function applyStoreEnvironmentConfig() {
     } else if (couponInput) {
         couponInput.value = '';
     }
+}
+
+function setupStoreConfigForm() {
+    const form = document.getElementById('store-config-form');
+    if (!form) return;
+    form.addEventListener('submit', handleStoreConfigSubmit);
+}
+
+async function loadAdminStoreConfig() {
+    const form = document.getElementById('store-config-form');
+    if (!form) return;
+
+    const result = await API.getAdminStoreConfig();
+    if (!result.success) {
+        showToast(result.error || 'Falha ao carregar configuracoes', 'error');
+        return;
+    }
+
+    fillStoreConfigForm(result.data.values || {});
+}
+
+function fillStoreConfigForm(values) {
+    document.querySelectorAll('[data-store-config]').forEach(field => {
+        const key = field.dataset.storeConfig;
+        if (!(key in values)) return;
+        if (field.type === 'checkbox') {
+            field.checked = String(values[key]).toLowerCase() === 'true';
+        } else {
+            field.value = values[key] ?? '';
+        }
+    });
+}
+
+function readStoreConfigForm() {
+    const values = {};
+    document.querySelectorAll('[data-store-config]').forEach(field => {
+        const key = field.dataset.storeConfig;
+        values[key] = field.type === 'checkbox' ? field.checked : field.value.trim();
+    });
+    return values;
+}
+
+async function handleStoreConfigSubmit(event) {
+    event.preventDefault();
+    const submit = document.getElementById('store-config-submit');
+    if (submit) {
+        submit.disabled = true;
+        submit.textContent = 'Salvando...';
+    }
+
+    const result = await API.updateAdminStoreConfig(readStoreConfigForm());
+    if (submit) {
+        submit.disabled = false;
+        submit.textContent = 'Salvar configuracoes';
+    }
+
+    if (!result.success) {
+        showToast(result.error || 'Falha ao salvar configuracoes', 'error');
+        return;
+    }
+
+    fillStoreConfigForm(result.data.values || {});
+    await applyStoreEnvironmentConfig();
+    showToast('Configuracoes da loja atualizadas', 'success');
 }
 
 // ============================================
