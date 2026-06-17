@@ -23,7 +23,7 @@ let importPreviewState = null;
 // ============================================
 
 function isAuthenticated() {
-    return API.isLoggedIn();
+    return API.hasAdminToken();
 }
 
 async function handleAdminLogin(event) {
@@ -699,7 +699,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.success && result.data.is_admin) {
             await showAdminPanel();
         } else {
-            API.logout();
+            sessionStorage.removeItem('vj_admin_token');
             document.getElementById('login-screen').style.display = 'flex';
         }
     } else {

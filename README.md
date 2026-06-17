@@ -7,7 +7,7 @@ catálogo administrável, pagamentos InfinitePay e backend Python com FastAPI.
 
 - Frontend: HTML, CSS e JavaScript
 - Backend: Python 3.12, FastAPI e SQLAlchemy 2
-- Banco: SQLite
+- Banco: SQLite ou PostgreSQL
 - Dependências e ambiente: `uv`
 - Autenticação: JWT
 - Pagamentos: InfinitePay Checkout Integrado
@@ -52,6 +52,48 @@ opcionais separados por `|`, respeitando a ordem das imagens.
 As páginas também possuem URLs sem extensão, como `/admin`, `/catalogo`,
 `/produto` e `/checkout`. Os endereços antigos com `.html` continuam válidos.
 
+## Banco e migrations
+
+O projeto usa Alembic para versionar alteracoes no banco. Depois de configurar
+`DATABASE_URL`, aplique as migrations:
+
+```powershell
+uv run alembic upgrade head
+```
+
+Para um banco novo, esse comando cria todas as tabelas atuais.
+
+Se o banco ja existe porque foi criado antes pelo app, marque a migration base
+como aplicada e depois rode as proximas:
+
+```powershell
+uv run alembic stamp 20260617_0001
+uv run alembic upgrade head
+```
+
+Quando alterar modelos em `backend/models.py`, crie uma nova migration:
+
+```powershell
+uv run alembic revision --autogenerate -m "descricao da alteracao"
+uv run alembic upgrade head
+```
+
+## Seguranca do admin
+
+O painel administrativo usa um token proprio, emitido somente por
+`POST /api/auth/admin/login`. Esse token fica no `sessionStorage` do navegador,
+ou seja, expira ao fechar a aba/janela, e tambem tem validade curta configuravel:
+
+```env
+ADMIN_TOKEN_EXPIRE_MINUTES=120
+ADMIN_LOGIN_MAX_ATTEMPTS=5
+ADMIN_LOGIN_LOCKOUT_SECONDS=300
+```
+
+Tokens comuns de usuario, mesmo de um usuario marcado como admin no banco, nao
+acessam rotas administrativas. Para producao, use uma `ADMIN_PASSWORD` forte e
+uma `JWT_SECRET_KEY` longa e aleatoria.
+
 ## Estrutura do projeto
 
 ```text
@@ -70,6 +112,17 @@ Mantenha na raiz apenas arquivos de configuracao e documentacao do projeto.
 ```powershell
 uv run pytest
 ```
+
+Para validar os principais fluxos ponta a ponta sem tocar no banco real nem na
+InfinitePay, rode o smoke test isolado:
+
+```powershell
+uv run python tools/e2e_smoke.py
+```
+
+Ele cobre paginas publicas, catalogo, login admin, protecao das rotas admin,
+CRUD de produtos, checkout InfinitePay simulado, confirmacao de pagamento e
+pedidos no painel.
 
 ## Importar catálogo
 

@@ -18,19 +18,30 @@ function getFilenameFromDisposition(disposition) {
 
 const API = {
     baseUrl: `${API_BASE}/api`,
-    token: localStorage.getItem('vj_api_token'),
+    token: sessionStorage.getItem('vj_admin_token') || localStorage.getItem('vj_api_token'),
 
     // ============================================
     // UTILITÁRIOS
     // ============================================
 
-    setToken(token) {
+    setToken(token, options = {}) {
+        const isAdminToken = options.admin === true;
         this.token = token;
         if (token) {
-            localStorage.setItem('vj_api_token', token);
+            if (isAdminToken) {
+                sessionStorage.setItem('vj_admin_token', token);
+            } else {
+                localStorage.setItem('vj_api_token', token);
+                sessionStorage.removeItem('vj_admin_token');
+            }
         } else {
             localStorage.removeItem('vj_api_token');
+            sessionStorage.removeItem('vj_admin_token');
         }
+    },
+
+    hasAdminToken() {
+        return !!sessionStorage.getItem('vj_admin_token');
     },
 
     getHeaders() {
@@ -206,7 +217,7 @@ const API = {
     async adminLogin(password) {
         const result = await this.request('POST', '/auth/admin/login', { password });
         if (result.success && result.data.token) {
-            this.setToken(result.data.token);
+            this.setToken(result.data.token, { admin: true });
         }
         return result;
     },

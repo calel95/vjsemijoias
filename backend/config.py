@@ -43,6 +43,9 @@ class Settings:
     database_url: str = database_url()
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "jwt-secret-key")
     admin_password: str = os.getenv("ADMIN_PASSWORD", "")
+    admin_token_expire_minutes: int = int(os.getenv("ADMIN_TOKEN_EXPIRE_MINUTES", "120"))
+    admin_login_max_attempts: int = int(os.getenv("ADMIN_LOGIN_MAX_ATTEMPTS", "5"))
+    admin_login_lockout_seconds: int = int(os.getenv("ADMIN_LOGIN_LOCKOUT_SECONDS", "300"))
     infinitepay_handle: str = os.getenv("INFINITEPAY_HANDLE", "").strip().lstrip("$")
     infinitepay_api_base: str = os.getenv(
         "INFINITEPAY_API_BASE",

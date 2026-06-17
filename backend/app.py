@@ -5,7 +5,7 @@ import re
 import secrets
 import shutil
 import unicodedata
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -16,12 +16,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func, inspect, select, text
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from starlette.background import BackgroundTask
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from backend.auth import admin_claims, create_access_token, optional_claims, required_claims
+from backend.auth import (
+    admin_claims,
+    create_access_token,
+    create_admin_access_token,
+    optional_claims,
+    required_claims,
+)
 from backend.catalog_pdf import (
     CatalogOptions,
     CatalogProduct,
@@ -74,11 +80,48 @@ ORDER_STATUSES = {
     "canceled",
     "failed",
 }
+ADMIN_LOGIN_ATTEMPTS: dict[str, dict[str, Any]] = {}
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_request, exc):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
+
+
+def admin_login_key(request: Request):
+    forwarded_for = request.headers.get("x-forwarded-for", "").split(",")[0].strip()
+    if forwarded_for:
+        return forwarded_for
+    return request.client.host if request.client else "unknown"
+
+
+def check_admin_login_rate_limit(request: Request):
+    state = ADMIN_LOGIN_ATTEMPTS.get(admin_login_key(request))
+    if not state:
+        return
+    locked_until = state.get("locked_until")
+    if locked_until and datetime.now(UTC) < locked_until:
+        raise HTTPException(
+            status_code=429,
+            detail="Muitas tentativas incorretas. Tente novamente em alguns minutos.",
+        )
+
+
+def record_admin_login_failure(request: Request):
+    max_attempts = max(settings.admin_login_max_attempts, 1)
+    state = ADMIN_LOGIN_ATTEMPTS.setdefault(
+        admin_login_key(request),
+        {"attempts": 0, "locked_until": None},
+    )
+    state["attempts"] += 1
+    if state["attempts"] >= max_attempts:
+        state["locked_until"] = datetime.now(UTC) + timedelta(
+            seconds=max(settings.admin_login_lockout_seconds, 1)
+        )
+
+
+def clear_admin_login_failures(request: Request):
+    ADMIN_LOGIN_ATTEMPTS.pop(admin_login_key(request), None)
 
 
 @app.exception_handler(RequestValidationError)
@@ -586,16 +629,20 @@ def get_me(claims=Depends(required_claims), db: Session = Depends(get_db)):
 
 @app.post("/api/auth/admin/login")
 def admin_login(
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
+    check_admin_login_rate_limit(request)
     if not settings.admin_password:
         raise HTTPException(
             status_code=503,
             detail="ADMIN_PASSWORD não foi configurada no servidor",
         )
-    if data.get("password", "") != settings.admin_password:
+    if not secrets.compare_digest(str(data.get("password", "")), settings.admin_password):
+        record_admin_login_failure(request)
         raise HTTPException(status_code=401, detail="Senha administrativa incorreta")
+    clear_admin_login_failures(request)
     admin_user = db.scalar(select(User).where(User.is_admin.is_(True)))
     if not admin_user:
         admin_user = User(
@@ -606,7 +653,12 @@ def admin_login(
         )
         db.add(admin_user)
         db.commit()
-    return {"token": create_access_token(admin_user), "user": admin_user.to_dict()}
+    return {
+        "token": create_admin_access_token(admin_user),
+        "token_type": "admin",
+        "expires_in": settings.admin_token_expire_minutes * 60,
+        "user": admin_user.to_dict(),
+    }
 
 
 @app.get("/api/payments/config")
@@ -1156,35 +1208,7 @@ def sync_default_coupon(db: Session):
     db.commit()
 
 
-def ensure_product_schema():
-    inspector = inspect(engine)
-    if "products" not in inspector.get_table_names():
-        return
-
-    existing_columns = {column["name"] for column in inspector.get_columns("products")}
-    dialect = engine.dialect.name
-    statements = []
-    if "is_active" not in existing_columns:
-        default = "TRUE" if dialect != "sqlite" else "1"
-        statements.append(
-            f"ALTER TABLE products ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT {default}"
-        )
-    if "stock_status" not in existing_columns:
-        statements.append(
-            "ALTER TABLE products ADD COLUMN stock_status VARCHAR(30) "
-            "NOT NULL DEFAULT 'available'"
-        )
-
-    if not statements:
-        return
-
-    with engine.begin() as connection:
-        for statement in statements:
-            connection.execute(text(statement))
-
-
 Base.metadata.create_all(engine)
-ensure_product_schema()
 with SessionLocal() as startup_db:
     seed_products(startup_db)
     sync_default_coupon(startup_db)

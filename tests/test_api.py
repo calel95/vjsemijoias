@@ -14,8 +14,8 @@ os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 
-from backend.app import app
-from backend.config import FRONTEND_ROOT, database_url
+from backend.app import ADMIN_LOGIN_ATTEMPTS, app
+from backend.config import FRONTEND_ROOT, database_url, settings
 from backend.import_products import DEFAULT_SOURCE, import_catalog
 from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
@@ -76,6 +76,40 @@ def test_database_url_uses_psycopg_for_postgresql(monkeypatch):
     assert database_url() == (
         'postgresql+psycopg://user:password@example.neon.tech/neondb?sslmode=require'
     )
+
+
+def test_alembic_migrations_create_current_schema(tmp_path):
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import create_engine, inspect
+
+    db_path = tmp_path / 'migration.db'
+    db_url = f"sqlite:///{db_path.as_posix()}"
+    config = Config('alembic.ini')
+    config.set_main_option('script_location', 'migrations')
+    config.set_main_option('sqlalchemy.url', db_url)
+
+    command.upgrade(config, 'head')
+
+    engine = create_engine(db_url)
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    product_columns = {
+        column['name'] for column in inspector.get_columns('products')
+    }
+
+    assert {
+        'products',
+        'product_images',
+        'product_imports',
+        'users',
+        'orders',
+        'payments',
+        'newsletters',
+        'coupons',
+        'alembic_version',
+    }.issubset(tables)
+    assert {'is_active', 'stock_status'}.issubset(product_columns)
 
 
 def test_frontend_files_are_served():
@@ -205,6 +239,52 @@ def test_admin_route_requires_token():
     response = client.post('/api/products', json={})
 
     assert response.status_code == 401
+
+
+def test_admin_route_rejects_regular_user_token_even_for_admin_user():
+    admin_login = client.post(
+        '/api/auth/admin/login',
+        json={'password': 'test-admin-password'},
+    )
+    assert admin_login.status_code == 200
+
+    regular_login = client.post('/api/auth/login', json={
+        'email': 'admin@vjsemijoias.com',
+        'password': 'test-admin-password',
+    })
+    token = regular_login.json()['token']
+
+    response = client.get(
+        '/api/admin/products',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert regular_login.status_code == 200
+    assert response.status_code == 403
+
+
+def test_admin_login_blocks_repeated_wrong_passwords():
+    original_max_attempts = settings.admin_login_max_attempts
+    original_lockout = settings.admin_login_lockout_seconds
+    ADMIN_LOGIN_ATTEMPTS.clear()
+    try:
+        object.__setattr__(settings, 'admin_login_max_attempts', 2)
+        object.__setattr__(settings, 'admin_login_lockout_seconds', 60)
+
+        first = client.post('/api/auth/admin/login', json={'password': 'errada'})
+        second = client.post('/api/auth/admin/login', json={'password': 'errada'})
+        blocked = client.post(
+            '/api/auth/admin/login',
+            json={'password': 'test-admin-password'},
+        )
+
+        assert first.status_code == 401
+        assert second.status_code == 401
+        assert blocked.status_code == 429
+    finally:
+        object.__setattr__(settings, 'admin_login_max_attempts', original_max_attempts)
+        object.__setattr__(settings, 'admin_login_lockout_seconds', original_lockout)
+        ADMIN_LOGIN_ATTEMPTS.clear()
 
 
 def test_admin_can_create_product_with_api_token():
