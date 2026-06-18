@@ -9,6 +9,7 @@ os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-with-at-least-32-bytes'
 os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
+os.environ['STORAGE_BACKEND'] = 'local'
 
 from backend.app import app  # noqa: F401
 from backend.database import SessionLocal
@@ -23,8 +24,10 @@ from backend.services.payments import cents, public_url, update_infinitepay_paym
 from backend.services.product_media import (
     normalize_stock_status,
     product_image_list,
+    store_admin_gallery_images,
     storage_slug,
 )
+from backend.services.storage import upload_r2_object
 from backend.store_config import store_settings
 
 
@@ -168,3 +171,56 @@ def test_product_media_helpers_normalize_inputs():
     with pytest.raises(Exception) as exc_info:
         normalize_stock_status('vendido')
     assert getattr(exc_info.value, 'status_code', None) == 400
+
+
+def test_r2_upload_uses_s3_compatible_endpoint(monkeypatch):
+    calls = []
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+    def fake_request(self, method, url, **kwargs):
+        calls.append((method, url, kwargs, self.trust_env))
+        return FakeResponse()
+
+    monkeypatch.setenv('R2_ACCOUNT_ID', 'account123')
+    monkeypatch.setenv('R2_BUCKET', 'vjsemijoias-dev')
+    monkeypatch.setenv('R2_ACCESS_KEY_ID', 'access123')
+    monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'secret123')
+    monkeypatch.setenv('R2_PUBLIC_BASE_URL', 'https://assets-dev.example.com')
+    monkeypatch.setattr('backend.services.storage.requests.Session.request', fake_request)
+
+    result = upload_r2_object('catalog/admin/produto/img_1.gif', b'img', 'image/gif')
+
+    assert result == 'https://assets-dev.example.com/catalog/admin/produto/img_1.gif'
+    assert calls[0][0] == 'PUT'
+    assert calls[0][1] == (
+        'https://account123.r2.cloudflarestorage.com/'
+        'vjsemijoias-dev/catalog/admin/produto/img_1.gif'
+    )
+    assert calls[0][2]['data'] == b'img'
+    assert calls[0][2]['headers']['content-type'] == 'image/gif'
+    assert calls[0][2]['headers']['authorization'].startswith('AWS4-HMAC-SHA256 ')
+    assert calls[0][3] is False
+
+
+def test_admin_image_upload_can_store_on_r2(monkeypatch):
+    uploads = []
+    product = SimpleNamespace(id=42, name='Colar R2')
+
+    def fake_store(key, content, content_type):
+        uploads.append((key, content, content_type))
+        return f'https://assets-dev.example.com/{key}'
+
+    monkeypatch.setenv('STORAGE_BACKEND', 'r2')
+    monkeypatch.setattr('backend.services.product_media.store_public_file', fake_store)
+
+    images = store_admin_gallery_images(
+        product,
+        ['data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='],
+    )
+
+    assert images == ['https://assets-dev.example.com/catalog/admin/000042-colar-r2/img_1.gif']
+    assert uploads[0][0] == 'catalog/admin/000042-colar-r2/img_1.gif'
+    assert uploads[0][2] == 'image/gif'

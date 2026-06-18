@@ -13,6 +13,7 @@ os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-with-at-least-32-bytes'
 os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
+os.environ['STORAGE_BACKEND'] = 'local'
 
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 from backend.config import FRONTEND_ROOT, database_url, settings
@@ -73,6 +74,13 @@ def test_health():
 
     assert response.status_code == 200
     assert response.json()['status'] == 'ok'
+
+
+def test_ready_checks_database():
+    response = client.get('/api/ready')
+
+    assert response.status_code == 200
+    assert response.json() == {'status': 'ready', 'database': 'ok'}
 
 
 def test_unhandled_exception_returns_generic_json():

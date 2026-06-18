@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage, ProductImport
+from backend.services.storage import r2_enabled, store_public_file
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -205,6 +206,17 @@ def copy_images(source_root, item, destination_slug, source_folder="", dry_run=F
         extension = source_path.suffix.lower() or ".jpeg"
         destination_path = destination_dir / f"img_{position}{extension}"
         if not dry_run:
+            if r2_enabled():
+                content_type = {
+                    ".jpg": "image/jpeg",
+                    ".jpeg": "image/jpeg",
+                    ".png": "image/png",
+                    ".webp": "image/webp",
+                    ".gif": "image/gif",
+                }.get(extension, "application/octet-stream")
+                key = f"catalog/imported/{destination_slug}/img_{position}{extension}"
+                image_paths.append(store_public_file(key, source_path.read_bytes(), content_type))
+                continue
             destination_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_path, destination_path)
         image_paths.append(destination_path.relative_to(FRONTEND_ROOT).as_posix())

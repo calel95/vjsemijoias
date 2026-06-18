@@ -82,6 +82,12 @@ uv --cache-dir .uv-cache run alembic revision --autogenerate -m "descricao da al
 uv --cache-dir .uv-cache run alembic upgrade head
 ```
 
+## Deploy DEV
+
+Para publicar um ambiente DEV acessivel fora do seu computador, veja
+[docs/deploy-dev.md](docs/deploy-dev.md). O caminho recomendado e Render como
+Web Service Python com Postgres gerenciado, evitando SQLite em ambiente remoto.
+
 ## Seguranca do admin
 
 O painel administrativo usa um token proprio, emitido somente por

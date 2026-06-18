@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from backend.config import FRONTEND_ROOT
 from backend.models import ProductImage
+from backend.services.storage import r2_enabled, store_public_file
 
 
 ADMIN_CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog" / "admin"
@@ -77,6 +78,10 @@ def save_admin_image(product, image_data, position):
         raise HTTPException(status_code=400, detail="Imagem maior que 8 MB")
 
     product_folder = f"{int(product.id):06d}-{storage_slug(product.name)}"
+    if r2_enabled():
+        key = f"catalog/admin/{product_folder}/img_{position + 1}{extension}"
+        return store_public_file(key, content, content_type)
+
     destination_dir = ADMIN_CATALOG_IMAGE_ROOT / product_folder
     destination_dir.mkdir(parents=True, exist_ok=True)
     destination_path = destination_dir / f"img_{position + 1}{extension}"
