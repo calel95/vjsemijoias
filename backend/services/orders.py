@@ -116,6 +116,9 @@ def calculate_order(db: Session, items, coupon_code=""):
         if not active_settings.coupon.enabled:
             coupon_code = ""
         else:
+            active_coupon_code = active_settings.coupon.code.upper()
+            if coupon_code != active_coupon_code:
+                raise ValueError("Cupom invalido, expirado ou esgotado")
             coupon = db.scalar(
                 select(Coupon).where(
                     Coupon.code == coupon_code,

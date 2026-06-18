@@ -20,6 +20,7 @@ from backend.config import FRONTEND_ROOT, database_url, settings
 from backend.database import SessionLocal
 from backend.import_products import DEFAULT_SOURCE, import_catalog
 from backend.models import StoreSetting
+from backend.services.startup import sync_default_coupon
 from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
 
@@ -66,6 +67,7 @@ def catalog_totals():
 def clear_store_setting_overrides():
     with SessionLocal() as db:
         db.query(StoreSetting).delete()
+        sync_default_coupon(db)
         db.commit()
 
 
@@ -287,6 +289,14 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
         shipping = client.post('/api/shipping/calculate', json={'total': 99.90})
         payment_config = client.get('/api/payments/config')
         coupon = client.post('/api/coupons/validate', json={'code': 'adm15'})
+        old_coupon = client.post('/api/coupons/validate', json={'code': 'VJ10'})
+        order_with_old_coupon = client.post('/api/orders', json={
+            'customer_name': 'Cliente Cupom Antigo',
+            'customer_email': 'cupom-antigo@example.com',
+            'customer_cpf': '12345678909',
+            'items': [{'id': 1, 'quantity': 1}],
+            'coupon': 'VJ10',
+        })
 
         assert update_response.status_code == 200
         assert update_response.json()['values']['STORE_NAME'] == 'VJ Teste Admin'
@@ -297,6 +307,8 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
         assert payment_config.json()['store']['name'] == 'VJ Teste Admin'
         assert coupon.status_code == 200
         assert coupon.json()['discount_percent'] == 15.0
+        assert old_coupon.status_code == 404
+        assert order_with_old_coupon.status_code == 400
     finally:
         clear_store_setting_overrides()
 

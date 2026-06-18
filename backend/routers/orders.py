@@ -122,8 +122,11 @@ def validate_coupon(
 ):
     active_settings = effective_store_settings(db)
     code = data.get("code", "").upper()
-    if not active_settings.coupon.enabled:
+    active_coupon_code = active_settings.coupon.code.upper()
+    if not active_settings.coupon.enabled or not active_coupon_code:
         raise HTTPException(status_code=404, detail="Cupons desativados")
+    if code != active_coupon_code:
+        raise HTTPException(status_code=404, detail="Cupom invalido ou expirado")
     coupon = db.scalar(
         select(Coupon).where(Coupon.code == code, Coupon.is_active.is_(True))
     )

@@ -313,6 +313,10 @@ def admin_store_config(db: Session):
 def sync_coupon_record(db: Session, active_settings: StoreSettings):
     if not active_settings.coupon.code:
         return
+    db.query(Coupon).where(Coupon.code != active_settings.coupon.code).update(
+        {Coupon.is_active: False},
+        synchronize_session=False,
+    )
     coupon = db.scalar(select(Coupon).where(Coupon.code == active_settings.coupon.code))
     if not coupon:
         coupon = Coupon(code=active_settings.coupon.code)
