@@ -13,6 +13,7 @@ os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-with-at-least-32-bytes'
 os.environ['SECRET_KEY'] = 'test-secret'
 os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
+os.environ['CORS_ALLOWED_ORIGINS'] = 'https://vj.example.com,http://localhost:5000'
 os.environ['STORAGE_BACKEND'] = 'local'
 
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
@@ -83,6 +84,27 @@ def test_ready_checks_database():
 
     assert response.status_code == 200
     assert response.json() == {'status': 'ready', 'database': 'ok'}
+
+
+def test_cors_allows_configured_origin_only():
+    allowed = client.options(
+        '/api/products',
+        headers={
+            'Origin': 'https://vj.example.com',
+            'Access-Control-Request-Method': 'GET',
+        },
+    )
+    blocked = client.options(
+        '/api/products',
+        headers={
+            'Origin': 'https://malicioso.example',
+            'Access-Control-Request-Method': 'GET',
+        },
+    )
+
+    assert allowed.status_code == 200
+    assert allowed.headers['access-control-allow-origin'] == 'https://vj.example.com'
+    assert 'access-control-allow-origin' not in blocked.headers
 
 
 def test_unhandled_exception_returns_generic_json():

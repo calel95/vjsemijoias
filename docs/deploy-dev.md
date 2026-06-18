@@ -34,6 +34,7 @@ APP_ENV=development
 DEBUG=false
 DATABASE_URL=postgresql://usuario:senha@host/neondb?sslmode=require&channel_binding=require
 PUBLIC_BASE_URL=https://seu-servico-dev.onrender.com
+CORS_ALLOWED_ORIGINS=https://seu-servico-dev.onrender.com
 ADMIN_PASSWORD=uma-senha-dev-forte
 SECRET_KEY=uma-chave-longa
 JWT_SECRET_KEY=outra-chave-longa

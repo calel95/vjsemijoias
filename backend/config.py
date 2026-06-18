@@ -21,6 +21,30 @@ def env_bool(name, default=False):
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def env_list(name):
+    value = os.getenv(name, "")
+    return [item.strip().rstrip("/") for item in value.split(",") if item.strip()]
+
+
+def cors_allowed_origins():
+    origins = env_list("CORS_ALLOWED_ORIGINS")
+    public_base_url = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    if public_base_url and public_base_url not in origins:
+        origins.append(public_base_url)
+    if origins:
+        return origins
+    return [
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    ]
+
+
 def database_url():
     value = os.getenv("DATABASE_URL", "sqlite:///vjsemijoias.db")
     if value == "sqlite://":
@@ -52,6 +76,7 @@ class Settings:
         "https://api.checkout.infinitepay.io",
     )
     public_base_url: str = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    cors_allowed_origins: tuple[str, ...] = tuple(cors_allowed_origins())
     port: int = int(os.getenv("PORT", "5000"))
     debug: bool = env_bool("DEBUG", False)
 
