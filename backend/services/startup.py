@@ -47,8 +47,7 @@ def sync_default_coupon(db: Session):
     db.commit()
 
 
-def bootstrap_database(base, engine, session_factory):
-    base.metadata.create_all(engine)
+def bootstrap_runtime_data(session_factory):
     with session_factory() as startup_db:
         seed_products(startup_db)
         sync_default_coupon(startup_db)

@@ -39,9 +39,32 @@ ADMIN_PASSWORD=uma-senha-dev-forte
 SECRET_KEY=uma-chave-longa
 JWT_SECRET_KEY=outra-chave-longa
 INFINITEPAY_HANDLE=sua_infinite_tag
+RATE_LIMIT_ENABLED=true
+ADMIN_COOKIE_SECURE=true
+ADMIN_COOKIE_SAMESITE=lax
 ```
 
 Use `.env.dev.example` como checklist. Nunca envie `backend/.env` para o Git.
+
+## Rate limiting
+
+O backend limita apenas rotas `/api`, por IP, e ignora arquivos estaticos,
+imagens, `/api/health` e `/api/ready`.
+
+Valores iniciais recomendados para DEV:
+
+```dotenv
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_GLOBAL_PER_MINUTE=300
+RATE_LIMIT_PUBLIC_PER_MINUTE=180
+RATE_LIMIT_AUTH_PER_MINUTE=20
+RATE_LIMIT_WRITE_PER_MINUTE=60
+RATE_LIMIT_EXPENSIVE_PER_MINUTE=5
+```
+
+As rotas de importacao de catalogo e geracao de PDF entram no limite
+`EXPENSIVE`. Em PRD com mais de uma instancia, prefira reforcar tambem no
+proxy/edge ou migrar os contadores para Redis.
 
 ## Render
 

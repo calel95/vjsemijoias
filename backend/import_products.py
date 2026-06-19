@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import shutil
 import unicodedata
 from collections import Counter, defaultdict
@@ -224,7 +225,19 @@ def copy_images(source_root, item, destination_slug, source_folder="", dry_run=F
     return image_paths
 
 
+def ensure_import_storage_is_safe(dry_run=False):
+    if dry_run or r2_enabled():
+        return
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    if app_env in {"development", "staging", "production"}:
+        raise RuntimeError(
+            "STORAGE_BACKEND=local nao deve ser usado para importar catalogo "
+            "em ambiente remoto. Configure STORAGE_BACKEND=r2 e reimporte."
+        )
+
+
 def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
+    ensure_import_storage_is_safe(dry_run=dry_run)
     source = Path(source).resolve()
     manifest_path = source / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

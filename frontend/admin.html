@@ -41,12 +41,16 @@
             <p style="color: var(--gray); margin-bottom: 1.5rem;">VJ Semijoias</p>
             <form id="login-form" onsubmit="handleAdminLogin(event)">
                 <div class="form-group">
+                    <label>E-mail do Administrador</label>
+                    <input type="email" id="admin-email" placeholder="admin@vjsemijoias.com" autocomplete="username" required autofocus>
+                </div>
+                <div class="form-group">
                     <label>Senha de Acesso</label>
-                    <input type="password" id="admin-password" placeholder="Digite a senha" required autofocus>
+                    <input type="password" id="admin-password" placeholder="Digite a senha" autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block">Entrar</button>
                 <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray);">
-                    Use a senha definida no arquivo <code>.env</code> do servidor.
+                    No primeiro acesso, use o e-mail do administrador e a senha bootstrap configurada no servidor.
                 </p>
             </form>
         </div>

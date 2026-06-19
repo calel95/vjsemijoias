@@ -22,6 +22,11 @@ os.environ["COUPON_USAGE_LIMIT"] = "100"
 
 from fastapi.testclient import TestClient
 
+from backend.database import Base, engine
+import backend.models  # noqa: F401
+
+Base.metadata.create_all(engine)
+
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 
 

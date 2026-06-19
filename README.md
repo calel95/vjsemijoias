@@ -67,6 +67,9 @@ uv --cache-dir .uv-cache run alembic upgrade head
 
 Para um banco novo, esse comando cria todas as tabelas atuais.
 
+O app nao cria nem altera schema no startup; em DEV/PRD rode sempre as
+migrations antes de iniciar o servidor.
+
 Se o banco ja existe porque foi criado antes pelo app, marque a migration base
 como aplicada e depois rode as proximas:
 

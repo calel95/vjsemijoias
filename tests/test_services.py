@@ -11,8 +11,12 @@ os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
 os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 os.environ['STORAGE_BACKEND'] = 'local'
 
+from backend.database import Base, engine, SessionLocal
+import backend.models  # noqa: F401
+
+Base.metadata.create_all(engine)
+
 from backend.app import app  # noqa: F401
-from backend.database import SessionLocal
 from backend.services.orders import (
     calculate_order,
     configured_shipping,

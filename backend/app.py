@@ -9,10 +9,11 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import FRONTEND_ROOT, settings
-from backend.database import Base, SessionLocal, engine
+from backend.database import SessionLocal
 from backend.routers import auth, catalog_pdf, orders, pages, payments, products, store_settings
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
-from backend.services.startup import bootstrap_database
+from backend.services.rate_limit import rate_limit_middleware
+from backend.services.startup import bootstrap_runtime_data
 
 
 logger = logging.getLogger(__name__)
@@ -20,10 +21,11 @@ logger = logging.getLogger(__name__)
 
 def create_app():
     app = FastAPI(title="VJ Semijoias API", version="1.0.0")
+    app.middleware("http")(rate_limit_middleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_allowed_origins),
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -66,7 +68,7 @@ def create_app():
     return app
 
 
-bootstrap_database(Base, engine, SessionLocal)
+bootstrap_runtime_data(SessionLocal)
 app = create_app()
 
 

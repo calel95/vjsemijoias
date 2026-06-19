@@ -18,7 +18,7 @@ function getFilenameFromDisposition(disposition) {
 
 const API = {
     baseUrl: `${API_BASE}/api`,
-    token: sessionStorage.getItem('vj_admin_token') || localStorage.getItem('vj_api_token'),
+    token: localStorage.getItem('vj_api_token'),
 
     // ============================================
     // UTILITÁRIOS
@@ -26,22 +26,26 @@ const API = {
 
     setToken(token, options = {}) {
         const isAdminToken = options.admin === true;
-        this.token = token;
-        if (token) {
-            if (isAdminToken) {
-                sessionStorage.setItem('vj_admin_token', token);
-            } else {
-                localStorage.setItem('vj_api_token', token);
-                sessionStorage.removeItem('vj_admin_token');
-            }
-        } else {
+        if (isAdminToken) {
+            this.token = null;
             localStorage.removeItem('vj_api_token');
             sessionStorage.removeItem('vj_admin_token');
+            sessionStorage.setItem('vj_admin_authenticated', 'true');
+        } else if (token) {
+            this.token = token;
+            localStorage.setItem('vj_api_token', token);
+            sessionStorage.removeItem('vj_admin_token');
+            sessionStorage.removeItem('vj_admin_authenticated');
+        } else {
+            this.token = null;
+            localStorage.removeItem('vj_api_token');
+            sessionStorage.removeItem('vj_admin_token');
+            sessionStorage.removeItem('vj_admin_authenticated');
         }
     },
 
     hasAdminToken() {
-        return !!sessionStorage.getItem('vj_admin_token');
+        return sessionStorage.getItem('vj_admin_authenticated') === 'true';
     },
 
     getHeaders() {
@@ -59,6 +63,7 @@ const API = {
         const options = {
             method,
             headers: this.getHeaders(),
+            credentials: 'include',
         };
 
         if (body) {
@@ -98,6 +103,10 @@ const API = {
         return this.request('GET', '/admin/products');
     },
 
+    async getStorageStatus() {
+        return this.request('GET', '/admin/storage/status');
+    },
+
     async getProduct(id) {
         return this.request('GET', `/products/${id}`);
     },
@@ -121,6 +130,7 @@ const API = {
             const response = await fetch(`${this.baseUrl}/products/import-folder`, {
                 method: 'POST',
                 headers,
+                credentials: 'include',
                 body: formData,
             });
             const data = await response.json();
@@ -152,6 +162,7 @@ const API = {
             const response = await fetch(`${this.baseUrl}/admin/catalog-pdf`, {
                 method: 'POST',
                 headers,
+                credentials: 'include',
                 body: formData,
             });
 
@@ -218,12 +229,16 @@ const API = {
         return result;
     },
 
-    async adminLogin(password) {
-        const result = await this.request('POST', '/auth/admin/login', { password });
+    async adminLogin(email, password) {
+        const result = await this.request('POST', '/auth/admin/login', { email, password });
         if (result.success && result.data.token) {
             this.setToken(result.data.token, { admin: true });
         }
         return result;
+    },
+
+    async createAdminUser(userData) {
+        return this.request('POST', '/auth/admin/users', userData);
     },
 
     async getMe() {
@@ -231,6 +246,10 @@ const API = {
     },
 
     logout() {
+        fetch(`${this.baseUrl}/auth/logout`, {
+            method: 'POST',
+            credentials: 'include',
+        }).catch(() => {});
         this.setToken(null);
     },
 

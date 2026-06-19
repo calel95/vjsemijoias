@@ -4,6 +4,7 @@ import shutil
 from io import BytesIO
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
@@ -16,11 +17,16 @@ os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
 os.environ['CORS_ALLOWED_ORIGINS'] = 'https://vj.example.com,http://localhost:5000'
 os.environ['STORAGE_BACKEND'] = 'local'
 
+from backend.database import Base, engine, SessionLocal
+import backend.models  # noqa: F401
+
+Base.metadata.create_all(engine)
+
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 from backend.config import FRONTEND_ROOT, database_url, settings
-from backend.database import SessionLocal
 from backend.import_products import DEFAULT_SOURCE, import_catalog
-from backend.models import Product, StoreSetting
+from backend.models import AdminAuditLog, Product, StoreSetting, User
+from backend.services.rate_limit import clear_rate_limit_state
 from backend.services.startup import seed_products, sync_default_coupon
 from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
@@ -28,6 +34,20 @@ from tools.generate_manual_manifest import build_manifest
 
 client = TestClient(app)
 TINY_GIF_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+ADMIN_EMAIL = 'admin@vjsemijoias.com'
+
+
+def admin_login(email=ADMIN_EMAIL, password='test-admin-password', *, persist_cookie=False, api_client=client):
+    response = api_client.post('/api/auth/admin/login', json={'email': email, 'password': password})
+    if not persist_cookie:
+        api_client.cookies.clear()
+    return response
+
+
+def admin_headers():
+    login = admin_login()
+    assert login.status_code == 200
+    return {'Authorization': f"Bearer {login.json()['token']}"}
 
 
 class FakeResponse:
@@ -39,6 +59,13 @@ class FakeResponse:
 
     def json(self):
         return self.data
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limit_state():
+    clear_rate_limit_state()
+    yield
+    clear_rate_limit_state()
 
 
 def order_payload():
@@ -105,6 +132,63 @@ def test_cors_allows_configured_origin_only():
     assert allowed.status_code == 200
     assert allowed.headers['access-control-allow-origin'] == 'https://vj.example.com'
     assert 'access-control-allow-origin' not in blocked.headers
+
+
+def test_rate_limit_blocks_auth_requests_and_sets_headers():
+    original_enabled = settings.rate_limit_enabled
+    original_auth = settings.rate_limit_auth_per_minute
+    original_global = settings.rate_limit_global_per_minute
+    try:
+        object.__setattr__(settings, 'rate_limit_enabled', True)
+        object.__setattr__(settings, 'rate_limit_auth_per_minute', 2)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', 100)
+        clear_rate_limit_state()
+
+        headers = {'X-Forwarded-For': '203.0.113.10'}
+        first = client.post('/api/auth/login', headers=headers, json={
+            'email': 'nao-existe@example.com',
+            'password': 'errada',
+        })
+        second = client.post('/api/auth/login', headers=headers, json={
+            'email': 'nao-existe@example.com',
+            'password': 'errada',
+        })
+        blocked = client.post('/api/auth/login', headers=headers, json={
+            'email': 'nao-existe@example.com',
+            'password': 'errada',
+        })
+
+        assert first.status_code == 401
+        assert second.status_code == 401
+        assert blocked.status_code == 429
+        assert blocked.json()['error'].startswith('Muitas requisicoes')
+        assert blocked.headers['retry-after']
+        assert blocked.headers['x-ratelimit-limit'] == '2'
+        assert blocked.headers['x-ratelimit-remaining'] == '0'
+    finally:
+        object.__setattr__(settings, 'rate_limit_enabled', original_enabled)
+        object.__setattr__(settings, 'rate_limit_auth_per_minute', original_auth)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', original_global)
+        clear_rate_limit_state()
+
+
+def test_rate_limit_exempts_health_checks():
+    original_enabled = settings.rate_limit_enabled
+    original_global = settings.rate_limit_global_per_minute
+    try:
+        object.__setattr__(settings, 'rate_limit_enabled', True)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', 1)
+        clear_rate_limit_state()
+
+        first = client.get('/api/health', headers={'X-Forwarded-For': '203.0.113.11'})
+        second = client.get('/api/health', headers={'X-Forwarded-For': '203.0.113.11'})
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+    finally:
+        object.__setattr__(settings, 'rate_limit_enabled', original_enabled)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', original_global)
+        clear_rate_limit_state()
 
 
 def test_unhandled_exception_returns_generic_json():
@@ -202,6 +286,15 @@ def test_public_catalog_uses_api_cache_instead_of_hardcoded_products():
     assert 'apiProducts && apiProducts.length > 0 ? apiProducts : PRODUCTS' not in index_html
 
 
+def test_admin_frontend_does_not_store_admin_jwt_in_web_storage():
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert "sessionStorage.setItem('vj_admin_token'" not in api_js
+    assert "localStorage.setItem('vj_admin_token'" not in api_js
+    assert "vj_admin_authenticated" in api_js
+    assert "credentials: 'include'" in api_js
+
+
 def test_catalog_has_seed_products():
     response = client.get('/api/products')
 
@@ -287,7 +380,7 @@ def test_admin_store_config_requires_admin_token():
 
 def test_admin_can_update_store_config_and_runtime_uses_overrides():
     clear_store_setting_overrides()
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     headers = {'Authorization': f'Bearer {token}'}
     try:
@@ -336,7 +429,7 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
 
 
 def test_admin_store_config_rejects_invalid_values():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     response = client.put(
         '/api/admin/store-config',
@@ -348,7 +441,7 @@ def test_admin_store_config_rejects_invalid_values():
 
 
 def test_admin_can_update_order_status():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     order_response = client.post('/api/orders', json={
         'customer_name': 'Cliente Status',
@@ -382,7 +475,7 @@ def test_admin_route_requires_token():
 
 
 def test_admin_storage_status_does_not_expose_secrets():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     response = client.get(
         '/api/admin/storage/status',
@@ -396,15 +489,91 @@ def test_admin_storage_status_does_not_expose_secrets():
     assert 'access_key_id' not in data['r2']
 
 
-def test_admin_route_rejects_regular_user_token_even_for_admin_user():
-    admin_login = client.post(
+def test_admin_login_uses_individual_email_and_records_audit():
+    ADMIN_LOGIN_ATTEMPTS.clear()
+    with SessionLocal() as db:
+        db.query(AdminAuditLog).delete()
+        db.commit()
+
+    login = admin_login()
+    password_only = client.post(
         '/api/auth/admin/login',
         json={'password': 'test-admin-password'},
     )
-    assert admin_login.status_code == 200
+    audit_response = client.get(
+        '/api/auth/admin/audit-logs',
+        headers={'Authorization': f"Bearer {login.json()['token']}"},
+    )
+
+    with SessionLocal() as db:
+        logs = db.query(AdminAuditLog).order_by(AdminAuditLog.id).all()
+
+    assert login.status_code == 200
+    assert login.json()['user']['email'] == ADMIN_EMAIL
+    assert password_only.status_code == 401
+    assert [log.action for log in logs] == [
+        'admin.login.succeeded',
+        'admin.login.failed',
+    ]
+    assert audit_response.status_code == 200
+    assert audit_response.json()[0]['action'] in {
+        'admin.login.succeeded',
+        'admin.login.failed',
+    }
+    ADMIN_LOGIN_ATTEMPTS.clear()
+
+
+def test_admin_cookie_is_httponly_and_can_authenticate_admin_routes():
+    original_secure = settings.admin_cookie_secure
+    cookie_client = TestClient(app)
+    try:
+        object.__setattr__(settings, 'admin_cookie_secure', False)
+        login = admin_login(api_client=cookie_client, persist_cookie=True)
+        cookie_response = cookie_client.get('/api/admin/products')
+        logout = cookie_client.post('/api/auth/logout')
+        after_logout = cookie_client.get('/api/admin/products')
+
+        set_cookie = login.headers.get('set-cookie', '')
+        assert login.status_code == 200
+        assert f'{settings.admin_cookie_name}=' in set_cookie
+        assert 'HttpOnly' in set_cookie
+        assert 'SameSite=lax' in set_cookie
+        assert cookie_response.status_code == 200
+        assert logout.status_code == 200
+        assert after_logout.status_code == 401
+    finally:
+        object.__setattr__(settings, 'admin_cookie_secure', original_secure)
+
+
+def test_admin_can_create_another_admin_user():
+    headers = admin_headers()
+
+    created = client.post(
+        '/api/auth/admin/users',
+        headers=headers,
+        json={
+            'name': 'Admin Catalogo',
+            'email': 'catalogo-admin@example.com',
+            'password': 'senha-admin-forte',
+        },
+    )
+    login = admin_login(
+        email='catalogo-admin@example.com',
+        password='senha-admin-forte',
+    )
+
+    assert created.status_code == 201
+    assert created.json()['user']['is_admin'] is True
+    assert login.status_code == 200
+    assert login.json()['user']['email'] == 'catalogo-admin@example.com'
+
+
+def test_admin_route_rejects_regular_user_token_even_for_admin_user():
+    login = admin_login()
+    assert login.status_code == 200
 
     regular_login = client.post('/api/auth/login', json={
-        'email': 'admin@vjsemijoias.com',
+        'email': ADMIN_EMAIL,
         'password': 'test-admin-password',
     })
     token = regular_login.json()['token']
@@ -426,12 +595,9 @@ def test_admin_login_blocks_repeated_wrong_passwords():
         object.__setattr__(settings, 'admin_login_max_attempts', 2)
         object.__setattr__(settings, 'admin_login_lockout_seconds', 60)
 
-        first = client.post('/api/auth/admin/login', json={'password': 'errada'})
-        second = client.post('/api/auth/admin/login', json={'password': 'errada'})
-        blocked = client.post(
-            '/api/auth/admin/login',
-            json={'password': 'test-admin-password'},
-        )
+        first = admin_login(password='errada')
+        second = admin_login(password='errada')
+        blocked = admin_login()
 
         assert first.status_code == 401
         assert second.status_code == 401
@@ -443,7 +609,7 @@ def test_admin_login_blocks_repeated_wrong_passwords():
 
 
 def test_admin_can_create_product_with_api_token():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
 
     response = client.post(
@@ -464,7 +630,7 @@ def test_admin_can_create_product_with_api_token():
 
 
 def test_admin_can_clear_catalog_only_with_explicit_confirmation():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
 
     with SessionLocal() as db:
@@ -500,7 +666,7 @@ def test_admin_can_clear_catalog_only_with_explicit_confirmation():
 
 
 def test_inactive_product_is_hidden_from_public_catalog_but_visible_to_admin():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
 
     created = client.post(
@@ -533,7 +699,7 @@ def test_inactive_product_is_hidden_from_public_catalog_but_visible_to_admin():
 
 
 def test_out_of_stock_product_cannot_be_ordered():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     created = client.post(
         '/api/products',
@@ -562,7 +728,7 @@ def test_out_of_stock_product_cannot_be_ordered():
 
 
 def test_admin_can_create_and_update_product_gallery():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     created_folder = None
     admin_image_root = FRONTEND_ROOT / 'images' / 'catalog' / 'admin'
@@ -612,7 +778,7 @@ def test_admin_can_create_and_update_product_gallery():
 
 
 def test_admin_can_import_complete_catalog_folder():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     upload = []
 
@@ -645,7 +811,7 @@ def test_admin_can_import_complete_catalog_folder():
 
 
 def test_admin_can_generate_catalog_pdf():
-    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    login = admin_login()
     token = login.json()['token']
     image = (
         DEFAULT_SOURCE
@@ -803,6 +969,14 @@ def test_catalog_import_dry_run_is_complete():
 
     assert summary['products'] == expected_products
     assert summary['images'] == expected_images
+
+
+def test_remote_catalog_import_rejects_local_storage(monkeypatch):
+    monkeypatch.setenv('APP_ENV', 'development')
+    monkeypatch.setenv('STORAGE_BACKEND', 'local')
+
+    with pytest.raises(RuntimeError, match='STORAGE_BACKEND=local'):
+        import_catalog(DEFAULT_SOURCE)
 
 
 def test_manual_catalog_manifest_import_and_generator():

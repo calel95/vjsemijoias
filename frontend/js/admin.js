@@ -29,16 +29,17 @@ function isAuthenticated() {
 
 async function handleAdminLogin(event) {
     event.preventDefault();
+    const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-password').value;
 
-    const result = await API.adminLogin(password);
+    const result = await API.adminLogin(email, password);
     if (result.success) {
         await showAdminPanel();
         showToast('Bem-vinda ao painel admin!', 'success', 'Login realizado');
     } else {
         showToast(result.error || 'Não foi possível entrar', 'error', 'Acesso negado');
         document.getElementById('admin-password').value = '';
-        document.getElementById('admin-password').focus();
+        document.getElementById(email ? 'admin-password' : 'admin-email').focus();
     }
 }
 
@@ -796,7 +797,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.success && result.data.is_admin) {
             await showAdminPanel();
         } else {
-            sessionStorage.removeItem('vj_admin_token');
+            sessionStorage.removeItem('vj_admin_authenticated');
             document.getElementById('login-screen').style.display = 'flex';
         }
     } else {
@@ -1120,6 +1121,21 @@ async function confirmImportProducts() {
 }
 
 async function uploadValidatedImport(files) {
+    const storageStatus = await API.getStorageStatus();
+    const isRemoteHost = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+    if (
+        storageStatus.success &&
+        isRemoteHost &&
+        storageStatus.data.backend !== 'r2'
+    ) {
+        showToast(
+            'Storage remoto nao esta usando R2. Configure STORAGE_BACKEND=r2 no Render antes de importar.',
+            'error',
+            'Importacao bloqueada'
+        );
+        return;
+    }
+
     showToast(
         `Enviando ${files.length} arquivos...`,
         'info',

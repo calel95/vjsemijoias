@@ -1,9 +1,12 @@
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, Request
+from sqlalchemy.orm import Session
 
 from backend.config import settings
+from backend.models import AdminAuditLog, User
 
 
 ADMIN_LOGIN_ATTEMPTS: dict[str, dict[str, Any]] = {}
@@ -43,3 +46,26 @@ def record_admin_login_failure(request: Request):
 
 def clear_admin_login_failures(request: Request):
     ADMIN_LOGIN_ATTEMPTS.pop(admin_login_key(request), None)
+
+
+def record_admin_audit(
+    db: Session,
+    request: Request,
+    action: str,
+    *,
+    admin_user: User | None = None,
+    resource: str | None = None,
+    resource_id: str | None = None,
+    metadata: dict[str, Any] | None = None,
+):
+    db.add(
+        AdminAuditLog(
+            admin_user_id=admin_user.id if admin_user else None,
+            action=action,
+            resource=resource,
+            resource_id=resource_id,
+            ip_address=admin_login_key(request),
+            user_agent=request.headers.get("user-agent"),
+            metadata_json=json.dumps(metadata or {}, ensure_ascii=False),
+        )
+    )

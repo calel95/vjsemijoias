@@ -202,7 +202,14 @@ def import_product_folder(
             from backend.import_products import import_catalog
 
             summary = import_catalog(temp_root)
-        except (FileNotFoundError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        except (
+            FileNotFoundError,
+            KeyError,
+            RuntimeError,
+            TypeError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
             raise HTTPException(status_code=400, detail=f"Catálogo inválido: {exc}") from exc
     finally:
         shutil.rmtree(temp_root, ignore_errors=True)

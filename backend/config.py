@@ -70,6 +70,12 @@ class Settings:
     admin_token_expire_minutes: int = int(os.getenv("ADMIN_TOKEN_EXPIRE_MINUTES", "120"))
     admin_login_max_attempts: int = int(os.getenv("ADMIN_LOGIN_MAX_ATTEMPTS", "5"))
     admin_login_lockout_seconds: int = int(os.getenv("ADMIN_LOGIN_LOCKOUT_SECONDS", "300"))
+    admin_cookie_name: str = os.getenv("ADMIN_COOKIE_NAME", "vj_admin_token")
+    admin_cookie_secure: bool = env_bool(
+        "ADMIN_COOKIE_SECURE",
+        os.getenv("PUBLIC_BASE_URL", "").strip().startswith("https://"),
+    )
+    admin_cookie_samesite: str = os.getenv("ADMIN_COOKIE_SAMESITE", "lax").strip().lower()
     infinitepay_handle: str = os.getenv("INFINITEPAY_HANDLE", "").strip().lstrip("$")
     infinitepay_api_base: str = os.getenv(
         "INFINITEPAY_API_BASE",
@@ -79,6 +85,12 @@ class Settings:
     cors_allowed_origins: tuple[str, ...] = tuple(cors_allowed_origins())
     port: int = int(os.getenv("PORT", "5000"))
     debug: bool = env_bool("DEBUG", False)
+    rate_limit_enabled: bool = env_bool("RATE_LIMIT_ENABLED", True)
+    rate_limit_global_per_minute: int = int(os.getenv("RATE_LIMIT_GLOBAL_PER_MINUTE", "300"))
+    rate_limit_public_per_minute: int = int(os.getenv("RATE_LIMIT_PUBLIC_PER_MINUTE", "180"))
+    rate_limit_auth_per_minute: int = int(os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "20"))
+    rate_limit_write_per_minute: int = int(os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "60"))
+    rate_limit_expensive_per_minute: int = int(os.getenv("RATE_LIMIT_EXPENSIVE_PER_MINUTE", "5"))
 
     @property
     def shipping_mode(self):
