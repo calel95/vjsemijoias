@@ -77,13 +77,13 @@ Se criar manualmente pelo dashboard:
 - Build Command:
 
 ```bash
-pip install uv && uv sync --frozen --no-dev && uv run alembic upgrade head
+pip install uv && uv sync --frozen --no-dev
 ```
 
 - Start Command:
 
 ```bash
-uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+uv run alembic upgrade head && uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT
 ```
 
 - Health Check Path:
@@ -102,13 +102,13 @@ https://seu-servico-dev.onrender.com/admin
 
 ## Banco e migrations
 
-O build do Render roda:
+O start do Render roda:
 
 ```bash
 uv run alembic upgrade head
 ```
 
-Isso cria/atualiza o schema no Postgres DEV. O app tambem tem bootstrap para
+Isso cria/atualiza o schema no Postgres DEV antes de iniciar o app. O app tambem tem bootstrap para
 popular produtos seed quando o banco esta vazio, mas o catalogo real precisa
 ser importado no ambiente DEV.
 
