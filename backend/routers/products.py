@@ -19,6 +19,7 @@ from backend.services.product_media import (
     replace_product_gallery,
     store_admin_gallery_images,
 )
+from backend.services.storage import storage_status
 
 
 router = APIRouter(prefix="/api")
@@ -51,6 +52,11 @@ def get_admin_products(
 ):
     products = db.scalars(select(Product).order_by(Product.id)).unique().all()
     return [product.to_dict() for product in products]
+
+
+@router.get("/admin/storage/status")
+def get_storage_status(_claims=Depends(admin_claims)):
+    return storage_status()
 
 
 @router.get("/products/{product_id}")
@@ -131,6 +137,28 @@ def delete_product(
     db.delete(get_or_404(db, Product, product_id))
     db.commit()
     return {"message": "Produto removido com sucesso"}
+
+
+@router.delete("/admin/products")
+def delete_all_products(
+    data: dict[str, Any] = Body(default_factory=dict),
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    if data.get("confirm") != "LIMPAR CATALOGO":
+        raise HTTPException(
+            status_code=400,
+            detail="Confirmacao invalida para limpar o catalogo",
+        )
+    products = db.scalars(select(Product)).unique().all()
+    total = len(products)
+    for product in products:
+        db.delete(product)
+    db.commit()
+    return {
+        "message": "Catalogo limpo com sucesso",
+        "deleted": total,
+    }
 
 
 @router.post("/products/import-folder")

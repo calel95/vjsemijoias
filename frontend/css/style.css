@@ -405,6 +405,19 @@ input, select, textarea {
     color: var(--white);
 }
 
+.btn-danger {
+    background: var(--error);
+    color: var(--white);
+    border-color: var(--error);
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: var(--white);
+    transform: translateY(-2px);
+}
+
 .btn-block { width: 100%; }
 
 .btn:disabled {

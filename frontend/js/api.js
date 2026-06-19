@@ -186,6 +186,10 @@ const API = {
         return this.request('DELETE', `/products/${id}`);
     },
 
+    async deleteAllProducts(confirm) {
+        return this.request('DELETE', '/admin/products', { confirm });
+    },
+
     // ============================================
     // CATEGORIAS
     // ============================================

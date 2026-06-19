@@ -37,6 +37,29 @@ def r2_config():
     return config
 
 
+def storage_status():
+    config = {
+        "backend": storage_backend(),
+        "r2": {
+            "account_id_configured": bool(os.getenv("R2_ACCOUNT_ID", "").strip()),
+            "bucket": os.getenv("R2_BUCKET", "").strip(),
+            "access_key_configured": bool(os.getenv("R2_ACCESS_KEY_ID", "").strip()),
+            "secret_key_configured": bool(os.getenv("R2_SECRET_ACCESS_KEY", "").strip()),
+            "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", "").strip().rstrip("/"),
+        },
+    }
+    config["r2"]["ready"] = all(
+        [
+            config["r2"]["account_id_configured"],
+            config["r2"]["bucket"],
+            config["r2"]["access_key_configured"],
+            config["r2"]["secret_key_configured"],
+            config["r2"]["public_base_url"],
+        ]
+    )
+    return config
+
+
 def signing_key(secret_key, date_stamp):
     date_key = hmac.new(
         ("AWS4" + secret_key).encode("utf-8"),

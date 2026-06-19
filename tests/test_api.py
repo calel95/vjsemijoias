@@ -20,8 +20,8 @@ from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 from backend.config import FRONTEND_ROOT, database_url, settings
 from backend.database import SessionLocal
 from backend.import_products import DEFAULT_SOURCE, import_catalog
-from backend.models import StoreSetting
-from backend.services.startup import sync_default_coupon
+from backend.models import Product, StoreSetting
+from backend.services.startup import seed_products, sync_default_coupon
 from backend.store_config import store_settings
 from tools.generate_manual_manifest import build_manifest
 
@@ -381,6 +381,21 @@ def test_admin_route_requires_token():
     assert response.status_code == 401
 
 
+def test_admin_storage_status_does_not_expose_secrets():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+    response = client.get(
+        '/api/admin/storage/status',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['backend'] == 'local'
+    assert 'secret_access_key' not in data['r2']
+    assert 'access_key_id' not in data['r2']
+
+
 def test_admin_route_rejects_regular_user_token_even_for_admin_user():
     admin_login = client.post(
         '/api/auth/admin/login',
@@ -446,6 +461,42 @@ def test_admin_can_create_product_with_api_token():
 
     assert response.status_code == 201
     assert response.json()['name'] == 'Brinco Teste'
+
+
+def test_admin_can_clear_catalog_only_with_explicit_confirmation():
+    login = client.post('/api/auth/admin/login', json={'password': 'test-admin-password'})
+    token = login.json()['token']
+
+    with SessionLocal() as db:
+        before_count = db.query(Product).count()
+
+    try:
+        invalid = client.request(
+            'DELETE',
+            '/api/admin/products',
+            headers={'Authorization': f'Bearer {token}'},
+            json={'confirm': 'APAGAR'},
+        )
+
+        with SessionLocal() as db:
+            unchanged_count = db.query(Product).count()
+
+        deleted = client.request(
+            'DELETE',
+            '/api/admin/products',
+            headers={'Authorization': f'Bearer {token}'},
+            json={'confirm': 'LIMPAR CATALOGO'},
+        )
+
+        assert invalid.status_code == 400
+        assert unchanged_count == before_count
+        assert deleted.status_code == 200
+        assert deleted.json()['deleted'] == before_count
+        assert client.get('/api/products').json() == []
+    finally:
+        with SessionLocal() as db:
+            seed_products(db)
+            db.commit()
 
 
 def test_inactive_product_is_hidden_from_public_catalog_but_visible_to_admin():

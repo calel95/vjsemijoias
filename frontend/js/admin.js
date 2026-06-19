@@ -550,6 +550,33 @@ function deleteProduct(id) {
     );
 }
 
+function confirmClearCatalog() {
+    showConfirmModal(
+        'Limpar Catalogo',
+        'Esta acao apaga todos os produtos do catalogo. Clique em Confirmar e digite LIMPAR CATALOGO para continuar.',
+        async () => {
+            const typed = window.prompt('Digite LIMPAR CATALOGO para confirmar a limpeza do catalogo:');
+            if (typed !== 'LIMPAR CATALOGO') {
+                showToast('Confirmacao incorreta. O catalogo foi preservado.', 'info', 'Acao cancelada');
+                return;
+            }
+
+            const result = await API.deleteAllProducts(typed);
+            if (!result.success) {
+                showToast(result.error || 'Erro ao limpar catalogo', 'error', 'Limpeza falhou');
+                return;
+            }
+
+            adminProducts = [];
+            apiProductsCache = [];
+            apiLoaded = false;
+            renderAdminProducts();
+            await updateStats();
+            showToast(`${result.data.deleted || 0} produtos removidos.`, 'success', 'Catalogo limpo');
+        }
+    );
+}
+
 // ============================================
 // LISTA DE PRODUTOS
 // ============================================

@@ -121,6 +121,37 @@ importadas pelo catalogo sao gravadas no R2, e o banco salva a URL publica.
 Se `STORAGE_BACKEND` ficar vazio ou `local`, o app volta ao comportamento local
 e salva em `frontend/images/catalog/`.
 
+### Imagens 404 no Render
+
+Se os logs do Render mostrarem requisicoes como:
+
+```text
+GET /images/catalog/.../img_1.jpeg 404 Not Found
+```
+
+o banco esta apontando para caminhos locais do projeto. Em DEV remoto, isso
+normalmente significa que o import foi feito com `STORAGE_BACKEND=local` ou que
+os produtos ja existiam no banco com caminhos locais.
+
+Corrija assim:
+
+1. Configure no Render:
+
+```dotenv
+STORAGE_BACKEND=r2
+R2_ACCOUNT_ID=...
+R2_BUCKET=vjsemijoias-dev
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_PUBLIC_BASE_URL=https://...
+```
+
+2. Redeploy/restart o servico.
+3. Importe novamente a mesma pasta do catalogo pelo admin.
+
+A importacao e idempotente: os produtos existentes sao atualizados e as imagens
+passam a salvar URLs publicas do R2 no banco.
+
 ## Alternativa rapida: tunnel local
 
 Se voce so quer mostrar/testar hoje sem subir infraestrutura, pode manter local
