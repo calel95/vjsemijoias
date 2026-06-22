@@ -276,7 +276,58 @@
             `;
 
             applyInputMasks();
+            setupCepAutofill();
             initializePayments();
+        }
+
+        function digitsOnly(value) {
+            return String(value || '').replace(/\D/g, '');
+        }
+
+        function setCheckoutField(name, value, { overwrite = true } = {}) {
+            const field = document.querySelector(`#checkout-form [name="${name}"]`);
+            if (!field || value === undefined || value === null || value === '') return;
+            if (!overwrite && field.value.trim()) return;
+            field.value = value;
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function setupCepAutofill() {
+            const cepInput = document.querySelector('#checkout-form [name="cep"]');
+            if (!cepInput || cepInput.dataset.cepAutofillBound === 'true') return;
+            cepInput.dataset.cepAutofillBound = 'true';
+            let lookupTimer = null;
+
+            async function lookupCurrentCep() {
+                const cepDigits = digitsOnly(cepInput.value);
+                if (cepDigits.length !== 8 || cepInput.dataset.lastCepLookup === cepDigits) return;
+                cepInput.dataset.lastCepLookup = cepDigits;
+                cepInput.dataset.loadingCep = 'true';
+
+                const result = await API.lookupCep(cepDigits);
+                cepInput.dataset.loadingCep = 'false';
+                if (!result.success) {
+                    showToast(result.error || 'CEP nao encontrado', 'error', 'CEP nao encontrado');
+                    return;
+                }
+
+                const address = result.data || {};
+                setCheckoutField('address', address.street);
+                setCheckoutField('neighborhood', address.neighborhood);
+                setCheckoutField('city', address.city);
+                setCheckoutField('state', address.state);
+                setCheckoutField('complement', address.complement, { overwrite: false });
+                document.querySelector('#checkout-form [name="number"]')?.focus();
+            }
+
+            cepInput.addEventListener('input', () => {
+                delete cepInput.dataset.lastCepLookup;
+                clearTimeout(lookupTimer);
+                if (digitsOnly(cepInput.value).length === 8) {
+                    lookupTimer = setTimeout(lookupCurrentCep, 250);
+                }
+            });
+            cepInput.addEventListener('blur', lookupCurrentCep);
         }
 
         function getInstallmentOptions(total) {

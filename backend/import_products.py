@@ -12,12 +12,21 @@ from sqlalchemy import select
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage, ProductImport
 from backend.services.storage import r2_enabled, store_public_file
+from backend.services.validation import clean_text, clean_text_list, validate_image_bytes
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = PROJECT_ROOT / "import_data" / "catalogo_extraido"
 FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog"
+IMPORT_IMAGE_MAX_BYTES = 20 * 1024 * 1024
+IMPORT_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
 
 CATEGORY_MAP = {
     "aneis": ("aneis", "Aneis", "\U0001f48d"),
@@ -205,18 +214,21 @@ def copy_images(source_root, item, destination_slug, source_folder="", dry_run=F
             raise FileNotFoundError(f"Imagem nao encontrada: {source_path}")
 
         extension = source_path.suffix.lower() or ".jpeg"
+        content_type = IMPORT_CONTENT_TYPES.get(extension)
+        if not content_type:
+            raise ValueError(f"Formato de imagem nao suportado: {source_path.name}")
+        content = source_path.read_bytes()
+        content_type, extension = validate_image_bytes(
+            content,
+            content_type,
+            filename=source_path.name,
+            max_bytes=IMPORT_IMAGE_MAX_BYTES,
+        )
         destination_path = destination_dir / f"img_{position}{extension}"
         if not dry_run:
             if r2_enabled():
-                content_type = {
-                    ".jpg": "image/jpeg",
-                    ".jpeg": "image/jpeg",
-                    ".png": "image/png",
-                    ".webp": "image/webp",
-                    ".gif": "image/gif",
-                }.get(extension, "application/octet-stream")
                 key = f"catalog/imported/{destination_slug}/img_{position}{extension}"
-                image_paths.append(store_public_file(key, source_path.read_bytes(), content_type))
+                image_paths.append(store_public_file(key, content, content_type))
                 continue
             destination_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_path, destination_path)
@@ -257,8 +269,20 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
                 select(ProductImport).where(ProductImport.source_key == source_key)
             )
 
-            display_name = item.get("display_name") or legacy_names.get(item.get("page")) or title
+            display_name = clean_text(
+                item.get("display_name") or legacy_names.get(item.get("page")) or title,
+                field="name",
+                max_length=200,
+                required=True,
+            )
             category, category_name, icon = category_from_item(item, title)
+            category = clean_text(category, field="category", max_length=50, required=True)
+            category_name = clean_text(
+                category_name,
+                field="categoryName",
+                max_length=50,
+                required=True,
+            )
             destination_slug = product_destination_slug(item, title, index)
             image_paths = copy_images(
                 source,
@@ -267,8 +291,13 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
                 source_folder=source_folder,
                 dry_run=dry_run,
             )
-            features = product_features(item)
-            description = product_description(item, display_name, features)
+            features = clean_text_list(product_features(item), field="features")
+            description = clean_text(
+                product_description(item, display_name, features),
+                field="description",
+                max_length=1000,
+                required=True,
+            )
 
             if import_record:
                 product = import_record.product
@@ -284,8 +313,8 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
             product.price = parse_price(product_price(item))
             product.oldPrice = product_old_price(item)
             product.image = image_paths[0] if image_paths else None
-            product.icon = item.get("icon") or icon
-            product.badge = item.get("badge", "new")
+            product.icon = clean_text(item.get("icon") or icon, field="icon", max_length=10)
+            product.badge = clean_text(item.get("badge", "new"), field="badge", max_length=20)
             product.description = description
             product.features = json.dumps(features, ensure_ascii=False)
             product.custom = bool(item.get("custom", True))

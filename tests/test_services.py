@@ -1,22 +1,8 @@
-import os
 from types import SimpleNamespace
 
 import pytest
 
-os.environ['DATABASE_URL'] = 'sqlite://'
-os.environ['ADMIN_PASSWORD'] = 'test-admin-password'
-os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-with-at-least-32-bytes'
-os.environ['SECRET_KEY'] = 'test-secret'
-os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
-os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
-os.environ['STORAGE_BACKEND'] = 'local'
-
-from backend.database import Base, engine, SessionLocal
-import backend.models  # noqa: F401
-
-Base.metadata.create_all(engine)
-
-from backend.app import app  # noqa: F401
+from backend.database import SessionLocal
 from backend.services.orders import (
     calculate_order,
     configured_shipping,
@@ -32,7 +18,15 @@ from backend.services.product_media import (
     storage_slug,
 )
 from backend.services.storage import upload_r2_object
+from backend.services.validation import (
+    clean_text,
+    normalize_email,
+    normalize_phone,
+    validate_cpf,
+    validate_image_bytes,
+)
 from backend.store_config import store_settings
+from tests.helpers import TINY_GIF
 
 
 def test_money_rounds_and_rejects_invalid_values():
@@ -175,6 +169,38 @@ def test_product_media_helpers_normalize_inputs():
     with pytest.raises(Exception) as exc_info:
         normalize_stock_status('vendido')
     assert getattr(exc_info.value, 'status_code', None) == 400
+
+
+def test_validation_helpers_normalize_and_reject_bad_customer_data():
+    assert normalize_email(' CLIENTE@Example.COM ') == 'cliente@example.com'
+    assert validate_cpf('123.456.789-09') == '12345678909'
+    assert normalize_phone('+55 (11) 99999-9999') == '11999999999'
+    assert clean_text(' <script>alert(1)</script> Cliente ') == 'alert(1) Cliente'
+
+    with pytest.raises(ValueError, match='E-mail'):
+        normalize_email('cliente@')
+    with pytest.raises(ValueError, match='CPF'):
+        validate_cpf('111.111.111-11')
+    with pytest.raises(ValueError, match='Telefone'):
+        normalize_phone('123')
+
+
+def test_validate_image_bytes_checks_real_content_and_size():
+    content_type, extension = validate_image_bytes(
+        TINY_GIF,
+        'image/gif',
+        filename='produto.gif',
+        max_bytes=1024,
+    )
+
+    assert content_type == 'image/gif'
+    assert extension == '.gif'
+
+    with pytest.raises(ValueError, match='imagem invalido'):
+        validate_image_bytes(b'nao-e-imagem', 'image/png', filename='fake.png', max_bytes=1024)
+
+    with pytest.raises(ValueError, match='maior'):
+        validate_image_bytes(TINY_GIF, 'image/gif', filename='produto.gif', max_bytes=1)
 
 
 def test_r2_upload_uses_s3_compatible_endpoint(monkeypatch):

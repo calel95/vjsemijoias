@@ -10,7 +10,16 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import FRONTEND_ROOT, settings
 from backend.database import SessionLocal
-from backend.routers import auth, catalog_pdf, orders, pages, payments, products, store_settings
+from backend.routers import (
+    address,
+    auth,
+    catalog_pdf,
+    orders,
+    pages,
+    payments,
+    products,
+    store_settings,
+)
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
 from backend.services.rate_limit import rate_limit_middleware
 from backend.services.startup import bootstrap_runtime_data
@@ -59,6 +68,7 @@ def create_app():
 
     app.include_router(pages.router)
     app.include_router(products.router)
+    app.include_router(address.router)
     app.include_router(auth.router)
     app.include_router(payments.router)
     app.include_router(orders.router)

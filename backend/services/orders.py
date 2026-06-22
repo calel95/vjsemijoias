@@ -8,6 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.models import Coupon, Order, Product
+from backend.services.validation import (
+    clean_text,
+    normalize_email,
+    normalize_phone,
+    validate_cpf,
+)
 from backend.store_config import effective_store_settings
 
 
@@ -145,8 +151,38 @@ def validate_order_data(db: Session, data):
     for field in ["customer_name", "customer_email", "customer_cpf", "items"]:
         if not data.get(field):
             raise ValueError(f"Campo obrigatório: {field}")
-    if "@" not in str(data["customer_email"]):
-        raise ValueError("E-mail inválido")
+    data["customer_name"] = clean_text(
+        data["customer_name"],
+        field="customer_name",
+        max_length=200,
+        required=True,
+    )
+    data["customer_email"] = normalize_email(data["customer_email"])
+    data["customer_cpf"] = validate_cpf(data["customer_cpf"])
+    data["customer_phone"] = normalize_phone(data.get("customer_phone"), required=False)
+    data["address_zip"] = clean_text(data.get("address_zip"), field="address_zip", max_length=20)
+    data["address_street"] = clean_text(
+        data.get("address_street"),
+        field="address_street",
+        max_length=200,
+    )
+    data["address_number"] = clean_text(
+        data.get("address_number"),
+        field="address_number",
+        max_length=20,
+    )
+    data["address_complement"] = clean_text(
+        data.get("address_complement"),
+        field="address_complement",
+        max_length=200,
+    )
+    data["address_neighborhood"] = clean_text(
+        data.get("address_neighborhood"),
+        field="address_neighborhood",
+        max_length=100,
+    )
+    data["address_city"] = clean_text(data.get("address_city"), field="address_city", max_length=100)
+    data["address_state"] = clean_text(data.get("address_state"), field="address_state", max_length=10)
     return calculate_order(db, data["items"], data.get("coupon", ""))
 
 

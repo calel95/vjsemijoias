@@ -19,6 +19,7 @@ from backend.catalog_pdf import (
 )
 from backend.config import IMPORT_UPLOAD_ROOT
 from backend.database import get_db
+from backend.services.validation import clean_text, validate_image_bytes
 from backend.store_config import effective_store_settings
 
 
@@ -27,15 +28,15 @@ router = APIRouter(prefix="/api/admin")
 
 @router.post(
     "/catalog-pdf",
-    tags=["Admin - Catálogo PDF"],
-    summary="Gerar catálogo PDF a partir de imagens",
+    tags=["Admin - Catalogo PDF"],
+    summary="Gerar catalogo PDF a partir de imagens",
     description=(
-        "Envie as imagens na ordem desejada. Os campos nomes, preços, categorias "
-        "e descrições são opcionais e aceitam valores separados por | ou por nova linha."
+        "Envie as imagens na ordem desejada. Os campos nomes, precos, categorias "
+        "e descricoes sao opcionais e aceitam valores separados por | ou por nova linha."
     ),
     responses={
         200: {
-            "description": "Catálogo PDF pronto para download",
+            "description": "Catalogo PDF pronto para download",
             "content": {"application/pdf": {}},
         }
     },
@@ -43,20 +44,20 @@ router = APIRouter(prefix="/api/admin")
 def generate_catalog_pdf_endpoint(
     images: list[UploadFile] = File(
         ...,
-        description="Imagens dos produtos, na ordem em que aparecerão no catálogo.",
+        description="Imagens dos produtos, na ordem em que aparecerao no catalogo.",
     ),
     names: str = Form(
         "",
-        description="Nomes separados por |. Se vazio, o nome será extraído do arquivo.",
+        description="Nomes separados por |. Se vazio, o nome sera extraido do arquivo.",
     ),
-    prices: str = Form("", description="Preços separados por |, na ordem das imagens."),
+    prices: str = Form("", description="Precos separados por |, na ordem das imagens."),
     categories: str = Form(
         "",
         description="Categorias separadas por |, na ordem das imagens.",
     ),
     descriptions: str = Form(
         "",
-        description="Descrições separadas por |, na ordem das imagens.",
+        description="Descricoes separadas por |, na ordem das imagens.",
     ),
     catalog_title: str = Form(""),
     collection: str = Form(""),
@@ -65,7 +66,7 @@ def generate_catalog_pdf_endpoint(
     coupon: str = Form(""),
     products_per_page: int = Form(
         6,
-        description="Use 4 para cards maiores ou 6 para o layout padrão 2x3.",
+        description="Use 4 para cards maiores ou 6 para o layout padrao 2x3.",
     ),
     output_filename: str = Form(""),
     _claims=Depends(admin_claims),
@@ -75,7 +76,7 @@ def generate_catalog_pdf_endpoint(
     if not images:
         raise HTTPException(status_code=400, detail="Adicione pelo menos uma imagem")
     if len(images) > 100:
-        raise HTTPException(status_code=400, detail="Envie no máximo 100 imagens")
+        raise HTTPException(status_code=400, detail="Envie no maximo 100 imagens")
     if products_per_page not in {4, 6}:
         raise HTTPException(
             status_code=400,
@@ -92,38 +93,54 @@ def generate_catalog_pdf_endpoint(
     products = []
     try:
         for index, uploaded in enumerate(images):
-            if not (uploaded.content_type or "").startswith("image/"):
+            content = uploaded.file.read()
+            try:
+                _, extension = validate_image_bytes(
+                    content,
+                    uploaded.content_type or "",
+                    filename=uploaded.filename or "",
+                    max_bytes=20 * 1024 * 1024,
+                )
+            except ValueError as exc:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Arquivo não é uma imagem: {uploaded.filename}",
-                )
-            extension = Path(uploaded.filename or "").suffix.lower() or ".jpg"
+                    detail=f"{uploaded.filename}: {exc}",
+                ) from exc
+
             image_path = image_root / f"{index + 1:03d}{extension}"
-            size = 0
-            with image_path.open("wb") as output:
-                while chunk := uploaded.file.read(1024 * 1024):
-                    size += len(chunk)
-                    if size > 20 * 1024 * 1024:
-                        raise HTTPException(
-                            status_code=400,
-                            detail=f"Imagem maior que 20 MB: {uploaded.filename}",
-                        )
-                    output.write(chunk)
+            image_path.write_bytes(content)
             products.append(
                 CatalogProduct(
-                    title=value_at(
-                        name_values,
-                        index,
-                        title_from_filename(uploaded.filename or ""),
+                    title=clean_text(
+                        value_at(
+                            name_values,
+                            index,
+                            title_from_filename(uploaded.filename or ""),
+                        ),
+                        field="nome",
+                        max_length=200,
+                        required=True,
                     ),
                     image_path=image_path,
-                    price=value_at(price_values, index),
-                    category=value_at(category_values, index, "Semijoias"),
-                    description=value_at(description_values, index),
+                    price=clean_text(value_at(price_values, index), field="preco", max_length=50),
+                    category=clean_text(
+                        value_at(category_values, index, "Semijoias"),
+                        field="categoria",
+                        max_length=50,
+                    ),
+                    description=clean_text(
+                        value_at(description_values, index),
+                        field="descricao",
+                        max_length=500,
+                    ),
                 )
             )
 
-        output_name = output_filename.strip() or active_settings.catalog.filename
+        output_name = clean_text(
+            output_filename,
+            field="output_filename",
+            max_length=120,
+        ) or active_settings.catalog.filename
         safe_filename = re.sub(
             r"[^A-Za-z0-9._-]+",
             "-",
@@ -136,11 +153,16 @@ def generate_catalog_pdf_endpoint(
             products,
             output_path,
             CatalogOptions(
-                title=catalog_title.strip() or active_settings.catalog.title,
-                collection=collection.strip() or active_settings.catalog.collection,
-                slogan=slogan.strip() or active_settings.brand.slogan,
-                contact=contact.strip() or active_settings.catalog_contact_line,
-                coupon=coupon.strip() or active_settings.coupon_label,
+                title=clean_text(catalog_title, field="catalog_title", max_length=120)
+                or active_settings.catalog.title,
+                collection=clean_text(collection, field="collection", max_length=120)
+                or active_settings.catalog.collection,
+                slogan=clean_text(slogan, field="slogan", max_length=120)
+                or active_settings.brand.slogan,
+                contact=clean_text(contact, field="contact", max_length=200)
+                or active_settings.catalog_contact_line,
+                coupon=clean_text(coupon, field="coupon", max_length=80)
+                or active_settings.coupon_label,
                 products_per_page=products_per_page,
             ),
         )
@@ -151,7 +173,7 @@ def generate_catalog_pdf_endpoint(
         shutil.rmtree(work_root, ignore_errors=True)
         raise HTTPException(
             status_code=400,
-            detail=f"Não foi possível gerar o catálogo: {exc}",
+            detail=f"Nao foi possivel gerar o catalogo: {exc}",
         ) from exc
 
     return FileResponse(

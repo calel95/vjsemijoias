@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from backend.config import FRONTEND_ROOT, env_bool
 from backend.models import Coupon, StoreSetting
+from backend.services.validation import clean_text, normalize_email, normalize_phone
 
 
 def env_value(name, default=""):
@@ -237,6 +238,33 @@ def validate_store_values(values):
 
     if "COUPON_CODE" in cleaned:
         cleaned["COUPON_CODE"] = cleaned["COUPON_CODE"].upper()
+
+    text_limits = {
+        "STORE_NAME": 120,
+        "STORE_SHORT_NAME": 30,
+        "STORE_TAGLINE": 80,
+        "STORE_DESCRIPTION": 500,
+        "STORE_SLOGAN": 120,
+        "STORE_LOGO_PATH": 200,
+        "STORE_INSTAGRAM": 80,
+        "STORE_WEBSITE": 200,
+        "STORE_CNPJ": 30,
+        "STORE_CATALOG_TITLE": 120,
+        "STORE_CATALOG_COLLECTION": 120,
+        "STORE_CATALOG_FILENAME": 120,
+        "SHIPPING_ESTIMATED_DAYS": 30,
+        "COUPON_CODE": 30,
+    }
+    for key, max_length in text_limits.items():
+        if key in cleaned:
+            cleaned[key] = clean_text(cleaned[key], field=key, max_length=max_length)
+
+    if "STORE_EMAIL" in cleaned and cleaned["STORE_EMAIL"]:
+        cleaned["STORE_EMAIL"] = normalize_email(cleaned["STORE_EMAIL"])
+    if "STORE_PHONE" in cleaned and cleaned["STORE_PHONE"]:
+        cleaned["STORE_PHONE"] = normalize_phone(cleaned["STORE_PHONE"])
+    if "STORE_WHATSAPP" in cleaned and cleaned["STORE_WHATSAPP"]:
+        cleaned["STORE_WHATSAPP"] = normalize_phone(cleaned["STORE_WHATSAPP"])
 
     return {key: cleaned.get(key, defaults[key]) for key in STORE_SETTING_KEYS}
 

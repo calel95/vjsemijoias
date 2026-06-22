@@ -20,9 +20,47 @@ from backend.services.product_media import (
     store_admin_gallery_images,
 )
 from backend.services.storage import storage_status
+from backend.services.validation import clean_text, clean_text_list, normalize_money_float
 
 
 router = APIRouter(prefix="/api")
+IMPORT_UPLOAD_MAX_FILE_BYTES = 20 * 1024 * 1024
+IMPORT_UPLOAD_MAX_TOTAL_BYTES = 250 * 1024 * 1024
+IMPORT_UPLOAD_ALLOWED_EXTENSIONS = {".csv", ".json", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+
+def normalize_product_payload(data: dict[str, Any], *, partial=False):
+    cleaned: dict[str, Any] = {}
+    text_fields = {
+        "name": (200, True),
+        "category": (50, True),
+        "categoryName": (50, False),
+        "icon": (10, False),
+        "badge": (20, False),
+        "description": (1000, True),
+    }
+    for field, (max_length, required_on_create) in text_fields.items():
+        if field in data or (required_on_create and not partial):
+            cleaned[field] = clean_text(
+                data.get(field),
+                field=field,
+                max_length=max_length,
+                required=required_on_create and not partial,
+            )
+
+    if "categoryName" not in cleaned and "category" in cleaned:
+        cleaned["categoryName"] = cleaned["category"].capitalize()
+    if "price" in data or not partial:
+        cleaned["price"] = normalize_money_float(data.get("price"), field="price")
+    if "oldPrice" in data:
+        cleaned["oldPrice"] = normalize_money_float(
+            data.get("oldPrice"),
+            field="oldPrice",
+            required=False,
+        )
+    if "features" in data:
+        cleaned["features"] = clean_text_list(data.get("features"), field="features")
+    return cleaned
 
 
 @router.get("/products")
@@ -78,20 +116,25 @@ def create_product(
             status_code=400,
             detail="Campos obrigatórios: name, category, price, description",
         )
+    try:
+        cleaned = normalize_product_payload(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     product = Product(
-        name=data["name"],
-        category=data["category"],
-        categoryName=data.get("categoryName", data["category"].capitalize()),
-        price=float(data["price"]),
-        oldPrice=float(data["oldPrice"]) if data.get("oldPrice") else None,
+        name=cleaned["name"],
+        category=cleaned["category"],
+        categoryName=cleaned.get("categoryName", cleaned["category"].capitalize()),
+        price=cleaned["price"],
+        oldPrice=cleaned.get("oldPrice"),
         icon=data.get("icon", "💎"),
-        badge=data.get("badge"),
+        badge=cleaned.get("badge"),
         is_active=normalize_bool(data.get("is_active"), True),
         stock_status=normalize_stock_status(data.get("stock_status")),
-        description=data["description"],
-        features=json.dumps(data.get("features", []), ensure_ascii=False),
+        description=cleaned["description"],
+        features=json.dumps(cleaned.get("features", []), ensure_ascii=False),
         custom=True,
     )
+    product.icon = cleaned.get("icon") or product.icon
     db.add(product)
     db.flush()
     images = store_admin_gallery_images(product, product_image_list(data))
@@ -108,22 +151,26 @@ def update_product(
     db: Session = Depends(get_db),
 ):
     product = get_or_404(db, Product, product_id)
+    try:
+        cleaned = normalize_product_payload(data, partial=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     for field in ["name", "category", "categoryName", "icon", "badge", "description"]:
-        if data.get(field) is not None:
-            setattr(product, field, data[field])
+        if field in cleaned:
+            setattr(product, field, cleaned[field])
     if "is_active" in data:
         product.is_active = normalize_bool(data["is_active"], True)
     if "stock_status" in data:
         product.stock_status = normalize_stock_status(data["stock_status"])
     if data.get("price") is not None:
-        product.price = float(data["price"])
+        product.price = cleaned["price"]
     if "oldPrice" in data:
-        product.oldPrice = float(data["oldPrice"]) if data["oldPrice"] else None
+        product.oldPrice = cleaned.get("oldPrice")
     if "images" in data or "image" in data:
         images = store_admin_gallery_images(product, product_image_list(data))
         replace_product_gallery(product, images)
     if data.get("features") is not None:
-        product.features = json.dumps(data["features"], ensure_ascii=False)
+        product.features = json.dumps(cleaned.get("features", []), ensure_ascii=False)
     db.commit()
     return product.to_dict()
 
@@ -188,16 +235,37 @@ def import_product_folder(
     temp_root = IMPORT_UPLOAD_ROOT / secrets.token_hex(12)
     temp_root.mkdir()
     try:
+        total_bytes = 0
         for uploaded, relative_path in normalized_files:
             if catalog_prefix != PurePosixPath("."):
                 try:
                     relative_path = relative_path.relative_to(catalog_prefix)
                 except ValueError:
                     continue
+            extension = relative_path.suffix.lower()
+            if extension not in IMPORT_UPLOAD_ALLOWED_EXTENSIONS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Tipo de arquivo nao suportado: {relative_path.name}",
+                )
             destination = temp_root.joinpath(*relative_path.parts)
             destination.parent.mkdir(parents=True, exist_ok=True)
+            file_size = 0
             with destination.open("wb") as output:
-                shutil.copyfileobj(uploaded.file, output)
+                while chunk := uploaded.file.read(1024 * 1024):
+                    file_size += len(chunk)
+                    total_bytes += len(chunk)
+                    if file_size > IMPORT_UPLOAD_MAX_FILE_BYTES:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Arquivo maior que 20 MB: {relative_path.name}",
+                        )
+                    if total_bytes > IMPORT_UPLOAD_MAX_TOTAL_BYTES:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="Importacao maior que 250 MB",
+                        )
+                    output.write(chunk)
         try:
             from backend.import_products import import_catalog
 

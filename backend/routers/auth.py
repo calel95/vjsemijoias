@@ -22,14 +22,16 @@ from backend.services.admin_security import (
     record_admin_login_failure,
 )
 from backend.services.common import get_or_404
+from backend.services.validation import (
+    clean_text,
+    normalize_email,
+    normalize_phone,
+    validate_cpf,
+)
 
 
 router = APIRouter(prefix="/api/auth")
 DEFAULT_ADMIN_EMAIL = "admin@vjsemijoias.com"
-
-
-def normalize_email(value):
-    return str(value or "").strip().lower()
 
 
 def has_admin_user(db: Session):
@@ -78,18 +80,25 @@ def register(
             status_code=400,
             detail="Campos obrigatorios: name, email, password",
         )
-    email = normalize_email(data["email"])
+    try:
+        email = normalize_email(data["email"])
+        name = clean_text(data["name"], field="name", max_length=200, required=True)
+        cpf = validate_cpf(data.get("cpf"), required=False)
+        phone = normalize_phone(data.get("phone"), required=False)
+        birthdate = clean_text(data.get("birthdate"), field="birthdate", max_length=20)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(status_code=409, detail="E-mail ja cadastrado")
     if len(data["password"]) < 6:
         raise HTTPException(status_code=400, detail="A senha deve ter no minimo 6 caracteres")
     user = User(
-        name=data["name"],
+        name=name,
         email=email,
         password_hash=generate_password_hash(data["password"]),
-        cpf=data.get("cpf", ""),
-        phone=data.get("phone", ""),
-        birthdate=data.get("birthdate", ""),
+        cpf=cpf,
+        phone=phone,
+        birthdate=birthdate,
     )
     db.add(user)
     db.commit()
@@ -103,7 +112,11 @@ def login(
 ):
     if not data.get("email") or not data.get("password"):
         raise HTTPException(status_code=400, detail="Preencha e-mail e senha")
-    user = db.scalar(select(User).where(User.email == normalize_email(data["email"])))
+    try:
+        email = normalize_email(data["email"])
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    user = db.scalar(select(User).where(User.email == email))
     if not user or not check_password_hash(user.password_hash, data["password"]):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
     return {"token": create_access_token(user), "user": user.to_dict()}
@@ -123,7 +136,10 @@ def admin_login(
 ):
     check_admin_login_rate_limit(request)
     password = str(data.get("password", ""))
-    email = normalize_email(data.get("email"))
+    try:
+        email = normalize_email(data.get("email"), required=False)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not password:
         raise HTTPException(status_code=400, detail="Informe a senha administrativa")
 
@@ -197,9 +213,12 @@ def create_admin_user(
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
-    email = normalize_email(data.get("email"))
+    try:
+        email = normalize_email(data.get("email"))
+        name = clean_text(data.get("name") or email, field="name", max_length=200, required=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     password = str(data.get("password", ""))
-    name = str(data.get("name") or email).strip()
     if not email or not password:
         raise HTTPException(status_code=400, detail="Campos obrigatorios: email, password")
     if len(password) < 8:

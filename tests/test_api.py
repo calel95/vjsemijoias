@@ -1,6 +1,6 @@
-import os
 import json
 import shutil
+from uuid import uuid4
 from io import BytesIO
 from pathlib import Path
 
@@ -8,64 +8,23 @@ import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
-os.environ['DATABASE_URL'] = 'sqlite://'
-os.environ['ADMIN_PASSWORD'] = 'test-admin-password'
-os.environ['JWT_SECRET_KEY'] = 'test-jwt-secret-with-at-least-32-bytes'
-os.environ['SECRET_KEY'] = 'test-secret'
-os.environ['INFINITEPAY_HANDLE'] = 'vjsemijoias'
-os.environ['PUBLIC_BASE_URL'] = 'https://vj.example.com'
-os.environ['CORS_ALLOWED_ORIGINS'] = 'https://vj.example.com,http://localhost:5000'
-os.environ['STORAGE_BACKEND'] = 'local'
-
-from backend.database import Base, engine, SessionLocal
-import backend.models  # noqa: F401
-
-Base.metadata.create_all(engine)
-
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
 from backend.config import FRONTEND_ROOT, database_url, settings
+from backend.database import SessionLocal
 from backend.import_products import DEFAULT_SOURCE, import_catalog
 from backend.models import AdminAuditLog, Product, StoreSetting, User
 from backend.services.rate_limit import clear_rate_limit_state
 from backend.services.startup import seed_products, sync_default_coupon
 from backend.store_config import store_settings
+from tests.helpers import (
+    ADMIN_EMAIL,
+    TINY_GIF_DATA_URL,
+    FakeResponse,
+    admin_headers,
+    admin_login,
+    client,
+)
 from tools.generate_manual_manifest import build_manifest
-
-
-client = TestClient(app)
-TINY_GIF_DATA_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
-ADMIN_EMAIL = 'admin@vjsemijoias.com'
-
-
-def admin_login(email=ADMIN_EMAIL, password='test-admin-password', *, persist_cookie=False, api_client=client):
-    response = api_client.post('/api/auth/admin/login', json={'email': email, 'password': password})
-    if not persist_cookie:
-        api_client.cookies.clear()
-    return response
-
-
-def admin_headers():
-    login = admin_login()
-    assert login.status_code == 200
-    return {'Authorization': f"Bearer {login.json()['token']}"}
-
-
-class FakeResponse:
-    def __init__(self, data, status_code=200):
-        self.data = data
-        self.status_code = status_code
-        self.ok = 200 <= status_code < 300
-        self.text = ''
-
-    def json(self):
-        return self.data
-
-
-@pytest.fixture(autouse=True)
-def reset_rate_limit_state():
-    clear_rate_limit_state()
-    yield
-    clear_rate_limit_state()
 
 
 def order_payload():
@@ -221,38 +180,47 @@ def test_database_url_uses_psycopg_for_postgresql(monkeypatch):
     )
 
 
-def test_alembic_migrations_create_current_schema(tmp_path):
+def test_alembic_migrations_create_current_schema():
     from alembic import command
     from alembic.config import Config
     from sqlalchemy import create_engine, inspect
 
-    db_path = tmp_path / 'migration.db'
+    tmp_root = Path('.tmp')
+    tmp_root.mkdir(exist_ok=True)
+    db_path = tmp_root / f'migration-{uuid4().hex}.db'
     db_url = f"sqlite:///{db_path.as_posix()}"
     config = Config('alembic.ini')
     config.set_main_option('script_location', 'migrations')
     config.set_main_option('sqlalchemy.url', db_url)
+    engine = None
 
-    command.upgrade(config, 'head')
+    try:
+        command.upgrade(config, 'head')
 
-    engine = create_engine(db_url)
-    inspector = inspect(engine)
-    tables = set(inspector.get_table_names())
-    product_columns = {
-        column['name'] for column in inspector.get_columns('products')
-    }
+        engine = create_engine(db_url)
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+        product_columns = {
+            column['name'] for column in inspector.get_columns('products')
+        }
 
-    assert {
-        'products',
-        'product_images',
-        'product_imports',
-        'users',
-        'orders',
-        'payments',
-        'newsletters',
-        'coupons',
-        'alembic_version',
-    }.issubset(tables)
-    assert {'is_active', 'stock_status'}.issubset(product_columns)
+        assert {
+            'products',
+            'product_images',
+            'product_imports',
+            'users',
+            'orders',
+            'payments',
+            'newsletters',
+            'coupons',
+            'alembic_version',
+        }.issubset(tables)
+        assert {'is_active', 'stock_status'}.issubset(product_columns)
+    finally:
+        if engine is not None:
+            engine.dispose()
+        for path in tmp_root.glob(f'{db_path.name}*'):
+            path.unlink(missing_ok=True)
 
 
 def test_frontend_files_are_served():
@@ -295,6 +263,17 @@ def test_admin_frontend_does_not_store_admin_jwt_in_web_storage():
     assert "credentials: 'include'" in api_js
 
 
+def test_checkout_has_cep_autofill_wiring():
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+    checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
+
+    assert 'lookupCep' in api_js
+    assert '/address/cep/' in api_js
+    assert 'setupCepAutofill()' in checkout_html
+    assert 'API.lookupCep' in checkout_html
+    assert "setCheckoutField('address', address.street)" in checkout_html
+
+
 def test_catalog_has_seed_products():
     response = client.get('/api/products')
 
@@ -321,6 +300,33 @@ def test_order_total_is_calculated_by_server():
     assert order['status'] == 'pending'
 
 
+def test_order_rejects_invalid_cpf_and_sanitizes_customer_text():
+    invalid = client.post('/api/orders', json={
+        'customer_name': 'Cliente Teste',
+        'customer_email': 'cliente@example.com',
+        'customer_cpf': '11111111111',
+        'items': [{'id': 1, 'quantity': 1}],
+    })
+    sanitized = client.post('/api/orders', json={
+        'customer_name': '<b>Cliente Seguro</b>',
+        'customer_email': 'CLIENTE-SEGURO@EXAMPLE.COM',
+        'customer_cpf': '123.456.789-09',
+        'customer_phone': '+55 (11) 99999-9999',
+        'address_street': '<script>alert(1)</script> Rua Teste',
+        'items': [{'id': 1, 'quantity': 1}],
+    })
+
+    assert invalid.status_code == 400
+    assert 'CPF' in invalid.json()['error']
+    assert sanitized.status_code == 201
+    data = sanitized.json()
+    assert data['customer_name'] == 'Cliente Seguro'
+    assert data['customer_email'] == 'cliente-seguro@example.com'
+    assert data['customer_cpf'] == '12345678909'
+    assert data['customer_phone'] == '11999999999'
+    assert '<' not in data['address_street']
+
+
 def test_shipping_is_free_below_old_threshold():
     order_response = client.post('/api/orders', json={
         'customer_name': 'Cliente Teste',
@@ -338,6 +344,78 @@ def test_shipping_is_free_below_old_threshold():
     assert order_response.json()['total'] == 99.9
     assert shipping_response.status_code == 200
     assert shipping_response.json()['shipping'] == 0
+
+
+def test_address_lookup_by_cep_uses_viacep(monkeypatch):
+    calls = []
+
+    class CepResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                'cep': '01001-000',
+                'logradouro': 'Praça da Sé',
+                'complemento': 'lado ímpar',
+                'bairro': 'Sé',
+                'localidade': 'São Paulo',
+                'uf': 'SP',
+                'ibge': '3550308',
+            }
+
+    def fake_get(self, url, timeout):
+        calls.append((url, timeout, self.trust_env))
+        return CepResponse()
+
+    monkeypatch.setattr('backend.services.address.requests.Session.get', fake_get)
+
+    response = client.get('/api/address/cep/01001-000')
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['street'] == 'Praça da Sé'
+    assert data['neighborhood'] == 'Sé'
+    assert data['city'] == 'São Paulo'
+    assert data['state'] == 'SP'
+    assert calls == [('https://viacep.com.br/ws/01001000/json/', 5, False)]
+
+
+def test_address_lookup_rejects_invalid_or_missing_cep(monkeypatch):
+    invalid = client.get('/api/address/cep/123')
+
+    class MissingCepResponse:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {'erro': True}
+
+    monkeypatch.setattr(
+        'backend.services.address.requests.Session.get',
+        lambda self, url, timeout: MissingCepResponse(),
+    )
+    missing = client.get('/api/address/cep/99999999')
+
+    assert invalid.status_code == 400
+    assert missing.status_code == 404
+
+
+def test_address_lookup_returns_bad_gateway_when_provider_fails(monkeypatch):
+    import requests
+
+    def fail_get(self, url, timeout):
+        raise requests.Timeout('timeout')
+
+    monkeypatch.setattr('backend.services.address.requests.Session.get', fail_get)
+
+    response = client.get('/api/address/cep/01001000')
+
+    assert response.status_code == 502
 
 
 def test_store_config_exposes_shipping_and_coupon_settings():
@@ -431,13 +509,19 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
 def test_admin_store_config_rejects_invalid_values():
     login = admin_login()
     token = login.json()['token']
-    response = client.put(
+    invalid_shipping = client.put(
         '/api/admin/store-config',
         headers={'Authorization': f'Bearer {token}'},
         json={'values': {'SHIPPING_MODE': 'teleport'}},
     )
+    invalid_email = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'STORE_EMAIL': 'email-invalido'}},
+    )
 
-    assert response.status_code == 400
+    assert invalid_shipping.status_code == 400
+    assert invalid_email.status_code == 400
 
 
 def test_admin_can_update_order_status():
@@ -629,6 +713,41 @@ def test_admin_can_create_product_with_api_token():
     assert response.json()['name'] == 'Brinco Teste'
 
 
+def test_admin_product_input_is_sanitized_and_validated():
+    token = admin_login().json()['token']
+
+    invalid_price = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Preco Ruim',
+            'category': 'brincos',
+            'price': -1,
+            'description': 'Descricao',
+        },
+    )
+    sanitized = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': '<b>Produto Seguro</b>',
+            'category': 'brincos',
+            'categoryName': '<i>Brincos</i>',
+            'price': 89.9,
+            'description': '<script>alert(1)</script> Descricao segura',
+            'features': ['<b>Banho 18k</b>'],
+        },
+    )
+
+    assert invalid_price.status_code == 400
+    assert sanitized.status_code == 201
+    data = sanitized.json()
+    assert data['name'] == 'Produto Seguro'
+    assert data['categoryName'] == 'Brincos'
+    assert '<' not in data['description']
+    assert data['features'] == ['Banho 18k']
+
+
 def test_admin_can_clear_catalog_only_with_explicit_confirmation():
     login = admin_login()
     token = login.json()['token']
@@ -777,6 +896,26 @@ def test_admin_can_create_and_update_product_gallery():
             shutil.rmtree(created_folder, ignore_errors=True)
 
 
+def test_admin_product_gallery_rejects_mismatched_image_type():
+    token = admin_login().json()['token']
+    fake_png_with_gif_bytes = TINY_GIF_DATA_URL.replace('image/gif', 'image/png')
+
+    response = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Imagem Falsa',
+            'category': 'brincos',
+            'price': 89.9,
+            'description': 'Imagem com mime divergente.',
+            'images': [fake_png_with_gif_bytes],
+        },
+    )
+
+    assert response.status_code == 400
+    assert 'Tipo de imagem' in response.json()['error']
+
+
 def test_admin_can_import_complete_catalog_folder():
     login = admin_login()
     token = login.json()['token']
@@ -808,6 +947,21 @@ def test_admin_can_import_complete_catalog_folder():
     assert data['products'] == expected_products
     assert data['images'] == expected_images
     assert data['created'] == expected_products
+
+
+def test_admin_catalog_import_rejects_unsupported_file_type():
+    token = admin_login().json()['token']
+    response = client.post(
+        '/api/products/import-folder',
+        headers={'Authorization': f'Bearer {token}'},
+        files=[
+            ('files', ('catalogo/manifest.json', b'{"products":[]}', 'application/json')),
+            ('files', ('catalogo/script.svg', b'<svg></svg>', 'image/svg+xml')),
+        ],
+    )
+
+    assert response.status_code == 400
+    assert 'Tipo de arquivo nao suportado' in response.json()['error']
 
 
 def test_admin_can_generate_catalog_pdf():
@@ -842,6 +996,22 @@ def test_admin_can_generate_catalog_pdf():
     assert response.headers['x-catalog-pages'] == '2'
     reader = PdfReader(BytesIO(response.content))
     assert len(reader.pages) == 2
+
+
+def test_catalog_pdf_rejects_fake_image_upload():
+    token = admin_login().json()['token']
+
+    response = client.post(
+        '/api/admin/catalog-pdf',
+        headers={'Authorization': f'Bearer {token}'},
+        files=[
+            ('images', ('fake.png', b'nao-e-imagem', 'image/png')),
+        ],
+        data={'products_per_page': '6'},
+    )
+
+    assert response.status_code == 400
+    assert 'imagem' in response.json()['error'].lower()
 
 
 def test_payment_config_exposes_infinitepay():

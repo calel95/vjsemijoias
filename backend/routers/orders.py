@@ -16,6 +16,7 @@ from backend.services.orders import (
     normalize_order_status,
     validate_order_data,
 )
+from backend.services.validation import normalize_email
 from backend.store_config import effective_store_settings, public_store_config
 
 
@@ -78,9 +79,10 @@ def subscribe_newsletter(
     db: Session = Depends(get_db),
 ):
     active_settings = effective_store_settings(db)
-    email = data.get("email", "")
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="E-mail invalido")
+    try:
+        email = normalize_email(data.get("email"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     coupon_percent = float(money(active_settings.coupon.discount_percent))
     if db.scalar(select(Newsletter).where(Newsletter.email == email)):

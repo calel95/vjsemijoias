@@ -1,5 +1,3 @@
-import base64
-import binascii
 import re
 import unicodedata
 
@@ -8,6 +6,7 @@ from fastapi import HTTPException
 from backend.config import FRONTEND_ROOT
 from backend.models import ProductImage
 from backend.services.storage import r2_enabled, store_public_file
+from backend.services.validation import decode_base64_image, validate_image_bytes
 
 
 ADMIN_CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog" / "admin"
@@ -68,14 +67,14 @@ def save_admin_image(product, image_data, position):
         )
 
     try:
-        content = base64.b64decode(match.group(2), validate=True)
-    except (binascii.Error, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="Imagem enviada em base64 invalida") from exc
-
-    if not content:
-        raise HTTPException(status_code=400, detail="Imagem vazia")
-    if len(content) > ADMIN_IMAGE_MAX_BYTES:
-        raise HTTPException(status_code=400, detail="Imagem maior que 8 MB")
+        content = decode_base64_image(match.group(2))
+        content_type, extension = validate_image_bytes(
+            content,
+            content_type,
+            max_bytes=ADMIN_IMAGE_MAX_BYTES,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     product_folder = f"{int(product.id):06d}-{storage_slug(product.name)}"
     if r2_enabled():
