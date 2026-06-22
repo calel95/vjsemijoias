@@ -7,8 +7,8 @@ o backend serve a API em `/api` e tambem entrega o frontend estatico.
 
 Para testar de qualquer lugar, use:
 
-- Render Web Service para a aplicacao FastAPI.
-- Postgres gerenciado para o banco, como Neon ou Render Postgres.
+- VPS com Dokploy e build por Railpack para a aplicacao FastAPI.
+- Postgres gerenciado para o banco, como Neon ou Postgres criado no Dokploy.
 - `PUBLIC_BASE_URL` apontando para a URL publica do ambiente DEV.
 - Cloudflare R2 para imagens de catalogo e uploads do painel admin.
 
@@ -32,9 +32,9 @@ uv --cache-dir .uv-cache run python tools\e2e_smoke.py
 ```dotenv
 APP_ENV=development
 DEBUG=false
-DATABASE_URL=postgresql://usuario:senha@host/neondb?sslmode=require&channel_binding=require
-PUBLIC_BASE_URL=https://seu-servico-dev.onrender.com
-CORS_ALLOWED_ORIGINS=https://seu-servico-dev.onrender.com
+DATABASE_URL=postgresql://usuario:senha@host/banco?sslmode=require
+PUBLIC_BASE_URL=https://dev.seudominio.com
+CORS_ALLOWED_ORIGINS=https://dev.seudominio.com
 ADMIN_PASSWORD=uma-senha-dev-forte
 SECRET_KEY=uma-chave-longa
 JWT_SECRET_KEY=outra-chave-longa
@@ -45,6 +45,68 @@ ADMIN_COOKIE_SAMESITE=lax
 ```
 
 Use `.env.dev.example` como checklist. Nunca envie `backend/.env` para o Git.
+
+## Dokploy com Railpack
+
+Esse e o caminho recomendado para DEV em VPS. O projeto inclui
+`railpack.json`, entao o Dokploy/Railpack deve:
+
+- detectar o projeto como Python por causa do `pyproject.toml`;
+- usar Python 3.12;
+- instalar dependencias pelo `uv.lock`;
+- iniciar com Alembic antes do Uvicorn.
+
+No Dokploy:
+
+- Source: repositorio Git do projeto.
+- Branch: `dev`.
+- Build Type: Railpack.
+- Port: `5000`.
+- Healthcheck Path: `/api/ready`.
+- Domain: `https://dev.seudominio.com`.
+
+O `railpack.json` define este start command:
+
+```bash
+alembic upgrade head && uvicorn backend.app:app --host 0.0.0.0 --port ${PORT:-5000}
+```
+
+Se voce preferir configurar pelo painel, use a variavel abaixo. Ela tem
+prioridade sobre o `railpack.json`:
+
+```dotenv
+RAILPACK_START_CMD=alembic upgrade head && uvicorn backend.app:app --host 0.0.0.0 --port ${PORT:-5000}
+```
+
+Variaveis minimas no Dokploy:
+
+```dotenv
+APP_ENV=development
+DEBUG=false
+PORT=5000
+RAILPACK_PYTHON_VERSION=3.12
+DATABASE_URL=postgresql://usuario:senha@host/banco?sslmode=require
+PUBLIC_BASE_URL=https://dev.seudominio.com
+CORS_ALLOWED_ORIGINS=https://dev.seudominio.com
+SECRET_KEY=gere-uma-chave-longa
+JWT_SECRET_KEY=gere-outra-chave-longa
+ADMIN_PASSWORD=uma-senha-dev-forte
+ADMIN_COOKIE_SECURE=true
+ADMIN_COOKIE_SAMESITE=lax
+INFINITEPAY_HANDLE=sua_infinite_tag
+INFINITEPAY_API_BASE=https://api.checkout.infinitepay.io
+STORAGE_BACKEND=r2
+R2_ACCOUNT_ID=seu_account_id_cloudflare
+R2_BUCKET=vjsemijoias-dev
+R2_ACCESS_KEY_ID=sua_access_key_id
+R2_SECRET_ACCESS_KEY=sua_secret_access_key
+R2_PUBLIC_BASE_URL=https://assets-dev.seudominio.com
+RATE_LIMIT_ENABLED=true
+```
+
+O arquivo `.dockerignore` tambem e usado pelo Railpack para montar o contexto
+de build. Ele exclui `.env`, `backend/.env`, banco local, caches, uploads e
+imagens geradas do catalogo.
 
 ## Rate limiting
 
@@ -68,7 +130,8 @@ proxy/edge ou migrar os contadores para Redis.
 
 ## Render
 
-O arquivo `render.yaml` ja deixa uma configuracao inicial pronta.
+O arquivo `render.yaml` continua como alternativa caso voce queira manter ou
+comparar o deploy do Render.
 
 Se criar manualmente pelo dashboard:
 
@@ -144,9 +207,9 @@ importadas pelo catalogo sao gravadas no R2, e o banco salva a URL publica.
 Se `STORAGE_BACKEND` ficar vazio ou `local`, o app volta ao comportamento local
 e salva em `frontend/images/catalog/`.
 
-### Imagens 404 no Render
+### Imagens 404 no DEV remoto
 
-Se os logs do Render mostrarem requisicoes como:
+Se os logs do deploy mostrarem requisicoes como:
 
 ```text
 GET /images/catalog/.../img_1.jpeg 404 Not Found
@@ -158,7 +221,7 @@ os produtos ja existiam no banco com caminhos locais.
 
 Corrija assim:
 
-1. Configure no Render:
+1. Configure no Dokploy ou na plataforma usada:
 
 ```dotenv
 STORAGE_BACKEND=r2

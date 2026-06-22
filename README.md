@@ -88,8 +88,9 @@ uv --cache-dir .uv-cache run alembic upgrade head
 ## Deploy DEV
 
 Para publicar um ambiente DEV acessivel fora do seu computador, veja
-[docs/deploy-dev.md](docs/deploy-dev.md). O caminho recomendado e Render como
-Web Service Python com Postgres gerenciado, evitando SQLite em ambiente remoto.
+[docs/deploy-dev.md](docs/deploy-dev.md). O caminho recomendado agora e
+Dokploy com Railpack, Postgres remoto e Cloudflare R2, evitando SQLite em
+ambiente remoto.
 
 ## Seguranca do admin
 
