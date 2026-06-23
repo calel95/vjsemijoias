@@ -4,7 +4,7 @@ from pathlib import Path
 
 from backend.config import FRONTEND_ROOT
 from backend.database import SessionLocal
-from backend.models import Product
+from backend.models import AdminAuditLog, Product
 from backend.services.startup import seed_products
 from tests.helpers import TINY_GIF_DATA_URL, admin_login, client
 
@@ -145,6 +145,15 @@ def test_admin_can_clear_catalog_only_with_explicit_confirmation():
         assert deleted.status_code == 200
         assert deleted.json()['deleted'] == before_count
         assert client.get('/api/products').json() == []
+        with SessionLocal() as db:
+            audit = (
+                db.query(AdminAuditLog)
+                .filter(AdminAuditLog.action == 'catalog.cleared')
+                .order_by(AdminAuditLog.id.desc())
+                .first()
+            )
+            assert audit is not None
+            assert audit.to_dict()['metadata']['deleted'] == before_count
     finally:
         with SessionLocal() as db:
             seed_products(db)

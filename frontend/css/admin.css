@@ -286,9 +286,68 @@
     padding: 0.45rem 0.6rem;
 }
 
+.admin-security-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: minmax(260px, 0.8fr) minmax(320px, 1.2fr);
+}
+
+.admin-user-form,
+.admin-users-list,
+.admin-audit-list {
+    background: var(--gray-pale);
+    border: 1px solid var(--gray-light);
+    border-radius: 14px;
+    padding: 1rem;
+}
+
+.admin-users-list,
+.admin-audit-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.admin-user-row,
+.admin-audit-row {
+    align-items: flex-start;
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 12px;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.85rem;
+}
+
+.admin-user-row div,
+.admin-audit-row div {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.admin-user-row span,
+.admin-user-row small,
+.admin-audit-row span,
+.admin-audit-row small {
+    color: var(--gray);
+    font-size: 0.82rem;
+}
+
+.admin-audit-row.warning {
+    border-color: #f59e0b;
+}
+
+.admin-audit-block {
+    margin-top: 1rem;
+}
+
 @media (max-width: 900px) {
     .admin-order-item,
     .orders-toolbar {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-security-grid {
         grid-template-columns: 1fr;
     }
 

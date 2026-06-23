@@ -1,10 +1,12 @@
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from backend.auth import admin_claims
 from backend.database import get_db
+from backend.models import User
+from backend.services.admin_security import record_admin_audit
 from backend.store_config import admin_store_config, update_store_settings
 
 
@@ -21,11 +23,36 @@ def get_admin_store_config(
 
 @router.put("")
 def update_admin_store_config(
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
-    _claims=Depends(admin_claims),
+    claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
+    previous_values = admin_store_config(db).get("values", {})
     try:
-        return update_store_settings(db, data.get("values", data))
+        result = update_store_settings(db, data.get("values", data))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    current_values = result.get("values", {})
+    changed_keys = [
+        key for key, value in current_values.items()
+        if str(previous_values.get(key, "")) != str(value)
+    ]
+    sensitive_keys = [
+        key for key in changed_keys
+        if key.startswith("SHIPPING_") or key.startswith("COUPON")
+    ]
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "store.config.updated",
+        admin_user=actor,
+        resource="store_config",
+        metadata={
+            "changed_keys": changed_keys,
+            "sensitive_keys": sensitive_keys,
+        },
+    )
+    db.commit()
+    return result

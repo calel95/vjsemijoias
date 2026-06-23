@@ -10,10 +10,13 @@ let currentOrderSearch = '';
 let editingId = null;
 let adminProducts = [];
 let adminOrders = [];
+let adminUsers = [];
+let adminAuditLogs = [];
 let imageUploadInitialized = false;
 let productPreviewInitialized = false;
 let catalogPdfInitialized = false;
 let storeConfigInitialized = false;
+let adminSecurityInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
 let importFolderFiles = [];
@@ -63,6 +66,7 @@ async function showAdminPanel() {
     apiLoaded = true;
     await applyStoreEnvironmentConfig();
     await loadAdminStoreConfig();
+    await loadAdminSecurity();
     renderAdminProducts();
     await loadAdminOrders();
     await updateStats();
@@ -81,6 +85,10 @@ async function showAdminPanel() {
     if (!storeConfigInitialized) {
         setupStoreConfigForm();
         storeConfigInitialized = true;
+    }
+    if (!adminSecurityInitialized) {
+        setupAdminSecurityForm();
+        adminSecurityInitialized = true;
     }
 }
 
@@ -170,6 +178,147 @@ async function handleStoreConfigSubmit(event) {
     fillStoreConfigForm(result.data.values || {});
     await applyStoreEnvironmentConfig();
     showToast('Configuracoes da loja atualizadas', 'success');
+}
+
+// ============================================
+// ADMINISTRADORES E AUDITORIA
+// ============================================
+
+function setupAdminSecurityForm() {
+    const form = document.getElementById('admin-user-form');
+    if (!form) return;
+    form.addEventListener('submit', handleAdminUserSubmit);
+}
+
+async function loadAdminSecurity() {
+    const usersResult = await API.getAdminUsers();
+    if (usersResult.success) {
+        adminUsers = usersResult.data || [];
+        renderAdminUsers();
+    }
+
+    const logsResult = await API.getAdminAuditLogs(80);
+    if (logsResult.success) {
+        adminAuditLogs = logsResult.data || [];
+        renderAdminAuditLogs();
+    }
+}
+
+function adminAuditLabel(action) {
+    return {
+        'admin.login.succeeded': 'Login admin realizado',
+        'admin.login.failed': 'Tentativa de login falhou',
+        'admin.user.created': 'Administrador criado',
+        'store.config.updated': 'Configuracoes da loja alteradas',
+        'catalog.imported': 'Catalogo importado',
+        'catalog.cleared': 'Catalogo limpo',
+    }[action] || action || 'Evento';
+}
+
+function adminAuditDetail(log) {
+    const metadata = log.metadata || {};
+    if (Array.isArray(metadata.sensitive_keys) && metadata.sensitive_keys.length) {
+        return `Campos sensiveis: ${metadata.sensitive_keys.join(', ')}`;
+    }
+    if (Array.isArray(metadata.changed_keys) && metadata.changed_keys.length) {
+        return `Campos: ${metadata.changed_keys.join(', ')}`;
+    }
+    if (typeof metadata.deleted === 'number') {
+        return `${metadata.deleted} produtos removidos`;
+    }
+    if (typeof metadata.products === 'number') {
+        return `${metadata.products} produtos, ${metadata.images || 0} imagens`;
+    }
+    if (metadata.email) {
+        return metadata.email;
+    }
+    return log.resource || '';
+}
+
+function renderAdminUsers() {
+    const container = document.getElementById('admin-users-list');
+    if (!container) return;
+
+    if (!adminUsers.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">ADM</div>
+                <p>Nenhum administrador encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminUsers.map(user => `
+        <div class="admin-user-row">
+            <div>
+                <strong>${escapeHTML(user.name || user.email)}</strong>
+                <span>${escapeHTML(user.email || '')}</span>
+            </div>
+            <div>
+                <small>Criado em ${formatOrderDate(user.created_at)}</small>
+                <small>Ultimo login ${formatOrderDate(user.last_login_at)}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderAdminAuditLogs() {
+    const container = document.getElementById('admin-audit-list');
+    if (!container) return;
+
+    if (!adminAuditLogs.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">LOG</div>
+                <p>Nenhum log encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminAuditLogs.map(log => `
+        <div class="admin-audit-row ${String(log.action || '').includes('failed') ? 'warning' : ''}">
+            <div>
+                <strong>${escapeHTML(adminAuditLabel(log.action))}</strong>
+                <span>${escapeHTML(adminAuditDetail(log))}</span>
+            </div>
+            <div>
+                <small>${formatOrderDate(log.created_at)}</small>
+                <small>${escapeHTML(log.ip_address || '')}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function handleAdminUserSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const name = document.getElementById('new-admin-name').value.trim();
+    const email = document.getElementById('new-admin-email').value.trim();
+    const password = document.getElementById('new-admin-password').value;
+    const submit = document.getElementById('admin-user-submit');
+
+    if (submit) {
+        submit.disabled = true;
+        submit.textContent = 'Criando...';
+    }
+
+    const result = await API.createAdminUser({ name, email, password });
+
+    if (submit) {
+        submit.disabled = false;
+        submit.textContent = 'Criar admin';
+    }
+
+    if (!result.success) {
+        showToast(result.error || 'Falha ao criar administrador', 'error');
+        return;
+    }
+
+    form.reset();
+    await loadAdminSecurity();
+    showToast('Administrador criado com sucesso', 'success');
 }
 
 // ============================================

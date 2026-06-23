@@ -245,6 +245,14 @@ const API = {
         return this.request('POST', '/auth/admin/users', userData);
     },
 
+    async getAdminUsers() {
+        return this.request('GET', '/auth/admin/users');
+    },
+
+    async getAdminAuditLogs(limit = 80) {
+        return this.request('GET', `/auth/admin/audit-logs?limit=${encodeURIComponent(limit)}`);
+    },
+
     async getMe() {
         return this.request('GET', '/auth/me');
     },

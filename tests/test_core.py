@@ -254,3 +254,14 @@ def test_admin_frontend_renders_order_event_timeline():
 
     assert 'orderEventsTimeline(order)' in admin_js
     assert 'order-events-timeline' in admin_css
+
+def test_admin_frontend_has_admin_security_panel():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert 'admin-user-form' in admin_html
+    assert 'admin-audit-list' in admin_html
+    assert 'loadAdminSecurity()' in admin_js
+    assert 'getAdminUsers()' in api_js
+    assert 'getAdminAuditLogs' in api_js

@@ -1,3 +1,5 @@
+from backend.database import SessionLocal
+from backend.models import AdminAuditLog
 from backend.store_config import store_settings
 from tests.helpers import admin_login, clear_store_setting_overrides, client
 
@@ -83,6 +85,17 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
         assert coupon.json()['discount_percent'] == 15.0
         assert old_coupon.status_code == 404
         assert order_with_old_coupon.status_code == 400
+        with SessionLocal() as db:
+            audit = (
+                db.query(AdminAuditLog)
+                .filter(AdminAuditLog.action == 'store.config.updated')
+                .order_by(AdminAuditLog.id.desc())
+                .first()
+            )
+            assert audit is not None
+            metadata = audit.to_dict()['metadata']
+            assert 'SHIPPING_MODE' in metadata['sensitive_keys']
+            assert 'COUPON_CODE' in metadata['sensitive_keys']
     finally:
         clear_store_setting_overrides()
 

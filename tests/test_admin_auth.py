@@ -181,6 +181,22 @@ def test_admin_can_create_another_admin_user():
     assert login.status_code == 200
     assert login.json()['user']['email'] == 'catalogo-admin@example.com'
 
+def test_admin_can_list_admin_users_with_last_login():
+    login = admin_login()
+    token = login.json()['token']
+
+    response = client.get(
+        '/api/auth/admin/users',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
+    assert response.status_code == 200
+    admins = response.json()
+    current_admin = next(item for item in admins if item['email'] == login.json()['user']['email'])
+    assert current_admin['is_admin'] is True
+    assert current_admin['created_at']
+    assert current_admin['last_login_at']
+
 def test_admin_route_rejects_regular_user_token_even_for_admin_user():
     login = admin_login()
     assert login.status_code == 200

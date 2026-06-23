@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 from pypdf import PdfReader
 
+from backend.database import SessionLocal
+from backend.models import AdminAuditLog
 from backend.config import FRONTEND_ROOT
 from backend.import_products import DEFAULT_SOURCE, import_catalog
 from tests.helpers import admin_login, catalog_totals, client
@@ -43,6 +45,15 @@ def test_admin_can_import_complete_catalog_folder():
     assert data['products'] == expected_products
     assert data['images'] == expected_images
     assert data['created'] == expected_products
+    with SessionLocal() as db:
+        audit = (
+            db.query(AdminAuditLog)
+            .filter(AdminAuditLog.action == 'catalog.imported')
+            .order_by(AdminAuditLog.id.desc())
+            .first()
+        )
+        assert audit is not None
+        assert audit.to_dict()['metadata']['products'] == expected_products
 
 def test_admin_catalog_import_rejects_unsupported_file_type():
     token = admin_login().json()['token']

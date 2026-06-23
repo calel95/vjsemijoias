@@ -90,6 +90,23 @@ def create_bootstrap_admin(db: Session, email: str, password: str):
     return admin_user
 
 
+def admin_user_to_dict(user: User, db: Session):
+    last_login = db.scalar(
+        select(AdminAuditLog.created_at)
+        .where(
+            AdminAuditLog.admin_user_id == user.id,
+            AdminAuditLog.action == "admin.login.succeeded",
+        )
+        .order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+        .limit(1)
+    )
+    return {
+        **user.to_dict(),
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "last_login_at": last_login.isoformat() if last_login else None,
+    }
+
+
 def fail_admin_login(db: Session, request: Request, email: str, message: str):
     record_admin_login_failure(request)
     record_admin_audit(
@@ -296,6 +313,17 @@ def create_admin_user(
     return {
         "user": admin_user.to_dict(),
     }
+
+
+@router.get("/admin/users")
+def list_admin_users(
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    admins = db.scalars(
+        select(User).where(User.is_admin.is_(True)).order_by(User.created_at.desc(), User.id.desc())
+    ).all()
+    return [admin_user_to_dict(user, db) for user in admins]
 
 
 @router.get("/admin/audit-logs")

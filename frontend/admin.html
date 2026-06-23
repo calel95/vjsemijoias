@@ -267,6 +267,57 @@
                 </form>
             </div>
 
+            <div class="admin-card admin-security-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Administradores e auditoria</h2>
+                        <p>Gerencie acessos administrativos e acompanhe eventos sensiveis da loja.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminSecurity()">Atualizar logs</button>
+                </div>
+
+                <div class="admin-security-grid">
+                    <form id="admin-user-form" class="admin-user-form">
+                        <h3>Criar administrador</h3>
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="new-admin-name" autocomplete="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" id="new-admin-email" autocomplete="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha temporaria</label>
+                            <input type="password" id="new-admin-password" autocomplete="new-password" minlength="8" required>
+                        </div>
+                        <button class="btn btn-primary" id="admin-user-submit" type="submit">
+                            Criar admin
+                        </button>
+                    </form>
+
+                    <div>
+                        <h3>Admins cadastrados</h3>
+                        <div id="admin-users-list" class="admin-users-list">
+                            <div class="empty-admin-list">
+                                <div class="icon">ADM</div>
+                                <p>Nenhum administrador carregado ainda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-audit-block">
+                    <h3>Auditoria recente</h3>
+                    <div id="admin-audit-list" class="admin-audit-list">
+                        <div class="empty-admin-list">
+                            <div class="icon">LOG</div>
+                            <p>Nenhum log carregado ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="admin-grid">
                 <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
                 <div class="admin-card">

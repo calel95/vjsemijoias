@@ -4,7 +4,7 @@ import shutil
 from pathlib import PurePosixPath
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,7 +12,8 @@ from sqlalchemy.orm import Session
 from backend.auth import admin_claims
 from backend.config import IMPORT_UPLOAD_ROOT
 from backend.database import get_db
-from backend.models import Product
+from backend.models import Product, User
+from backend.services.admin_security import record_admin_audit
 from backend.services.common import get_or_404, normalize_bool
 from backend.services.product_media import (
     normalize_stock_status,
@@ -230,8 +231,9 @@ def delete_product(
 
 @router.delete("/admin/products")
 def delete_all_products(
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
-    _claims=Depends(admin_claims),
+    claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     if data.get("confirm") != "LIMPAR CATALOGO":
@@ -243,6 +245,15 @@ def delete_all_products(
     total = len(products)
     for product in products:
         db.delete(product)
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "catalog.cleared",
+        admin_user=actor,
+        resource="catalog",
+        metadata={"deleted": total},
+    )
     db.commit()
     return {
         "message": "Catalogo limpo com sucesso",
@@ -252,8 +263,10 @@ def delete_all_products(
 
 @router.post("/products/import-folder")
 def import_product_folder(
+    request: Request,
     files: list[UploadFile] = File(...),
-    _claims=Depends(admin_claims),
+    claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
 ):
     normalized_files = []
     for uploaded in files:
@@ -323,6 +336,16 @@ def import_product_folder(
             raise HTTPException(status_code=400, detail=f"Catálogo inválido: {exc}") from exc
     finally:
         shutil.rmtree(temp_root, ignore_errors=True)
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "catalog.imported",
+        admin_user=actor,
+        resource="catalog",
+        metadata=summary,
+    )
+    db.commit()
     return {"message": "Catálogo importado com sucesso", **summary}
 
 
