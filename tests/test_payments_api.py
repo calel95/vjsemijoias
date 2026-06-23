@@ -1,3 +1,5 @@
+from backend.database import SessionLocal
+from backend.models import OrderEvent
 from tests.helpers import FakeResponse, client, order_payload
 
 
@@ -77,6 +79,8 @@ def test_infinitepay_return_confirms_payment(monkeypatch):
     assert data['payment']['status'] == 'paid'
     assert data['payment']['method'] == 'credit_card'
     assert data['order']['status'] == 'paid'
+    assert [event['status'] for event in data['order']['events']] == ['pending', 'paid']
+    assert data['order']['events'][-1]['metadata']['provider'] == 'infinitepay'
 
 def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
     def fake_request(self, method, url, **kwargs):
@@ -115,3 +119,7 @@ def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
     ).json()
     assert payment['status'] == 'paid'
     assert payment['method'] == 'pix'
+    with SessionLocal() as db:
+        events = db.query(OrderEvent).filter_by(order_id=created['order']['id']).all()
+        assert [event.status for event in events] == ['pending', 'paid']
+        assert events[-1].to_dict()['metadata']['source'] == 'webhook'

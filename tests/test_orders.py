@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from backend.database import SessionLocal
-from backend.models import Order, Product
+from backend.models import Order, OrderEvent, Product
 from tests.helpers import admin_login, client
 
 
@@ -30,12 +30,16 @@ def test_order_total_is_calculated_by_server():
     assert order['discount'] == 29.98
     assert order['total'] == 269.82
     assert order['status'] == 'pending'
+    assert order['events'][0]['event_type'] == 'order.status.pending'
+    assert order['events'][0]['message'] == 'Pedido criado'
 
     with SessionLocal() as db:
         stored = db.get(Order, order['id'])
         assert stored.subtotal == Decimal('299.80')
         assert stored.discount == Decimal('29.98')
         assert stored.total == Decimal('269.82')
+        events = db.query(OrderEvent).filter_by(order_id=order['id']).all()
+        assert [event.status for event in events] == ['pending']
 
 def test_order_rejects_invalid_cpf_and_sanitizes_customer_text():
     invalid = client.post('/api/orders', json={
@@ -106,6 +110,7 @@ def test_admin_can_update_order_status():
     assert order_response.status_code == 201
     assert updated.status_code == 200
     assert updated.json()['status'] == 'processing'
+    assert [event['status'] for event in updated.json()['events']] == ['pending', 'processing']
     assert invalid.status_code == 400
 
 def test_out_of_stock_product_cannot_be_ordered():
@@ -186,5 +191,6 @@ def test_paid_order_deducts_stock_once_and_blocks_oversell():
     assert paid_once.status_code == 200
     assert paid_twice.status_code == 200
     assert paid_twice.json()['stock_deducted'] is True
+    assert [event['status'] for event in paid_twice.json()['events']] == ['pending', 'paid']
     assert product['stock_quantity'] == 0
     assert product['stock_status'] == 'out_of_stock'

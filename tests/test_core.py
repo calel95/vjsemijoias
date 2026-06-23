@@ -166,6 +166,7 @@ def test_alembic_migrations_create_current_schema():
             'payments',
             'newsletters',
             'coupons',
+            'order_events',
             'alembic_version',
         }.issubset(tables)
         assert {'is_active', 'stock_status'}.issubset(product_columns)
@@ -246,3 +247,10 @@ def test_admin_frontend_has_stock_management_fields():
     assert 'product-stock-quantity' in admin_html
     assert 'product-low-stock-alert' in admin_html
     assert 'stock_is_low' in admin_js
+
+def test_admin_frontend_renders_order_event_timeline():
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    admin_css = (FRONTEND_ROOT / 'css' / 'admin.css').read_text(encoding='utf-8')
+
+    assert 'orderEventsTimeline(order)' in admin_js
+    assert 'order-events-timeline' in admin_css

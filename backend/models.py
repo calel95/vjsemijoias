@@ -197,6 +197,11 @@ class Order(Base):
     stock_deducted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     payment: Mapped["Payment | None"] = relationship(back_populates="order", uselist=False)
+    events: Mapped[list["OrderEvent"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+        order_by="OrderEvent.created_at",
+    )
 
     def to_dict(self):
         return {
@@ -222,6 +227,38 @@ class Order(Base):
             "status": self.status,
             "coupon": self.coupon,
             "stock_deducted": self.stock_deducted,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "events": [event.to_dict() for event in self.events],
+        }
+
+
+class OrderEvent(Base):
+    __tablename__ = "order_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    message: Mapped[str] = mapped_column(String(255))
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    order: Mapped[Order] = relationship(back_populates="events")
+    actor_user: Mapped[User | None] = relationship()
+
+    def to_dict(self):
+        try:
+            metadata = json.loads(self.metadata_json) if self.metadata_json else {}
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        return {
+            "id": self.id,
+            "order_id": self.order_id,
+            "event_type": self.event_type,
+            "status": self.status,
+            "message": self.message,
+            "actor_user_id": self.actor_user_id,
+            "metadata": metadata,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

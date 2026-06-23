@@ -11,6 +11,7 @@ from backend.database import get_db
 from backend.infinitepay_client import InfinitePayError, checkout_token
 from backend.models import Payment
 from backend.services.orders import create_local_order, validate_order_data
+from backend.services.order_events import record_status_event
 from backend.services.payments import cents, infinitepay, public_url, update_infinitepay_payment
 from backend.services.stock import deduct_stock_for_order
 from backend.store_config import effective_store_settings
@@ -103,6 +104,12 @@ def create_infinitepay_checkout(
         payment.status = "failed"
         payment.status_detail = str(exc)
         order.status = "failed"
+        record_status_event(
+            db,
+            order,
+            "failed",
+            metadata={"provider": "infinitepay", "reason": str(exc)},
+        )
         db.commit()
         return JSONResponse(
             status_code=exc.status_code,
@@ -145,8 +152,20 @@ def confirm_infinitepay_payment(
                 "capture_method": data.get("capture_method"),
             }
         )
+        was_paid = payment.status == "paid" and payment.order.status == "paid"
         if update_infinitepay_payment(payment, provider_data):
             deduct_stock_for_order(db, payment.order)
+            if not was_paid:
+                record_status_event(
+                    db,
+                    payment.order,
+                    "paid",
+                    metadata={
+                        "provider": "infinitepay",
+                        "transaction_nsu": data["transaction_nsu"],
+                        "slug": data["slug"],
+                    },
+                )
         db.commit()
     except (InfinitePayError, ValueError) as exc:
         return JSONResponse(
@@ -183,8 +202,21 @@ def infinitepay_webhook(
                 "capture_method": data.get("capture_method"),
             }
         )
+        was_paid = payment.status == "paid" and payment.order.status == "paid"
         if update_infinitepay_payment(payment, provider_data):
             deduct_stock_for_order(db, payment.order)
+            if not was_paid:
+                record_status_event(
+                    db,
+                    payment.order,
+                    "paid",
+                    metadata={
+                        "provider": "infinitepay",
+                        "transaction_nsu": transaction_nsu,
+                        "slug": slug,
+                        "source": "webhook",
+                    },
+                )
         db.commit()
     except (InfinitePayError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

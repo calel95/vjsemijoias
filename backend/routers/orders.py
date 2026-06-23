@@ -17,6 +17,7 @@ from backend.services.orders import (
     normalize_order_status,
     validate_order_data,
 )
+from backend.services.order_events import record_status_event
 from backend.services.validation import normalize_email
 from backend.store_config import effective_store_settings, public_store_config
 
@@ -65,18 +66,22 @@ def get_order(
 def update_order_status(
     order_id: str,
     data: dict[str, Any] = Body(default_factory=dict),
-    _claims=Depends(admin_claims),
+    claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     order = get_or_404(db, Order, order_id)
     status = normalize_order_status(data.get("status"))
+    previous_status = order.status
+    actor_user_id = int(claims["sub"]) if claims and claims.get("sub") else None
     if status == "paid":
         try:
-            apply_paid_status(db, order)
+            apply_paid_status(db, order, actor_user_id=actor_user_id)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
         order.status = status
+        if previous_status != status:
+            record_status_event(db, order, status, actor_user_id=actor_user_id)
     db.commit()
     return order.to_dict()
 

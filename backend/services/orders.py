@@ -15,6 +15,7 @@ from backend.services.validation import (
     validate_cpf,
 )
 from backend.services.stock import deduct_stock_for_order, ensure_orderable_stock
+from backend.services.order_events import record_status_event
 from backend.store_config import effective_store_settings
 
 
@@ -213,6 +214,12 @@ def create_local_order(db: Session, data, totals, payment_method, claims=None):
         coupon=totals["coupon"],
     )
     db.add(order)
+    record_status_event(
+        db,
+        order,
+        "pending",
+        metadata={"payment_method": payment_method},
+    )
     return order
 
 
@@ -223,6 +230,9 @@ def normalize_order_status(value):
     return status
 
 
-def apply_paid_status(db: Session, order: Order):
+def apply_paid_status(db: Session, order: Order, *, actor_user_id: int | None = None):
+    was_paid = order.status == "paid"
     deduct_stock_for_order(db, order)
     order.status = "paid"
+    if not was_paid:
+        record_status_event(db, order, "paid", actor_user_id=actor_user_id)

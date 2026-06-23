@@ -227,6 +227,32 @@
     margin: 0;
 }
 
+.order-events-timeline {
+    border-top: 1px solid var(--gray-light);
+    display: grid;
+    gap: 0.35rem;
+    grid-column: 1 / -1;
+    padding-top: 0.65rem;
+}
+
+.order-event-row {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.order-event-row span {
+    color: var(--black);
+    font-size: 0.86rem;
+}
+
+.order-event-row small {
+    color: var(--gray);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
 .order-status {
     align-self: flex-start;
     border-radius: 999px;

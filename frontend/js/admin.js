@@ -729,6 +729,21 @@ function orderItemsSummary(order) {
         .join(', ') + (items.length > 3 ? ` +${items.length - 3}` : '');
 }
 
+function orderEventsTimeline(order) {
+    const events = Array.isArray(order.events) ? order.events : [];
+    if (!events.length) return '';
+    return `
+        <div class="order-events-timeline">
+            ${events.slice(-4).map(event => `
+                <div class="order-event-row">
+                    <span>${escapeHTML(event.message || orderStatusLabel(event.status))}</span>
+                    <small>${formatOrderDate(event.created_at)}</small>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 async function loadAdminOrders() {
     const result = await API.getOrders();
     if (!result.success) {
@@ -781,6 +796,7 @@ function renderAdminOrders() {
                 <span>${escapeHTML(order.customer_phone || '')}</span>
             </div>
             <p class="order-items-summary">${escapeHTML(orderItemsSummary(order))}</p>
+            ${orderEventsTimeline(order)}
             <div class="order-footer">
                 <strong>${formatPrice(order.total || 0)}</strong>
                 <select onchange="changeOrderStatus('${escapeHTML(order.id)}', this.value)">
