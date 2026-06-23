@@ -120,6 +120,11 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(200), unique=True)
     password_hash: Mapped[str] = mapped_column(String(200))
+    password_reset_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_reset_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     cpf: Mapped[str | None] = mapped_column(String(20), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     birthdate: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -195,6 +200,12 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)
     stock_deducted: Mapped[bool] = mapped_column(Boolean, default=False)
+    idempotency_key: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    public_token: Mapped[str | None] = mapped_column(String(100), unique=True, nullable=True)
+    tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    tracking_carrier: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     payment: Mapped["Payment | None"] = relationship(back_populates="order", uselist=False)
     events: Mapped[list["OrderEvent"]] = relationship(
@@ -231,6 +242,11 @@ class Order(Base):
             "status": self.status,
             "coupon": self.coupon,
             "stock_deducted": self.stock_deducted,
+            "public_token": self.public_token,
+            "tracking_code": self.tracking_code,
+            "tracking_carrier": self.tracking_carrier,
+            "shipped_at": self.shipped_at.isoformat() if self.shipped_at else None,
+            "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "events": [event.to_dict() for event in self.events],
         }
@@ -278,6 +294,7 @@ class Payment(Base):
     )
     provider_payment_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     checkout_token: Mapped[str] = mapped_column(String(100), unique=True)
+    checkout_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     method: Mapped[str] = mapped_column(String(30))
     status: Mapped[str] = mapped_column(String(50), default="pending")
     status_detail: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -300,6 +317,7 @@ class Payment(Base):
             "status": self.status,
             "status_detail": self.status_detail,
             "checkout_token": self.checkout_token,
+            "checkout_url": self.checkout_url,
         }
         if include_pix and self.method == "pix":
             data.update(

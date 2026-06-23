@@ -37,6 +37,65 @@ def test_admin_can_create_product_with_api_token():
         stored = db.get(Product, product['id'])
         assert stored.price == Decimal('89.90')
 
+def test_public_products_support_pagination_without_breaking_legacy_list():
+    legacy_response = client.get('/api/products')
+    paginated_response = client.get('/api/products?page=1&per_page=3')
+
+    assert legacy_response.status_code == 200
+    assert isinstance(legacy_response.json(), list)
+    assert paginated_response.status_code == 200
+    data = paginated_response.json()
+    assert list(data) == [
+        'items',
+        'page',
+        'per_page',
+        'total',
+        'total_pages',
+        'has_next',
+        'has_previous',
+    ]
+    assert len(data['items']) == 3
+    assert data['page'] == 1
+    assert data['per_page'] == 3
+    assert data['total'] >= len(data['items'])
+    assert data['has_previous'] is False
+
+def test_categories_are_generated_from_active_products():
+    token = admin_login().json()['token']
+    active = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Tornozeleira Categoria Dinamica',
+            'category': 'tornozeleiras',
+            'categoryName': 'Tornozeleiras',
+            'price': 79.9,
+            'description': 'Categoria criada a partir do catalogo.',
+        },
+    )
+    inactive = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Categoria Oculta',
+            'category': 'ocultos',
+            'categoryName': 'Ocultos',
+            'price': 49.9,
+            'description': 'Categoria inativa nao deve aparecer.',
+            'is_active': False,
+        },
+    )
+    response = client.get('/api/categories')
+    categories = response.json()
+    ids = {category['id'] for category in categories}
+
+    assert active.status_code == 201
+    assert inactive.status_code == 201
+    assert response.status_code == 200
+    assert categories[0]['id'] == 'all'
+    assert 'tornozeleiras' in ids
+    assert 'ocultos' not in ids
+
 def test_admin_can_manage_product_stock_fields():
     token = admin_login().json()['token']
 

@@ -7,12 +7,13 @@ from sqlalchemy.orm import Session
 
 from backend.auth import admin_claims, optional_claims, required_claims
 from backend.database import get_db
-from backend.models import Coupon, Newsletter, Order, Product, User
+from backend.models import Coupon, Newsletter, Order, Product, User, utc_now
 from backend.services.common import get_or_404
 from backend.services.orders import (
     apply_paid_status,
     configured_shipping,
     create_local_order,
+    existing_order_by_idempotency_key,
     money,
     normalize_order_status,
     validate_order_data,
@@ -23,7 +24,11 @@ from backend.services.coupons import (
     validate_coupon_for_order,
 )
 from backend.services.order_events import record_status_event
-from backend.services.validation import normalize_email
+from backend.services.transactional_emails import (
+    send_order_created_email,
+    send_order_shipped_email,
+)
+from backend.services.validation import clean_text, normalize_email
 from backend.store_config import effective_store_settings, public_store_config
 
 
@@ -37,6 +42,9 @@ def create_order(
     db: Session = Depends(get_db),
 ):
     try:
+        existing_order = existing_order_by_idempotency_key(db, data)
+        if existing_order:
+            return existing_order.to_dict()
         totals = validate_order_data(db, data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -44,6 +52,7 @@ def create_order(
         db, data, totals, data.get("payment_method", "manual"), claims
     )
     db.commit()
+    send_order_created_email(order)
     return order.to_dict()
 
 
@@ -53,6 +62,20 @@ def get_orders(claims=Depends(required_claims), db: Session = Depends(get_db)):
     if not claims.get("is_admin"):
         statement = statement.where(Order.user_id == int(claims["sub"]))
     return [order.to_dict() for order in db.scalars(statement).all()]
+
+
+@router.get("/orders/{order_id}/public")
+def get_public_order(
+    order_id: str,
+    token: str = "",
+    db: Session = Depends(get_db),
+):
+    order = get_or_404(db, Order, order_id)
+    if not order.public_token or token != order.public_token:
+        raise HTTPException(status_code=404, detail="Pedido nao encontrado")
+    data = order.to_dict()
+    data["payment"] = order.payment.to_dict(include_pix=False) if order.payment else None
+    return data
 
 
 @router.get("/orders/{order_id}")
@@ -78,6 +101,33 @@ def update_order_status(
     status = normalize_order_status(data.get("status"))
     previous_status = order.status
     actor_user_id = int(claims["sub"]) if claims and claims.get("sub") else None
+    tracking_changed = False
+    tracking_metadata = {}
+    if "tracking_code" in data:
+        tracking_code = clean_text(
+            data.get("tracking_code"),
+            field="tracking_code",
+            max_length=100,
+        )
+        tracking_changed = tracking_code != (order.tracking_code or "")
+        order.tracking_code = tracking_code or None
+        tracking_metadata["tracking_code"] = order.tracking_code
+    if "tracking_carrier" in data:
+        tracking_carrier = clean_text(
+            data.get("tracking_carrier"),
+            field="tracking_carrier",
+            max_length=100,
+        )
+        tracking_changed = tracking_changed or tracking_carrier != (order.tracking_carrier or "")
+        order.tracking_carrier = tracking_carrier or None
+        tracking_metadata["tracking_carrier"] = order.tracking_carrier
+    if status == "shipped" and not order.shipped_at:
+        order.shipped_at = utc_now()
+    if status == "delivered" and not order.delivered_at:
+        order.delivered_at = utc_now()
+    should_send_shipped_email = status == "shipped" and (
+        previous_status != status or tracking_changed
+    )
     if status == "paid":
         try:
             apply_paid_status(db, order, actor_user_id=actor_user_id)
@@ -85,9 +135,17 @@ def update_order_status(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
         order.status = status
-        if previous_status != status:
-            record_status_event(db, order, status, actor_user_id=actor_user_id)
+        if previous_status != status or tracking_changed:
+            record_status_event(
+                db,
+                order,
+                status,
+                actor_user_id=actor_user_id,
+                metadata=tracking_metadata,
+            )
     db.commit()
+    if should_send_shipped_email:
+        send_order_shipped_email(order)
     return order.to_dict()
 
 

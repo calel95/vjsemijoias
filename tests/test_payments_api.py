@@ -39,8 +39,33 @@ def test_create_infinitepay_checkout_returns_redirect(monkeypatch):
     data = response.json()
     assert data['payment']['status'] == 'pending'
     assert data['payment']['provider'] == 'infinitepay'
+    assert data['payment']['checkout_url'] == 'https://checkout.infinitepay.com.br/teste'
     assert data['checkout_url'] == 'https://checkout.infinitepay.com.br/teste'
-    assert data['order']['status'] == 'pending'
+    assert data['order']['status'] == 'payment_pending'
+
+def test_infinitepay_checkout_is_idempotent(monkeypatch):
+    calls = {'links': 0}
+
+    def fake_request(self, method, url, **kwargs):
+        if url.endswith('/links'):
+            calls['links'] += 1
+            return FakeResponse({'url': 'https://checkout.infinitepay.com.br/idempotente'})
+        return FakeResponse({'success': False, 'paid': False, 'amount': 14990})
+
+    monkeypatch.setattr('backend.infinitepay_client.requests.Session.request', fake_request)
+    payload = order_payload()
+    payload['customer_email'] = 'checkout-idempotente@example.com'
+    payload['idempotency_key'] = 'checkout-idempotente-001'
+
+    first = client.post('/api/payments/infinitepay/checkout', json=payload)
+    second = client.post('/api/payments/infinitepay/checkout', json=payload)
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert calls['links'] == 1
+    assert second.json()['reused'] is True
+    assert second.json()['order']['id'] == first.json()['order']['id']
+    assert second.json()['checkout_url'] == first.json()['checkout_url']
 
 def test_infinitepay_return_confirms_payment(monkeypatch):
     def fake_request(self, method, url, **kwargs):
@@ -79,7 +104,7 @@ def test_infinitepay_return_confirms_payment(monkeypatch):
     assert data['payment']['status'] == 'paid'
     assert data['payment']['method'] == 'credit_card'
     assert data['order']['status'] == 'paid'
-    assert [event['status'] for event in data['order']['events']] == ['pending', 'paid']
+    assert [event['status'] for event in data['order']['events']] == ['payment_pending', 'paid']
     assert data['order']['events'][-1]['metadata']['provider'] == 'infinitepay'
 
 def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
@@ -121,5 +146,5 @@ def test_infinitepay_webhook_checks_provider_before_approval(monkeypatch):
     assert payment['method'] == 'pix'
     with SessionLocal() as db:
         events = db.query(OrderEvent).filter_by(order_id=created['order']['id']).all()
-        assert [event.status for event in events] == ['pending', 'paid']
+        assert [event.status for event in events] == ['payment_pending', 'paid']
         assert events[-1].to_dict()['metadata']['source'] == 'webhook'

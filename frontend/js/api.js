@@ -99,11 +99,13 @@ const API = {
     // PRODUTOS
     // ============================================
 
-    async getProducts(category = 'all', search = '') {
+    async getProducts(category = 'all', search = '', options = {}) {
         let endpoint = '/products';
         const params = [];
-        if (category && category !== 'all') params.push(`category=${category}`);
+        if (category && category !== 'all') params.push(`category=${encodeURIComponent(category)}`);
         if (search) params.push(`search=${encodeURIComponent(search)}`);
+        if (options.page) params.push(`page=${encodeURIComponent(options.page)}`);
+        if (options.perPage) params.push(`per_page=${encodeURIComponent(options.perPage)}`);
         if (params.length) endpoint += '?' + params.join('&');
 
         return this.request('GET', endpoint);
@@ -233,6 +235,21 @@ const API = {
         return result;
     },
 
+    async requestPasswordReset(email) {
+        return this.request('POST', '/auth/password-reset/request', { email });
+    },
+
+    async confirmPasswordReset(token, password) {
+        const result = await this.request('POST', '/auth/password-reset/confirm', {
+            token,
+            password,
+        });
+        if (result.success) {
+            this.setToken(result.data.token || 'cookie');
+        }
+        return result;
+    },
+
     async adminLogin(email, password) {
         const result = await this.request('POST', '/auth/admin/login', { email, password });
         if (result.success && result.data.token) {
@@ -317,8 +334,18 @@ const API = {
         return this.request('GET', `/orders/${orderId}`);
     },
 
-    async updateOrderStatus(orderId, status) {
-        return this.request('PUT', `/admin/orders/${encodeURIComponent(orderId)}/status`, { status });
+    async getPublicOrder(orderId, token) {
+        return this.request(
+            'GET',
+            `/orders/${encodeURIComponent(orderId)}/public?token=${encodeURIComponent(token)}`
+        );
+    },
+
+    async updateOrderStatus(orderId, status, data = {}) {
+        return this.request('PUT', `/admin/orders/${encodeURIComponent(orderId)}/status`, {
+            status,
+            ...data,
+        });
     },
 
     // ============================================

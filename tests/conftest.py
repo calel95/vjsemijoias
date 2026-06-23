@@ -19,11 +19,14 @@ import backend.models  # noqa: E402,F401
 Base.metadata.create_all(engine)
 
 from backend.app import app as _app  # noqa: E402,F401
+from backend.services.email import clear_email_outbox  # noqa: E402
 from backend.services.rate_limit import clear_rate_limit_state  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def reset_rate_limit_state():
     clear_rate_limit_state()
+    clear_email_outbox()
     yield
     clear_rate_limit_state()
+    clear_email_outbox()

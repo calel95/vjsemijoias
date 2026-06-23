@@ -1019,7 +1019,7 @@ async function updateStats() {
     document.getElementById('stat-categories').textContent = categories;
     document.getElementById('stat-avg-price').textContent = formatPrice(avgPrice);
     document.getElementById('stat-orders-pending').textContent =
-        adminOrders.filter(order => order.status === 'pending').length;
+        adminOrders.filter(order => ['pending', 'payment_pending'].includes(order.status)).length;
     document.getElementById('stat-orders-paid').textContent =
         adminOrders.filter(order => ['paid', 'processing', 'shipped', 'delivered'].includes(order.status)).length;
 }
@@ -1031,6 +1031,7 @@ async function updateStats() {
 function orderStatusLabel(status) {
     return {
         pending: 'Pendente',
+        payment_pending: 'Aguardando pagamento',
         paid: 'Pago',
         processing: 'Em separacao',
         shipped: 'Enviado',
@@ -1073,6 +1074,16 @@ function orderEventsTimeline(order) {
                     <small>${formatOrderDate(event.created_at)}</small>
                 </div>
             `).join('')}
+        </div>
+    `;
+}
+
+function orderTrackingSummary(order) {
+    if (!order.tracking_code && !order.tracking_carrier) return '';
+    return `
+        <div class="order-tracking-summary">
+            <span>Rastreio: ${escapeHTML(order.tracking_code || '-')}</span>
+            <small>${escapeHTML(order.tracking_carrier || 'Transportadora nao informada')}</small>
         </div>
     `;
 }
@@ -1129,11 +1140,12 @@ function renderAdminOrders() {
                 <span>${escapeHTML(order.customer_phone || '')}</span>
             </div>
             <p class="order-items-summary">${escapeHTML(orderItemsSummary(order))}</p>
+            ${orderTrackingSummary(order)}
             ${orderEventsTimeline(order)}
             <div class="order-footer">
                 <strong>${formatPrice(order.total || 0)}</strong>
                 <select onchange="changeOrderStatus('${escapeHTML(order.id)}', this.value)">
-                    ${['pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'].map(status => `
+                    ${['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'].map(status => `
                         <option value="${status}" ${order.status === status ? 'selected' : ''}>${orderStatusLabel(status)}</option>
                     `).join('')}
                 </select>
@@ -1143,7 +1155,23 @@ function renderAdminOrders() {
 }
 
 async function changeOrderStatus(orderId, status) {
-    const result = await API.updateOrderStatus(orderId, status);
+    const payload = {};
+    if (status === 'shipped') {
+        const order = adminOrders.find(item => item.id === orderId) || {};
+        const trackingCode = window.prompt('Codigo de rastreio:', order.tracking_code || '');
+        if (trackingCode === null) {
+            renderAdminOrders();
+            return;
+        }
+        const trackingCarrier = window.prompt('Transportadora:', order.tracking_carrier || '');
+        if (trackingCarrier === null) {
+            renderAdminOrders();
+            return;
+        }
+        payload.tracking_code = trackingCode.trim();
+        payload.tracking_carrier = trackingCarrier.trim();
+    }
+    const result = await API.updateOrderStatus(orderId, status, payload);
     if (!result.success) {
         showToast(result.error || 'Erro ao atualizar pedido', 'error');
         return;

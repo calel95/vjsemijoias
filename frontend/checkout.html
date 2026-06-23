@@ -99,6 +99,7 @@
     <script>
         let paymentPollTimer = null;
         let checkoutBusy = false;
+        const CHECKOUT_IDEMPOTENCY_KEY = 'vj_checkout_idempotency_key';
 
         function escapeAttribute(value) {
             return String(value || '')
@@ -345,6 +346,17 @@
             return document.querySelector(`#checkout-form [name="${name}"]`)?.value?.trim() || '';
         }
 
+        function getCheckoutIdempotencyKey() {
+            let key = localStorage.getItem(CHECKOUT_IDEMPOTENCY_KEY);
+            if (!key) {
+                key = window.crypto?.randomUUID
+                    ? window.crypto.randomUUID()
+                    : `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                localStorage.setItem(CHECKOUT_IDEMPOTENCY_KEY, key);
+            }
+            return key;
+        }
+
         function showMissingFields(fields, title) {
             const labels = {
                 name: 'nome',
@@ -408,7 +420,8 @@
                 address_city: data.city,
                 address_state: data.state,
                 items: Cart.items.map(item => ({ id: item.id, quantity: item.quantity })),
-                coupon: localStorage.getItem('vj_coupon') || ''
+                coupon: localStorage.getItem('vj_coupon') || '',
+                idempotency_key: getCheckoutIdempotencyKey()
             };
         }
 
@@ -482,6 +495,7 @@
 
         function finishCheckout(order, payment) {
             Cart.clear();
+            localStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
             localStorage.removeItem('vj_coupon');
             localStorage.removeItem('vj_coupon_percent');
             document.getElementById('order-id').textContent = order.id;

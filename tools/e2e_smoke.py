@@ -234,6 +234,10 @@ def run():
             "status pagamento pendente",
         ).json()
         assert_true(status["status"] == "pending", "pagamento deveria iniciar pendente")
+        assert_true(
+            checkout["order"]["status"] == "payment_pending",
+            "pedido deveria aguardar pagamento apos checkout",
+        )
         confirmed = assert_status(
             client.post(
                 "/api/payments/infinitepay/confirm",

@@ -320,6 +320,25 @@
     padding-top: 0.65rem;
 }
 
+.order-tracking-summary {
+    border-top: 1px solid var(--gray-light);
+    display: grid;
+    gap: 0.25rem;
+    grid-column: 1 / -1;
+    padding-top: 0.65rem;
+}
+
+.order-tracking-summary span {
+    color: var(--black);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.order-tracking-summary small {
+    color: var(--gray);
+    font-size: 0.78rem;
+}
+
 .order-event-row {
     align-items: center;
     display: flex;

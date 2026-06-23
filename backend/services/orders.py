@@ -22,6 +22,7 @@ from backend.store_config import effective_store_settings
 
 ORDER_STATUSES = {
     "pending",
+    "payment_pending",
     "paid",
     "processing",
     "shipped",
@@ -188,6 +189,11 @@ def validate_order_data(db: Session, data):
     )
     data["address_city"] = clean_text(data.get("address_city"), field="address_city", max_length=100)
     data["address_state"] = clean_text(data.get("address_state"), field="address_state", max_length=10)
+    data["idempotency_key"] = clean_text(
+        data.get("idempotency_key"),
+        field="idempotency_key",
+        max_length=100,
+    )
     return calculate_order(
         db,
         data["items"],
@@ -197,7 +203,22 @@ def validate_order_data(db: Session, data):
     )
 
 
-def create_local_order(db: Session, data, totals, payment_method, claims=None):
+def existing_order_by_idempotency_key(db: Session, data):
+    key = clean_text(data.get("idempotency_key"), field="idempotency_key", max_length=100)
+    if not key:
+        return None
+    return db.scalar(select(Order).where(Order.idempotency_key == key))
+
+
+def create_local_order(
+    db: Session,
+    data,
+    totals,
+    payment_method,
+    claims=None,
+    *,
+    initial_status="pending",
+):
     order = Order(
         id="VJ" + datetime.now().strftime("%Y%m%d%H%M%S") + secrets.token_hex(2).upper(),
         user_id=int(claims["sub"]) if claims else None,
@@ -218,8 +239,10 @@ def create_local_order(db: Session, data, totals, payment_method, claims=None):
         discount=totals["discount"],
         total=totals["total"],
         payment_method=payment_method,
-        status="pending",
+        status=initial_status,
         coupon=totals["coupon"],
+        idempotency_key=data.get("idempotency_key") or None,
+        public_token=secrets.token_urlsafe(24),
     )
     db.add(order)
     if totals.get("coupon_model") and totals["discount"] > Decimal("0.00"):
@@ -234,7 +257,7 @@ def create_local_order(db: Session, data, totals, payment_method, claims=None):
     record_status_event(
         db,
         order,
-        "pending",
+        initial_status,
         metadata={"payment_method": payment_method},
     )
     return order

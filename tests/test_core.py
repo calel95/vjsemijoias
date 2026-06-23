@@ -78,6 +78,48 @@ def test_rate_limit_blocks_auth_requests_and_sets_headers():
         object.__setattr__(settings, 'rate_limit_global_per_minute', original_global)
         clear_rate_limit_state()
 
+def test_rate_limit_blocks_mass_registration_by_ip():
+    original_enabled = settings.rate_limit_enabled
+    original_auth = settings.rate_limit_auth_per_minute
+    original_register = settings.rate_limit_register_per_hour
+    original_global = settings.rate_limit_global_per_minute
+    try:
+        object.__setattr__(settings, 'rate_limit_enabled', True)
+        object.__setattr__(settings, 'rate_limit_auth_per_minute', 100)
+        object.__setattr__(settings, 'rate_limit_register_per_hour', 2)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', 100)
+        clear_rate_limit_state()
+
+        headers = {'X-Forwarded-For': '203.0.113.12'}
+        first = client.post('/api/auth/register', headers=headers, json={
+            'name': 'Cliente Rate Limit 1',
+            'email': 'rate-limit-register-1@example.com',
+            'password': 'senha123',
+        })
+        second = client.post('/api/auth/register', headers=headers, json={
+            'name': 'Cliente Rate Limit 2',
+            'email': 'rate-limit-register-2@example.com',
+            'password': 'senha123',
+        })
+        blocked = client.post('/api/auth/register', headers=headers, json={
+            'name': 'Cliente Rate Limit 3',
+            'email': 'rate-limit-register-3@example.com',
+            'password': 'senha123',
+        })
+
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert blocked.status_code == 429
+        assert blocked.json()['error'].startswith('Muitas requisicoes')
+        assert blocked.headers['x-ratelimit-limit'] == '2'
+        assert int(blocked.headers['retry-after']) > 3000
+    finally:
+        object.__setattr__(settings, 'rate_limit_enabled', original_enabled)
+        object.__setattr__(settings, 'rate_limit_auth_per_minute', original_auth)
+        object.__setattr__(settings, 'rate_limit_register_per_hour', original_register)
+        object.__setattr__(settings, 'rate_limit_global_per_minute', original_global)
+        clear_rate_limit_state()
+
 def test_rate_limit_exempts_health_checks():
     original_enabled = settings.rate_limit_enabled
     original_global = settings.rate_limit_global_per_minute
@@ -144,6 +186,9 @@ def test_alembic_migrations_create_current_schema():
         engine = create_engine(db_url)
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())
+        user_columns = {
+            column['name'] for column in inspector.get_columns('users')
+        }
         product_columns = {
             column['name'] for column in inspector.get_columns('products')
         }
@@ -152,6 +197,9 @@ def test_alembic_migrations_create_current_schema():
         }
         order_columns_by_name = {
             column['name']: column for column in inspector.get_columns('orders')
+        }
+        payment_columns_by_name = {
+            column['name']: column for column in inspector.get_columns('payments')
         }
         coupon_columns_by_name = {
             column['name']: column for column in inspector.get_columns('coupons')
@@ -171,6 +219,10 @@ def test_alembic_migrations_create_current_schema():
             'alembic_version',
         }.issubset(tables)
         assert {'is_active', 'stock_status'}.issubset(product_columns)
+        assert {
+            'password_reset_token_hash',
+            'password_reset_expires_at',
+        }.issubset(user_columns)
         assert isinstance(product_columns_by_name['price']['type'], Numeric)
         assert isinstance(product_columns_by_name['oldPrice']['type'], Numeric)
         assert isinstance(order_columns_by_name['total']['type'], Numeric)
@@ -185,6 +237,15 @@ def test_alembic_migrations_create_current_schema():
         }.issubset(coupon_columns_by_name)
         assert {'sku', 'stock_quantity', 'low_stock_alert'}.issubset(product_columns)
         assert 'stock_deducted' in order_columns_by_name
+        assert {
+            'idempotency_key',
+            'public_token',
+            'tracking_code',
+            'tracking_carrier',
+            'shipped_at',
+            'delivered_at',
+        }.issubset(order_columns_by_name)
+        assert 'checkout_url' in payment_columns_by_name
     finally:
         if engine is not None:
             engine.dispose()
@@ -217,8 +278,29 @@ def test_public_catalog_uses_api_cache_instead_of_hardcoded_products():
     assert 'Brinco Marguerite' not in products_js
     assert "url.pathname === '/api/products'" in service_worker
     assert 'networkFirstProducts(event.request, event)' in service_worker
+    assert 'productsFromPayload(payload)' in service_worker
     assert 'API_CACHE_NAME' in service_worker
     assert 'apiProducts && apiProducts.length > 0 ? apiProducts : PRODUCTS' not in index_html
+
+def test_home_uses_paginated_featured_products():
+    index_html = (FRONTEND_ROOT / 'index.html').read_text(encoding='utf-8')
+    products_js = (FRONTEND_ROOT / 'js' / 'products.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert 'loadProductsPageFromAPI({ page: 1, perPage: 8 })' in index_html
+    assert 'page=${encodeURIComponent(options.page)}' in api_js
+    assert 'per_page=${encodeURIComponent(options.perPage)}' in api_js
+    assert 'Array.isArray(data.items)' in products_js
+
+def test_catalog_loads_categories_from_api():
+    catalog_html = (FRONTEND_ROOT / 'catalogo.html').read_text(encoding='utf-8')
+    products_js = (FRONTEND_ROOT / 'js' / 'products.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert 'loadCategoriesFromAPI()' in catalog_html
+    assert 'async getCategories()' in api_js
+    assert 'categoriesLoaded' in products_js
+    assert 'normalizeCategories' in products_js
 
 def test_admin_frontend_does_not_store_admin_jwt_in_web_storage():
     api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
@@ -247,6 +329,17 @@ def test_checkout_has_cep_autofill_wiring():
     assert 'setupCepAutofill()' in checkout_html
     assert 'API.lookupCep' in checkout_html
     assert "setCheckoutField('address', address.street)" in checkout_html
+
+def test_checkout_and_admin_have_order_flow_hardening_wiring():
+    checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert 'vj_checkout_idempotency_key' in checkout_html
+    assert 'idempotency_key: getCheckoutIdempotencyKey()' in checkout_html
+    assert 'payment_pending' in admin_js
+    assert 'tracking_code' in admin_js
+    assert 'getPublicOrder' in api_js
 
 def test_admin_frontend_has_stock_management_fields():
     admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')

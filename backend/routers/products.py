@@ -4,9 +4,9 @@ import shutil
 from pathlib import PurePosixPath
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from backend.auth import admin_claims
@@ -35,6 +35,16 @@ router = APIRouter(prefix="/api")
 IMPORT_UPLOAD_MAX_FILE_BYTES = 20 * 1024 * 1024
 IMPORT_UPLOAD_MAX_TOTAL_BYTES = 250 * 1024 * 1024
 IMPORT_UPLOAD_ALLOWED_EXTENSIONS = {".csv", ".json", ".jpg", ".jpeg", ".png", ".webp", ".gif"}
+CATEGORY_ICONS = {
+    "all": "\U0001F48E",
+    "brincos": "\u2728",
+    "colares": "\U0001F4FF",
+    "pulseiras": "\u269C\ufe0f",
+    "aneis": "\U0001F48D",
+    "pingentes": "\U0001F52E",
+    "chaveiros": "\U0001F511",
+    "conjuntos": "\U0001F381",
+}
 
 
 def normalize_product_payload(data: dict[str, Any], *, partial=False):
@@ -85,20 +95,44 @@ def normalize_product_payload(data: dict[str, Any], *, partial=False):
 def get_products(
     category: str = "all",
     search: str = "",
+    page: int | None = Query(default=None, ge=1),
+    per_page: int | None = Query(default=None, ge=1, le=60),
     db: Session = Depends(get_db),
 ):
-    statement = select(Product).where(Product.is_active.is_(True)).order_by(Product.id)
+    filters = [Product.is_active.is_(True)]
     if category and category != "all":
-        statement = statement.where(Product.category == category)
-    products = db.scalars(statement).unique().all()
-    search = search.lower()
+        filters.append(Product.category == category)
+    search = search.strip()
     if search:
-        products = [
-            product
-            for product in products
-            if search in product.name.lower() or search in product.description.lower()
-        ]
-    return [product.to_dict() for product in products]
+        search_pattern = f"%{search.lower()}%"
+        filters.append(
+            or_(
+                func.lower(Product.name).like(search_pattern),
+                func.lower(Product.description).like(search_pattern),
+            )
+        )
+
+    statement = select(Product).where(*filters).order_by(Product.id)
+    if page is None and per_page is None:
+        products = db.scalars(statement).unique().all()
+        return [product.to_dict() for product in products]
+
+    current_page = page or 1
+    page_size = per_page or 12
+    total = db.scalar(select(func.count(Product.id)).where(*filters)) or 0
+    products = db.scalars(
+        statement.offset((current_page - 1) * page_size).limit(page_size)
+    ).unique().all()
+    total_pages = (total + page_size - 1) // page_size if total else 0
+    return {
+        "items": [product.to_dict() for product in products],
+        "page": current_page,
+        "per_page": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "has_next": current_page < total_pages,
+        "has_previous": current_page > 1 and total_pages > 0,
+    }
 
 
 @router.get("/admin/products")
@@ -350,14 +384,22 @@ def import_product_folder(
 
 
 @router.get("/categories")
-def get_categories():
-    return [
-        {"id": "all", "name": "Todos", "icon": "💎"},
-        {"id": "brincos", "name": "Brincos", "icon": "✨"},
-        {"id": "colares", "name": "Colares", "icon": "📿"},
-        {"id": "pulseiras", "name": "Pulseiras", "icon": "⚜️"},
-        {"id": "aneis", "name": "Anéis", "icon": "💍"},
-        {"id": "pingentes", "name": "Pingentes", "icon": "🔮"},
-        {"id": "chaveiros", "name": "Chaveiros", "icon": "🔑"},
-        {"id": "conjuntos", "name": "Conjuntos", "icon": "🎁"},
+def get_categories(db: Session = Depends(get_db)):
+    rows = db.execute(
+        select(
+            Product.category.label("id"),
+            func.min(Product.categoryName).label("name"),
+        )
+        .where(Product.is_active.is_(True))
+        .group_by(Product.category)
+        .order_by(func.min(Product.categoryName), Product.category)
+    ).all()
+    return [{"id": "all", "name": "Todos", "icon": CATEGORY_ICONS["all"]}] + [
+        {
+            "id": row.id,
+            "name": row.name or row.id.capitalize(),
+            "icon": CATEGORY_ICONS.get(row.id, CATEGORY_ICONS["all"]),
+        }
+        for row in rows
+        if row.id
     ]

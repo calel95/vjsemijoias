@@ -1,4 +1,5 @@
 import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, Response
@@ -23,6 +24,10 @@ from backend.services.admin_security import (
 )
 from backend.services.common import get_or_404
 from backend.services.csrf import delete_csrf_cookie, set_csrf_cookie
+from backend.services.transactional_emails import (
+    send_password_reset_email,
+    send_registration_email,
+)
 from backend.services.validation import (
     clean_text,
     normalize_email,
@@ -153,11 +158,76 @@ def register(
     )
     db.add(user)
     db.commit()
+    send_registration_email(user)
     token = create_user_access_token(user)
     set_user_cookie(response, token)
     set_csrf_cookie(response)
     return {
         "token": token,
+        "token_type": "user",
+        "expires_in": settings.user_token_expire_days * 24 * 60 * 60,
+        "user": user.to_dict(),
+    }
+
+
+@router.post("/password-reset/request")
+def request_password_reset(
+    data: dict[str, Any] = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    try:
+        email = normalize_email(data.get("email"))
+    except ValueError:
+        return {"message": "Se o e-mail existir, enviaremos instrucoes de recuperacao."}
+
+    user = db.scalar(select(User).where(User.email == email))
+    if user:
+        token = secrets.token_urlsafe(32)
+        user.password_reset_token_hash = generate_password_hash(token)
+        user.password_reset_expires_at = datetime.now(UTC) + timedelta(hours=1)
+        db.commit()
+        send_password_reset_email(user, token)
+    return {"message": "Se o e-mail existir, enviaremos instrucoes de recuperacao."}
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    response: Response,
+    data: dict[str, Any] = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    token = str(data.get("token") or "").strip()
+    password = str(data.get("password") or "")
+    if not token or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Token ou senha invalidos")
+
+    now = datetime.now(UTC)
+    users = db.scalars(
+        select(User).where(
+            User.password_reset_token_hash.is_not(None),
+            User.password_reset_expires_at > now,
+        )
+    ).all()
+    user = next(
+        (
+            candidate
+            for candidate in users
+            if check_password_hash(candidate.password_reset_token_hash or "", token)
+        ),
+        None,
+    )
+    if not user:
+        raise HTTPException(status_code=400, detail="Token invalido ou expirado")
+
+    user.password_hash = generate_password_hash(password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    db.commit()
+    token_value = create_user_access_token(user)
+    set_user_cookie(response, token_value)
+    set_csrf_cookie(response)
+    return {
+        "token": token_value,
         "token_type": "user",
         "expires_in": settings.user_token_expire_days * 24 * 60 * 60,
         "user": user.to_dict(),

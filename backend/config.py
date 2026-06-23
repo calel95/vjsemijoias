@@ -96,6 +96,17 @@ class Settings:
         "https://api.checkout.infinitepay.io",
     )
     public_base_url: str = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+    email_backend: str = os.getenv("EMAIL_BACKEND", "console").strip().lower()
+    email_from_name: str = os.getenv("EMAIL_FROM_NAME", "VJ Semijoias").strip()
+    email_from_address: str = os.getenv(
+        "EMAIL_FROM_ADDRESS",
+        "nao-responda@vjsemijoias.local",
+    ).strip()
+    email_smtp_host: str = os.getenv("EMAIL_SMTP_HOST", "").strip()
+    email_smtp_port: int = int(os.getenv("EMAIL_SMTP_PORT", "587"))
+    email_smtp_username: str = os.getenv("EMAIL_SMTP_USERNAME", "").strip()
+    email_smtp_password: str = os.getenv("EMAIL_SMTP_PASSWORD", "")
+    email_smtp_use_tls: bool = env_bool("EMAIL_SMTP_USE_TLS", True)
     cors_allowed_origins: tuple[str, ...] = tuple(cors_allowed_origins())
     port: int = int(os.getenv("PORT", "5000"))
     debug: bool = env_bool("DEBUG", False)
@@ -103,6 +114,7 @@ class Settings:
     rate_limit_global_per_minute: int = int(os.getenv("RATE_LIMIT_GLOBAL_PER_MINUTE", "300"))
     rate_limit_public_per_minute: int = int(os.getenv("RATE_LIMIT_PUBLIC_PER_MINUTE", "180"))
     rate_limit_auth_per_minute: int = int(os.getenv("RATE_LIMIT_AUTH_PER_MINUTE", "20"))
+    rate_limit_register_per_hour: int = int(os.getenv("RATE_LIMIT_REGISTER_PER_HOUR", "5"))
     rate_limit_write_per_minute: int = int(os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "60"))
     rate_limit_expensive_per_minute: int = int(os.getenv("RATE_LIMIT_EXPENSIVE_PER_MINUTE", "5"))
 

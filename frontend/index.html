@@ -248,7 +248,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const featured = document.getElementById('featured-products');
             if (featured) {
-                const products = await loadProductsFromAPI();
+                const firstPage = await loadProductsPageFromAPI({ page: 1, perPage: 8 });
+                const products = firstPage.items;
                 featured.innerHTML = products.map(p => createProductCard(p)).join('');
             }
         });

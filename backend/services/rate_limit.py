@@ -8,8 +8,10 @@ from backend.config import settings
 
 
 RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_HOUR_SECONDS = 60 * 60
 RATE_LIMIT_STATE: dict[tuple[str, str], tuple[int, float]] = {}
 RATE_LIMIT_EXEMPT_PATHS = {"/api/health", "/api/ready"}
+REGISTER_PATH = "/api/auth/register"
 EXPENSIVE_PATHS = {
     "/api/products/import-folder",
     "/api/admin/catalog-pdf",
@@ -25,6 +27,7 @@ AUTH_PATHS = {
 class RateLimitRule:
     name: str
     limit: int
+    window_seconds: int = RATE_LIMIT_WINDOW_SECONDS
 
 
 def rate_limit_client_key(request: Request):
@@ -41,6 +44,14 @@ def rate_limit_rules(request: Request):
 
     if path in AUTH_PATHS:
         rules.append(RateLimitRule("auth", settings.rate_limit_auth_per_minute))
+        if path == REGISTER_PATH:
+            rules.append(
+                RateLimitRule(
+                    "register",
+                    settings.rate_limit_register_per_hour,
+                    RATE_LIMIT_HOUR_SECONDS,
+                )
+            )
     elif path in EXPENSIVE_PATHS:
         rules.append(RateLimitRule("expensive", settings.rate_limit_expensive_per_minute))
     elif method in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -67,10 +78,10 @@ def check_rate_limit(request: Request):
 
     for rule in rate_limit_rules(request):
         key = (client_key, rule.name)
-        count, reset_at = RATE_LIMIT_STATE.get(key, (0, now + RATE_LIMIT_WINDOW_SECONDS))
+        count, reset_at = RATE_LIMIT_STATE.get(key, (0, now + rule.window_seconds))
         if now >= reset_at:
             count = 0
-            reset_at = now + RATE_LIMIT_WINDOW_SECONDS
+            reset_at = now + rule.window_seconds
 
         if count >= rule.limit:
             retry_after = max(1, int(reset_at - now))

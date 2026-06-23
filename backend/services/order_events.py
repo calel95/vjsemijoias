@@ -7,6 +7,7 @@ from backend.models import Order, OrderEvent
 
 ORDER_STATUS_MESSAGES = {
     "pending": "Pedido criado",
+    "payment_pending": "Aguardando pagamento",
     "paid": "Pagamento aprovado",
     "processing": "Pedido em separacao",
     "shipped": "Pedido enviado",

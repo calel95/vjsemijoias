@@ -127,13 +127,37 @@ RATE_LIMIT_ENABLED=true
 RATE_LIMIT_GLOBAL_PER_MINUTE=300
 RATE_LIMIT_PUBLIC_PER_MINUTE=180
 RATE_LIMIT_AUTH_PER_MINUTE=20
+RATE_LIMIT_REGISTER_PER_HOUR=5
 RATE_LIMIT_WRITE_PER_MINUTE=60
 RATE_LIMIT_EXPENSIVE_PER_MINUTE=5
 ```
 
 As rotas de importacao de catalogo e geracao de PDF entram no limite
-`EXPENSIVE`. Em PRD com mais de uma instancia, prefira reforcar tambem no
-proxy/edge ou migrar os contadores para Redis.
+`EXPENSIVE`. Registro de usuarios tem limite proprio por hora para reduzir
+criacao automatizada de contas. Em PRD com mais de uma instancia, prefira
+reforcar tambem no proxy/edge ou migrar os contadores para Redis.
+
+## E-mails transacionais
+
+Em DEV, comece com o backend `console`, que registra os e-mails sem enviar para
+clientes reais:
+
+```dotenv
+EMAIL_BACKEND=console
+EMAIL_FROM_NAME=VJ Semijoias DEV
+EMAIL_FROM_ADDRESS=nao-responda@dev.seudominio.com
+```
+
+Quando for testar envio real, configure SMTP:
+
+```dotenv
+EMAIL_BACKEND=smtp
+EMAIL_SMTP_HOST=smtp.seu-provedor.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_USERNAME=usuario
+EMAIL_SMTP_PASSWORD=senha
+EMAIL_SMTP_USE_TLS=true
+```
 
 ## Render
 

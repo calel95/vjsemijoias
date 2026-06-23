@@ -41,6 +41,31 @@ def test_order_total_is_calculated_by_server():
         events = db.query(OrderEvent).filter_by(order_id=order['id']).all()
         assert [event.status for event in events] == ['pending']
 
+def test_manual_order_is_idempotent_and_has_public_lookup_token():
+    payload = {
+        'customer_name': 'Cliente Idempotente',
+        'customer_email': 'pedido-idempotente@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': 1, 'quantity': 1}],
+        'idempotency_key': 'pedido-manual-idempotente-001',
+    }
+
+    first = client.post('/api/orders', json=payload)
+    second = client.post('/api/orders', json=payload)
+    order = first.json()
+    public_lookup = client.get(
+        f"/api/orders/{order['id']}/public?token={order['public_token']}"
+    )
+    blocked_lookup = client.get(f"/api/orders/{order['id']}/public?token=errado")
+
+    assert first.status_code == 201
+    assert second.status_code == 201
+    assert second.json()['id'] == order['id']
+    assert order['public_token']
+    assert public_lookup.status_code == 200
+    assert public_lookup.json()['id'] == order['id']
+    assert blocked_lookup.status_code == 404
+
 def test_order_rejects_invalid_cpf_and_sanitizes_customer_text():
     invalid = client.post('/api/orders', json={
         'customer_name': 'Cliente Teste',
@@ -112,6 +137,34 @@ def test_admin_can_update_order_status():
     assert updated.json()['status'] == 'processing'
     assert [event['status'] for event in updated.json()['events']] == ['pending', 'processing']
     assert invalid.status_code == 400
+
+def test_admin_can_set_tracking_when_order_is_shipped():
+    token = admin_login().json()['token']
+    order_response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Rastreio',
+        'customer_email': 'rastreio@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': 2, 'quantity': 1}],
+    })
+    order_id = order_response.json()['id']
+
+    shipped = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'status': 'shipped',
+            'tracking_code': 'BR123456789',
+            'tracking_carrier': 'Correios',
+        },
+    )
+
+    assert shipped.status_code == 200
+    data = shipped.json()
+    assert data['status'] == 'shipped'
+    assert data['tracking_code'] == 'BR123456789'
+    assert data['tracking_carrier'] == 'Correios'
+    assert data['shipped_at']
+    assert data['events'][-1]['metadata']['tracking_code'] == 'BR123456789'
 
 def test_out_of_stock_product_cannot_be_ordered():
     login = admin_login()

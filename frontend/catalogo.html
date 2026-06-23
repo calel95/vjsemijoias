@@ -251,7 +251,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            await loadProductsFromAPI();
+            await Promise.all([
+                loadProductsFromAPI(),
+                loadCategoriesFromAPI(),
+            ]);
             renderFilters();
             renderProducts();
 
