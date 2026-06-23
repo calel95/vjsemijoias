@@ -281,6 +281,9 @@ def test_admin_frontend_has_coupon_management_panel():
 
     assert 'admin-coupon-form' in admin_html
     assert 'coupon-per-customer-limit' in admin_html
+    assert 'data-store-config="COUPON_CODE"' not in admin_html
+    assert 'data-store-config="COUPON_DISCOUNT_PERCENT"' not in admin_html
+    assert 'data-store-config="COUPON_USAGE_LIMIT"' not in admin_html
     assert 'loadAdminCoupons()' in admin_js
     assert 'createAdminCoupon' in api_js
     assert 'updateAdminCoupon' in api_js
