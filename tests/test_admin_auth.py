@@ -61,17 +61,24 @@ def test_admin_login_uses_individual_email_and_records_audit():
 
 def test_admin_cookie_is_httponly_and_can_authenticate_admin_routes():
     original_secure = settings.admin_cookie_secure
+    original_csrf_secure = settings.csrf_cookie_secure
     cookie_client = TestClient(app)
     try:
         object.__setattr__(settings, 'admin_cookie_secure', False)
+        object.__setattr__(settings, 'csrf_cookie_secure', False)
         login = admin_login(api_client=cookie_client, persist_cookie=True)
         cookie_response = cookie_client.get('/api/admin/products')
-        logout = cookie_client.post('/api/auth/logout')
+        csrf_token = cookie_client.cookies.get(settings.csrf_cookie_name)
+        logout = cookie_client.post(
+            '/api/auth/logout',
+            headers={settings.csrf_header_name: csrf_token},
+        )
         after_logout = cookie_client.get('/api/admin/products')
 
         set_cookie = login.headers.get('set-cookie', '')
         assert login.status_code == 200
         assert f'{settings.admin_cookie_name}=' in set_cookie
+        assert f'{settings.csrf_cookie_name}=' in set_cookie
         assert 'HttpOnly' in set_cookie
         assert 'SameSite=lax' in set_cookie
         assert cookie_response.status_code == 200
@@ -79,12 +86,15 @@ def test_admin_cookie_is_httponly_and_can_authenticate_admin_routes():
         assert after_logout.status_code == 401
     finally:
         object.__setattr__(settings, 'admin_cookie_secure', original_secure)
+        object.__setattr__(settings, 'csrf_cookie_secure', original_csrf_secure)
 
 def test_user_cookie_is_httponly_and_can_authenticate_me():
     original_secure = settings.user_cookie_secure
+    original_csrf_secure = settings.csrf_cookie_secure
     cookie_client = TestClient(app)
     try:
         object.__setattr__(settings, 'user_cookie_secure', False)
+        object.__setattr__(settings, 'csrf_cookie_secure', False)
         register = cookie_client.post('/api/auth/register', json={
             'name': 'Cliente Cookie',
             'email': 'cliente-cookie@example.com',
@@ -92,12 +102,17 @@ def test_user_cookie_is_httponly_and_can_authenticate_me():
             'cpf': '12345678909',
         })
         me = cookie_client.get('/api/auth/me')
-        logout = cookie_client.post('/api/auth/logout')
+        csrf_token = cookie_client.cookies.get(settings.csrf_cookie_name)
+        logout = cookie_client.post(
+            '/api/auth/logout',
+            headers={settings.csrf_header_name: csrf_token},
+        )
         after_logout = cookie_client.get('/api/auth/me')
 
         set_cookie = register.headers.get('set-cookie', '')
         assert register.status_code == 201
         assert f'{settings.user_cookie_name}=' in set_cookie
+        assert f'{settings.csrf_cookie_name}=' in set_cookie
         assert 'HttpOnly' in set_cookie
         assert 'SameSite=lax' in set_cookie
         assert me.status_code == 200
@@ -106,6 +121,43 @@ def test_user_cookie_is_httponly_and_can_authenticate_me():
         assert after_logout.status_code == 401
     finally:
         object.__setattr__(settings, 'user_cookie_secure', original_secure)
+        object.__setattr__(settings, 'csrf_cookie_secure', original_csrf_secure)
+
+def test_cookie_authenticated_writes_require_csrf_header():
+    original_admin_secure = settings.admin_cookie_secure
+    original_csrf_secure = settings.csrf_cookie_secure
+    cookie_client = TestClient(app)
+    try:
+        object.__setattr__(settings, 'admin_cookie_secure', False)
+        object.__setattr__(settings, 'csrf_cookie_secure', False)
+        login = admin_login(api_client=cookie_client, persist_cookie=True)
+        csrf_token = cookie_client.cookies.get(settings.csrf_cookie_name)
+
+        blocked = cookie_client.post('/api/products', json={
+            'name': 'Produto Sem CSRF',
+            'category': 'brincos',
+            'price': 89.9,
+            'description': 'Deve ser bloqueado.',
+        })
+        allowed = cookie_client.post(
+            '/api/products',
+            headers={settings.csrf_header_name: csrf_token},
+            json={
+                'name': 'Produto Com CSRF',
+                'category': 'brincos',
+                'price': 89.9,
+                'description': 'Deve ser criado.',
+            },
+        )
+
+        assert login.status_code == 200
+        assert csrf_token
+        assert blocked.status_code == 403
+        assert 'CSRF' in blocked.json()['error']
+        assert allowed.status_code == 201
+    finally:
+        object.__setattr__(settings, 'admin_cookie_secure', original_admin_secure)
+        object.__setattr__(settings, 'csrf_cookie_secure', original_csrf_secure)
 
 def test_admin_can_create_another_admin_user():
     headers = admin_headers()

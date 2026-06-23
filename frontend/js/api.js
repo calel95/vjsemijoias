@@ -16,9 +16,18 @@ function getFilenameFromDisposition(disposition) {
     return match ? match[1] : null;
 }
 
+function getCookieValue(name) {
+    const cookies = document.cookie ? document.cookie.split('; ') : [];
+    const prefix = `${encodeURIComponent(name)}=`;
+    const match = cookies.find((cookie) => cookie.startsWith(prefix));
+    return match ? decodeURIComponent(match.slice(prefix.length)) : '';
+}
+
 const API = {
     baseUrl: `${API_BASE}/api`,
     authenticated: false,
+    csrfCookieName: 'vj_csrf_token',
+    csrfHeaderName: 'X-CSRF-Token',
 
     // ============================================
     // UTILITÁRIOS
@@ -44,9 +53,18 @@ const API = {
         return sessionStorage.getItem('vj_admin_authenticated') === 'true';
     },
 
-    getHeaders() {
+    getCsrfHeaders(method) {
+        if (['GET', 'HEAD', 'OPTIONS'].includes(String(method || '').toUpperCase())) {
+            return {};
+        }
+        const token = getCookieValue(this.csrfCookieName);
+        return token ? { [this.csrfHeaderName]: token } : {};
+    },
+
+    getHeaders(method = 'GET') {
         return {
             'Content-Type': 'application/json',
+            ...this.getCsrfHeaders(method),
         };
     },
 
@@ -54,7 +72,7 @@ const API = {
         const url = `${this.baseUrl}${endpoint}`;
         const options = {
             method,
-            headers: this.getHeaders(),
+            headers: this.getHeaders(method),
             credentials: 'include',
         };
 
@@ -113,7 +131,7 @@ const API = {
             formData.append('files', file, file.webkitRelativePath || file.name);
         }
 
-        const headers = {};
+        const headers = this.getCsrfHeaders('POST');
 
         try {
             const response = await fetch(`${this.baseUrl}/products/import-folder`, {
@@ -142,7 +160,7 @@ const API = {
     },
 
     async generateCatalogPdf(formData) {
-        const headers = {};
+        const headers = this.getCsrfHeaders('POST');
 
         try {
             const response = await fetch(`${this.baseUrl}/admin/catalog-pdf`, {
@@ -234,6 +252,7 @@ const API = {
     logout() {
         fetch(`${this.baseUrl}/auth/logout`, {
             method: 'POST',
+            headers: this.getCsrfHeaders('POST'),
             credentials: 'include',
         }).catch(() => {});
         this.setToken(null);

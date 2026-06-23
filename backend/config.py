@@ -83,6 +83,13 @@ class Settings:
         os.getenv("PUBLIC_BASE_URL", "").strip().startswith("https://"),
     )
     user_cookie_samesite: str = os.getenv("USER_COOKIE_SAMESITE", "lax").strip().lower()
+    csrf_cookie_name: str = os.getenv("CSRF_COOKIE_NAME", "vj_csrf_token")
+    csrf_header_name: str = os.getenv("CSRF_HEADER_NAME", "X-CSRF-Token")
+    csrf_cookie_secure: bool = env_bool(
+        "CSRF_COOKIE_SECURE",
+        os.getenv("PUBLIC_BASE_URL", "").strip().startswith("https://"),
+    )
+    csrf_cookie_samesite: str = os.getenv("CSRF_COOKIE_SAMESITE", "lax").strip().lower()
     infinitepay_handle: str = os.getenv("INFINITEPAY_HANDLE", "").strip().lstrip("$")
     infinitepay_api_base: str = os.getenv(
         "INFINITEPAY_API_BASE",

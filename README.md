@@ -115,7 +115,12 @@ USER_TOKEN_EXPIRE_DAYS=7
 USER_COOKIE_NAME=vj_user_token
 USER_COOKIE_SECURE=true
 USER_COOKIE_SAMESITE=lax
+CSRF_COOKIE_SECURE=true
 ```
+
+Quando a autenticacao acontece por cookie, rotas autenticadas de escrita exigem
+o header `X-CSRF-Token`, preenchido automaticamente pelo frontend a partir do
+cookie `vj_csrf_token`.
 
 ## Estrutura do projeto
 

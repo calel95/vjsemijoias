@@ -21,6 +21,7 @@ from backend.routers import (
     store_settings,
 )
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
+from backend.services.csrf import csrf_middleware
 from backend.services.rate_limit import rate_limit_middleware
 from backend.services.startup import bootstrap_runtime_data
 
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 def create_app():
     app = FastAPI(title="VJ Semijoias API", version="1.0.0")
     app.middleware("http")(rate_limit_middleware)
+    app.middleware("http")(csrf_middleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_allowed_origins),

@@ -22,6 +22,7 @@ from backend.services.admin_security import (
     record_admin_login_failure,
 )
 from backend.services.common import get_or_404
+from backend.services.csrf import delete_csrf_cookie, set_csrf_cookie
 from backend.services.validation import (
     clean_text,
     normalize_email,
@@ -137,6 +138,7 @@ def register(
     db.commit()
     token = create_user_access_token(user)
     set_user_cookie(response, token)
+    set_csrf_cookie(response)
     return {
         "token": token,
         "token_type": "user",
@@ -162,6 +164,7 @@ def login(
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
     token = create_user_access_token(user)
     set_user_cookie(response, token)
+    set_csrf_cookie(response)
     return {
         "token": token,
         "token_type": "user",
@@ -234,6 +237,7 @@ def admin_login(
         samesite=settings.admin_cookie_samesite,
         path="/",
     )
+    set_csrf_cookie(response)
     return {
         "token": token,
         "token_type": "admin",
@@ -246,6 +250,7 @@ def admin_login(
 def logout(response: Response):
     delete_user_cookie(response)
     delete_admin_cookie(response)
+    delete_csrf_cookie(response)
     return {"message": "Sessao encerrada"}
 
 

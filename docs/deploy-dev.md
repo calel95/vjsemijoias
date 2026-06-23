@@ -44,6 +44,7 @@ ADMIN_COOKIE_SECURE=true
 ADMIN_COOKIE_SAMESITE=lax
 USER_COOKIE_SECURE=true
 USER_COOKIE_SAMESITE=lax
+CSRF_COOKIE_SECURE=true
 ```
 
 Use `.env.dev.example` como checklist. Nunca envie `backend/.env` para o Git.
@@ -98,6 +99,7 @@ ADMIN_COOKIE_SAMESITE=lax
 USER_TOKEN_EXPIRE_DAYS=7
 USER_COOKIE_SECURE=true
 USER_COOKIE_SAMESITE=lax
+CSRF_COOKIE_SECURE=true
 INFINITEPAY_HANDLE=sua_infinite_tag
 INFINITEPAY_API_BASE=https://api.checkout.infinitepay.io
 STORAGE_BACKEND=r2

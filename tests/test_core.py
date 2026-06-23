@@ -222,6 +222,9 @@ def test_frontend_does_not_store_user_jwt_in_local_storage():
     assert "localStorage.setItem('vj_api_token'" not in api_js
     assert "headers['Authorization']" not in api_js
     assert "credentials: 'include'" in api_js
+    assert "csrfCookieName: 'vj_csrf_token'" in api_js
+    assert "csrfHeaderName: 'X-CSRF-Token'" in api_js
+    assert 'getCsrfHeaders(method)' in api_js
 
 def test_checkout_has_cep_autofill_wiring():
     api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
