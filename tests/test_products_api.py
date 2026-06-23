@@ -30,10 +30,56 @@ def test_admin_can_create_product_with_api_token():
     product = response.json()
     assert product['name'] == 'Brinco Teste'
     assert product['price'] == 89.9
+    assert product['stock_quantity'] == 0
+    assert product['stock_status'] == 'out_of_stock'
 
     with SessionLocal() as db:
         stored = db.get(Product, product['id'])
         assert stored.price == Decimal('89.90')
+
+def test_admin_can_manage_product_stock_fields():
+    token = admin_login().json()['token']
+
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Estoque Teste',
+            'category': 'brincos',
+            'price': 59.9,
+            'description': 'Produto com controle de estoque.',
+            'sku': ' vj-estoque-001 ',
+            'stock_quantity': 2,
+            'low_stock_alert': 3,
+        },
+    )
+    duplicate = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto SKU Duplicado',
+            'category': 'brincos',
+            'price': 49.9,
+            'description': 'SKU duplicado.',
+            'sku': 'VJ-ESTOQUE-001',
+            'stock_quantity': 1,
+        },
+    )
+    updated = client.put(
+        f"/api/products/{created.json()['id']}",
+        headers={'Authorization': f'Bearer {token}'},
+        json={'stock_quantity': 0},
+    )
+
+    assert created.status_code == 201
+    data = created.json()
+    assert data['sku'] == 'VJ-ESTOQUE-001'
+    assert data['stock_quantity'] == 2
+    assert data['low_stock_alert'] == 3
+    assert data['stock_is_low'] is True
+    assert duplicate.status_code == 409
+    assert updated.status_code == 200
+    assert updated.json()['stock_status'] == 'out_of_stock'
 
 def test_admin_product_input_is_sanitized_and_validated():
     token = admin_login().json()['token']

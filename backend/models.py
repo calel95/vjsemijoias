@@ -31,11 +31,14 @@ class Product(Base):
     categoryName: Mapped[str] = mapped_column(String(50))
     price: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     oldPrice: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    sku: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
     image: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
     badge: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     stock_status: Mapped[str] = mapped_column(String(30), default="available")
+    stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    low_stock_alert: Mapped[int] = mapped_column(Integer, default=1)
     description: Mapped[str] = mapped_column(Text)
     features: Mapped[str | None] = mapped_column(Text, nullable=True)
     custom: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -69,12 +72,19 @@ class Product(Base):
             "categoryName": self.categoryName,
             "price": decimal_to_float(self.price),
             "oldPrice": decimal_to_float(self.oldPrice),
+            "sku": self.sku,
             "image": self.image,
             "images": images,
             "icon": self.icon or "💎",
             "badge": self.badge,
             "is_active": self.is_active,
             "stock_status": self.stock_status or "available",
+            "stock_quantity": self.stock_quantity or 0,
+            "low_stock_alert": self.low_stock_alert or 0,
+            "stock_is_low": (
+                (self.stock_quantity or 0) <= (self.low_stock_alert or 0)
+                and (self.stock_status or "available") != "out_of_stock"
+            ),
             "description": self.description,
             "features": features,
             "custom": self.custom,
@@ -184,6 +194,7 @@ class Order(Base):
     payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    stock_deducted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     payment: Mapped["Payment | None"] = relationship(back_populates="order", uselist=False)
 
@@ -210,6 +221,7 @@ class Order(Base):
             "payment_method": self.payment_method,
             "status": self.status,
             "coupon": self.coupon,
+            "stock_deducted": self.stock_deducted,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

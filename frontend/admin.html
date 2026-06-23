@@ -333,6 +333,17 @@
 
                         <div class="form-row">
                             <div class="form-group">
+                                <label>SKU / Codigo interno</label>
+                                <input type="text" id="product-sku" name="sku" maxlength="80" placeholder="VJ-BRINCO-001">
+                            </div>
+                            <div class="form-group">
+                                <label>Quantidade em estoque</label>
+                                <input type="number" id="product-stock-quantity" name="stock_quantity" min="0" step="1" value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Ícone Emoji (opcional)</label>
                                 <input type="text" id="product-icon" name="icon" placeholder="💎" maxlength="2">
                             </div>
@@ -356,6 +367,13 @@
                                     <option value="out_of_stock">Sem estoque</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label>Alerta de estoque baixo</label>
+                                <input type="number" id="product-low-stock-alert" name="low_stock_alert" min="0" step="1" value="1">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Status na loja</label>
                                 <label class="admin-toggle">
@@ -411,6 +429,7 @@
                         <button class="filter-btn active" data-filter="all">Todos</button>
                         <button class="filter-btn" data-filter="custom">Customizados</button>
                         <button class="filter-btn" data-filter="inactive">Inativos</button>
+                        <button class="filter-btn" data-filter="low_stock">Baixo estoque</button>
                         <button class="filter-btn" data-filter="out_of_stock">Sem estoque</button>
                         <button class="filter-btn" data-filter="brincos">Brincos</button>
                         <button class="filter-btn" data-filter="colares">Colares</button>

@@ -173,6 +173,8 @@ def test_alembic_migrations_create_current_schema():
         assert isinstance(product_columns_by_name['oldPrice']['type'], Numeric)
         assert isinstance(order_columns_by_name['total']['type'], Numeric)
         assert isinstance(coupon_columns_by_name['discount_percent']['type'], Numeric)
+        assert {'sku', 'stock_quantity', 'low_stock_alert'}.issubset(product_columns)
+        assert 'stock_deducted' in order_columns_by_name
     finally:
         if engine is not None:
             engine.dispose()
@@ -235,3 +237,12 @@ def test_checkout_has_cep_autofill_wiring():
     assert 'setupCepAutofill()' in checkout_html
     assert 'API.lookupCep' in checkout_html
     assert "setCheckoutField('address', address.street)" in checkout_html
+
+def test_admin_frontend_has_stock_management_fields():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+
+    assert 'product-sku' in admin_html
+    assert 'product-stock-quantity' in admin_html
+    assert 'product-low-stock-alert' in admin_html
+    assert 'stock_is_low' in admin_js

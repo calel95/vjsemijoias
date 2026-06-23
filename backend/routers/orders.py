@@ -10,6 +10,7 @@ from backend.database import get_db
 from backend.models import Coupon, Newsletter, Order, Product, User
 from backend.services.common import get_or_404
 from backend.services.orders import (
+    apply_paid_status,
     configured_shipping,
     create_local_order,
     money,
@@ -68,7 +69,14 @@ def update_order_status(
     db: Session = Depends(get_db),
 ):
     order = get_or_404(db, Order, order_id)
-    order.status = normalize_order_status(data.get("status"))
+    status = normalize_order_status(data.get("status"))
+    if status == "paid":
+        try:
+            apply_paid_status(db, order)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        order.status = status
     db.commit()
     return order.to_dict()
 

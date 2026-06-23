@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -20,6 +21,12 @@ from backend.services.product_media import (
     store_admin_gallery_images,
 )
 from backend.services.storage import storage_status
+from backend.services.stock import (
+    normalize_low_stock_alert,
+    normalize_sku,
+    normalize_stock_quantity,
+    sync_stock_status,
+)
 from backend.services.validation import clean_text, clean_text_list, normalize_money_decimal
 
 
@@ -58,6 +65,16 @@ def normalize_product_payload(data: dict[str, Any], *, partial=False):
             field="oldPrice",
             required=False,
         )
+    if "sku" in data:
+        cleaned["sku"] = normalize_sku(data.get("sku"))
+    if "stock_quantity" in data:
+        cleaned["stock_quantity"] = normalize_stock_quantity(data.get("stock_quantity"))
+    elif not partial:
+        cleaned["stock_quantity"] = 0
+    if "low_stock_alert" in data:
+        cleaned["low_stock_alert"] = normalize_low_stock_alert(data.get("low_stock_alert"))
+    elif not partial:
+        cleaned["low_stock_alert"] = 1
     if "features" in data:
         cleaned["features"] = clean_text_list(data.get("features"), field="features")
     return cleaned
@@ -120,26 +137,36 @@ def create_product(
         cleaned = normalize_product_payload(data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if cleaned.get("sku") and db.scalar(select(Product.id).where(Product.sku == cleaned["sku"])):
+        raise HTTPException(status_code=409, detail="SKU ja cadastrado")
     product = Product(
         name=cleaned["name"],
         category=cleaned["category"],
         categoryName=cleaned.get("categoryName", cleaned["category"].capitalize()),
         price=cleaned["price"],
         oldPrice=cleaned.get("oldPrice"),
+        sku=cleaned.get("sku"),
         icon=data.get("icon", "💎"),
         badge=cleaned.get("badge"),
         is_active=normalize_bool(data.get("is_active"), True),
         stock_status=normalize_stock_status(data.get("stock_status")),
+        stock_quantity=cleaned["stock_quantity"],
+        low_stock_alert=cleaned["low_stock_alert"],
         description=cleaned["description"],
         features=json.dumps(cleaned.get("features", []), ensure_ascii=False),
         custom=True,
     )
     product.icon = cleaned.get("icon") or product.icon
+    sync_stock_status(product)
     db.add(product)
     db.flush()
     images = store_admin_gallery_images(product, product_image_list(data))
     replace_product_gallery(product, images)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="SKU ja cadastrado") from exc
     return product.to_dict()
 
 
@@ -155,6 +182,10 @@ def update_product(
         cleaned = normalize_product_payload(data, partial=True)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if cleaned.get("sku") and db.scalar(
+        select(Product.id).where(Product.sku == cleaned["sku"], Product.id != product_id)
+    ):
+        raise HTTPException(status_code=409, detail="SKU ja cadastrado")
     for field in ["name", "category", "categoryName", "icon", "badge", "description"]:
         if field in cleaned:
             setattr(product, field, cleaned[field])
@@ -162,6 +193,12 @@ def update_product(
         product.is_active = normalize_bool(data["is_active"], True)
     if "stock_status" in data:
         product.stock_status = normalize_stock_status(data["stock_status"])
+    if "sku" in data:
+        product.sku = cleaned.get("sku")
+    if "stock_quantity" in cleaned:
+        product.stock_quantity = cleaned["stock_quantity"]
+    if "low_stock_alert" in cleaned:
+        product.low_stock_alert = cleaned["low_stock_alert"]
     if data.get("price") is not None:
         product.price = cleaned["price"]
     if "oldPrice" in data:
@@ -171,7 +208,12 @@ def update_product(
         replace_product_gallery(product, images)
     if data.get("features") is not None:
         product.features = json.dumps(cleaned.get("features", []), ensure_ascii=False)
-    db.commit()
+    sync_stock_status(product)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="SKU ja cadastrado") from exc
     return product.to_dict()
 
 

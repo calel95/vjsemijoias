@@ -356,11 +356,14 @@ function currentFormProduct() {
         categoryName: categoryMap[category] || category,
         price: parseFloat(document.getElementById('product-price').value) || 0,
         oldPrice: parseFloat(document.getElementById('product-old-price').value) || null,
+        sku: document.getElementById('product-sku')?.value.trim() || '',
         image: productGalleryImages[0] || '',
         icon: document.getElementById('product-icon').value.trim() || '💎',
         badge: document.getElementById('product-badge').value || null,
         is_active: document.getElementById('product-active')?.checked ?? true,
         stock_status: document.getElementById('product-stock-status')?.value || 'available',
+        stock_quantity: parseInt(document.getElementById('product-stock-quantity')?.value || '0', 10) || 0,
+        low_stock_alert: parseInt(document.getElementById('product-low-stock-alert')?.value || '0', 10) || 0,
         description: document.getElementById('product-description').value.trim(),
     };
 }
@@ -389,6 +392,7 @@ function renderProductFormPreview() {
     const oldPriceHTML = product.oldPrice
         ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
         : '';
+    const stockHTML = `<small>SKU: ${escapeHTML(product.sku || 'sem SKU')} | Estoque: ${product.stock_quantity}</small>`;
 
     container.className = 'admin-product-preview';
     container.innerHTML = `
@@ -404,6 +408,7 @@ function renderProductFormPreview() {
                 </div>
                 <strong>${escapeHTML(product.name || 'Nome do produto')}</strong>
                 <p>${escapeHTML(product.description || 'Descricao curta do produto.')}</p>
+                ${stockHTML}
                 <div class="preview-price">${oldPriceHTML}${priceHTML}</div>
             </div>
         </div>
@@ -451,6 +456,9 @@ async function handleProductSubmit(event) {
     // Converte preços
     data.price = parseFloat(data.price) || 0;
     data.oldPrice = data.oldPrice ? parseFloat(data.oldPrice) : null;
+    data.sku = data.sku || null;
+    data.stock_quantity = parseInt(data.stock_quantity || '0', 10);
+    data.low_stock_alert = parseInt(data.low_stock_alert || '0', 10);
     data.is_active = document.getElementById('product-active')?.checked ?? true;
     data.stock_status = document.getElementById('product-stock-status')?.value || 'available';
     
@@ -500,6 +508,8 @@ function resetForm() {
     document.getElementById('product-form').reset();
     document.getElementById('product-active').checked = true;
     document.getElementById('product-stock-status').value = 'available';
+    document.getElementById('product-stock-quantity').value = '1';
+    document.getElementById('product-low-stock-alert').value = '1';
     setProductGalleryImages([]);
     document.getElementById('form-title').textContent = '➕ Adicionar Novo Produto';
     editingId = null;
@@ -518,10 +528,13 @@ function editProduct(id) {
     document.getElementById('product-category').value = product.category;
     document.getElementById('product-price').value = product.price;
     document.getElementById('product-old-price').value = product.oldPrice || '';
+    document.getElementById('product-sku').value = product.sku || '';
     document.getElementById('product-icon').value = product.icon || '';
     document.getElementById('product-badge').value = product.badge || '';
     document.getElementById('product-active').checked = product.is_active !== false;
     document.getElementById('product-stock-status').value = product.stock_status || 'available';
+    document.getElementById('product-stock-quantity').value = product.stock_quantity ?? 0;
+    document.getElementById('product-low-stock-alert').value = product.low_stock_alert ?? 1;
     document.getElementById('product-description').value = product.description;
     document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^✓\s*/, '')).join('\n');
     setProductGalleryImages(
@@ -591,6 +604,8 @@ function renderAdminProducts() {
         products = products.filter(p => p.custom);
     } else if (currentFilter === 'inactive') {
         products = products.filter(p => p.is_active === false);
+    } else if (currentFilter === 'low_stock') {
+        products = products.filter(p => p.stock_is_low);
     } else if (currentFilter === 'out_of_stock') {
         products = products.filter(p => p.stock_status === 'out_of_stock');
     } else if (currentFilter !== 'all') {
@@ -633,17 +648,21 @@ function renderAdminProducts() {
             ? '<span class="badge-mini inactive">INATIVO</span>'
             : '<span class="badge-mini active">ATIVO</span>';
         const stockBadge = `<span class="badge-mini stock ${p.stock_status || 'available'}">${stockLabel(p.stock_status)}</span>`;
+        const lowStockBadge = p.stock_is_low ? '<span class="badge-mini stock low">BAIXO</span>' : '';
+        const stockMeta = `SKU ${escapeHTML(p.sku || '-')} | Estoque ${p.stock_quantity ?? 0}`;
         
         return `
             <div class="admin-product-item">
                 <div class="admin-product-thumb">${thumbHTML}</div>
                 <div class="admin-product-info">
                     <h4>${p.name}</h4>
+                    <p>${stockMeta}</p>
                     <div class="product-meta">
                         <span class="admin-product-price">${formatPrice(p.price)}</span>
                         ${storefrontBadge}
                         ${activeBadge}
                         ${stockBadge}
+                        ${lowStockBadge}
                         ${badgeHTML}
                     </div>
                 </div>

@@ -14,6 +14,7 @@ from backend.services.validation import (
     normalize_phone,
     validate_cpf,
 )
+from backend.services.stock import deduct_stock_for_order, ensure_orderable_stock
 from backend.store_config import effective_store_settings
 
 
@@ -100,6 +101,7 @@ def calculate_order(db: Session, items, coupon_code=""):
     for product_id in product_ids:
         product = products_by_id[product_id]
         quantity = quantities[product_id]
+        ensure_orderable_stock(product, quantity)
         unit_price = money(product.price)
         subtotal += unit_price * quantity
         normalized_items.append(
@@ -219,3 +221,8 @@ def normalize_order_status(value):
     if status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Status de pedido invalido")
     return status
+
+
+def apply_paid_status(db: Session, order: Order):
+    deduct_stock_for_order(db, order)
+    order.status = "paid"

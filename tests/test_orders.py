@@ -135,3 +135,56 @@ def test_out_of_stock_product_cannot_be_ordered():
     assert created.status_code == 201
     assert response.status_code == 400
     assert 'dispon' in response.json()['error']
+
+def test_paid_order_deducts_stock_once_and_blocks_oversell():
+    token = admin_login().json()['token']
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Baixa Estoque',
+            'category': 'aneis',
+            'price': 80,
+            'description': 'Produto para baixa de estoque.',
+            'stock_quantity': 1,
+            'low_stock_alert': 1,
+        },
+    ).json()
+
+    blocked = client.post('/api/orders', json={
+        'customer_name': 'Cliente Estoque',
+        'customer_email': 'estoque-bloqueado@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': created['id'], 'quantity': 2}],
+    })
+    order_response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Estoque',
+        'customer_email': 'estoque@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': created['id'], 'quantity': 1}],
+    })
+    order_id = order_response.json()['id']
+    paid_once = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'status': 'paid'},
+    )
+    paid_twice = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'status': 'paid'},
+    )
+    after_stock = client.get(
+        '/api/admin/products',
+        headers={'Authorization': f'Bearer {token}'},
+    ).json()
+    product = next(item for item in after_stock if item['id'] == created['id'])
+
+    assert blocked.status_code == 400
+    assert 'estoque' in blocked.json()['error'].lower()
+    assert order_response.status_code == 201
+    assert paid_once.status_code == 200
+    assert paid_twice.status_code == 200
+    assert paid_twice.json()['stock_deducted'] is True
+    assert product['stock_quantity'] == 0
+    assert product['stock_status'] == 'out_of_stock'

@@ -12,6 +12,7 @@ from backend.infinitepay_client import InfinitePayError, checkout_token
 from backend.models import Payment
 from backend.services.orders import create_local_order, validate_order_data
 from backend.services.payments import cents, infinitepay, public_url, update_infinitepay_payment
+from backend.services.stock import deduct_stock_for_order
 from backend.store_config import effective_store_settings
 
 
@@ -144,7 +145,8 @@ def confirm_infinitepay_payment(
                 "capture_method": data.get("capture_method"),
             }
         )
-        update_infinitepay_payment(payment, provider_data)
+        if update_infinitepay_payment(payment, provider_data):
+            deduct_stock_for_order(db, payment.order)
         db.commit()
     except (InfinitePayError, ValueError) as exc:
         return JSONResponse(
@@ -181,7 +183,8 @@ def infinitepay_webhook(
                 "capture_method": data.get("capture_method"),
             }
         )
-        update_infinitepay_payment(payment, provider_data)
+        if update_infinitepay_payment(payment, provider_data):
+            deduct_stock_for_order(db, payment.order)
         db.commit()
     except (InfinitePayError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

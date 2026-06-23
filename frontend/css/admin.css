@@ -708,6 +708,11 @@
     background: var(--gold-dark);
 }
 
+.admin-product-info .badge-mini.stock.low {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
 .admin-product-price {
     color: var(--gold-dark);
     font-weight: 700;

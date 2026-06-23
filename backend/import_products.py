@@ -11,6 +11,12 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage, ProductImport
+from backend.services.stock import (
+    normalize_low_stock_alert,
+    normalize_sku,
+    normalize_stock_quantity,
+    sync_stock_status,
+)
 from backend.services.storage import r2_enabled, store_public_file
 from backend.services.validation import clean_text, clean_text_list, validate_image_bytes
 
@@ -131,6 +137,20 @@ def product_old_price(item):
         if key in item and str(item[key]).strip():
             return parse_price(item[key])
     return None
+
+
+def product_stock_quantity(item):
+    for key in ("stock_quantity", "stock", "quantity", "estoque"):
+        if key in item and str(item[key]).strip():
+            return normalize_stock_quantity(item[key])
+    return 1
+
+
+def product_low_stock_alert(item):
+    for key in ("low_stock_alert", "alerta_estoque_baixo"):
+        if key in item and str(item[key]).strip():
+            return normalize_low_stock_alert(item[key])
+    return 1
 
 
 def product_features(item):
@@ -312,12 +332,16 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
             product.categoryName = category_name
             product.price = parse_price(product_price(item))
             product.oldPrice = product_old_price(item)
+            product.sku = normalize_sku(item.get("sku") or item.get("codigo") or item.get("referencia"))
+            product.stock_quantity = product_stock_quantity(item)
+            product.low_stock_alert = product_low_stock_alert(item)
             product.image = image_paths[0] if image_paths else None
             product.icon = clean_text(item.get("icon") or icon, field="icon", max_length=10)
             product.badge = clean_text(item.get("badge", "new"), field="badge", max_length=20)
             product.description = description
             product.features = json.dumps(features, ensure_ascii=False)
             product.custom = bool(item.get("custom", True))
+            sync_stock_status(product)
 
             if not import_record:
                 db.flush()
