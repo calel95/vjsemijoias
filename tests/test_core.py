@@ -166,6 +166,7 @@ def test_alembic_migrations_create_current_schema():
             'payments',
             'newsletters',
             'coupons',
+            'coupon_redemptions',
             'order_events',
             'alembic_version',
         }.issubset(tables)
@@ -174,6 +175,14 @@ def test_alembic_migrations_create_current_schema():
         assert isinstance(product_columns_by_name['oldPrice']['type'], Numeric)
         assert isinstance(order_columns_by_name['total']['type'], Numeric)
         assert isinstance(coupon_columns_by_name['discount_percent']['type'], Numeric)
+        assert isinstance(coupon_columns_by_name['discount_value']['type'], Numeric)
+        assert {
+            'discount_type',
+            'minimum_subtotal',
+            'per_customer_limit',
+            'starts_at',
+            'ends_at',
+        }.issubset(coupon_columns_by_name)
         assert {'sku', 'stock_quantity', 'low_stock_alert'}.issubset(product_columns)
         assert 'stock_deducted' in order_columns_by_name
     finally:
@@ -264,4 +273,15 @@ def test_admin_frontend_has_admin_security_panel():
     assert 'admin-audit-list' in admin_html
     assert 'loadAdminSecurity()' in admin_js
     assert 'getAdminUsers()' in api_js
+
+def test_admin_frontend_has_coupon_management_panel():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert 'admin-coupon-form' in admin_html
+    assert 'coupon-per-customer-limit' in admin_html
+    assert 'loadAdminCoupons()' in admin_js
+    assert 'createAdminCoupon' in api_js
+    assert 'updateAdminCoupon' in api_js
     assert 'getAdminAuditLogs' in api_js

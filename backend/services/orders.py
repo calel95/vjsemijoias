@@ -7,7 +7,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Coupon, Order, Product
+from backend.models import Order, Product
+from backend.services.coupons import redeem_coupon, validate_coupon_for_order
 from backend.services.validation import (
     clean_text,
     normalize_email,
@@ -67,7 +68,14 @@ def configured_shipping(subtotal, db: Session | None = None):
     }
 
 
-def calculate_order(db: Session, items, coupon_code=""):
+def calculate_order(
+    db: Session,
+    items,
+    coupon_code="",
+    *,
+    customer_email: str = "",
+    customer_cpf: str = "",
+):
     if not isinstance(items, list) or not items:
         raise ValueError("O pedido deve conter ao menos um produto")
 
@@ -116,30 +124,22 @@ def calculate_order(db: Session, items, coupon_code=""):
             }
         )
 
-    active_settings = effective_store_settings(db)
     shipping_data = configured_shipping(subtotal, db)
     shipping = shipping_data["shipping"]
     coupon_code = str(coupon_code or "").strip().upper()
     discount = Decimal("0.00")
+    coupon = None
+    coupon_id = None
     if coupon_code:
-        if not active_settings.coupon.enabled:
-            coupon_code = ""
-        else:
-            active_coupon_code = active_settings.coupon.code.upper()
-            if coupon_code != active_coupon_code:
-                raise ValueError("Cupom invalido, expirado ou esgotado")
-            coupon = db.scalar(
-                select(Coupon).where(
-                    Coupon.code == coupon_code,
-                    Coupon.is_active.is_(True),
-                )
-            )
-            if not coupon or coupon.used_count >= coupon.usage_limit:
-                raise ValueError("Cupom inválido, expirado ou esgotado")
-            discount = (subtotal * money(coupon.discount_percent) / Decimal("100")).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-
+        coupon, discount = validate_coupon_for_order(
+            db,
+            coupon_code,
+            subtotal,
+            customer_email=customer_email,
+            customer_cpf=customer_cpf,
+        )
+        coupon_code = coupon.code
+        coupon_id = coupon.id
     return {
         "items": normalized_items,
         "subtotal": subtotal,
@@ -147,6 +147,8 @@ def calculate_order(db: Session, items, coupon_code=""):
         "discount": discount,
         "total": subtotal + shipping - discount,
         "coupon": coupon_code,
+        "coupon_id": coupon_id,
+        "coupon_model": coupon,
     }
 
 
@@ -186,7 +188,13 @@ def validate_order_data(db: Session, data):
     )
     data["address_city"] = clean_text(data.get("address_city"), field="address_city", max_length=100)
     data["address_state"] = clean_text(data.get("address_state"), field="address_state", max_length=10)
-    return calculate_order(db, data["items"], data.get("coupon", ""))
+    return calculate_order(
+        db,
+        data["items"],
+        data.get("coupon", ""),
+        customer_email=data["customer_email"],
+        customer_cpf=data["customer_cpf"],
+    )
 
 
 def create_local_order(db: Session, data, totals, payment_method, claims=None):
@@ -214,6 +222,15 @@ def create_local_order(db: Session, data, totals, payment_method, claims=None):
         coupon=totals["coupon"],
     )
     db.add(order)
+    if totals.get("coupon_model") and totals["discount"] > Decimal("0.00"):
+        redeem_coupon(
+            db,
+            coupon=totals["coupon_model"],
+            order=order,
+            discount_amount=totals["discount"],
+            customer_email=data["customer_email"],
+            customer_cpf=data["customer_cpf"],
+        )
     record_status_event(
         db,
         order,

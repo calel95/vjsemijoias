@@ -12,11 +12,13 @@ let adminProducts = [];
 let adminOrders = [];
 let adminUsers = [];
 let adminAuditLogs = [];
+let adminCoupons = [];
 let imageUploadInitialized = false;
 let productPreviewInitialized = false;
 let catalogPdfInitialized = false;
 let storeConfigInitialized = false;
 let adminSecurityInitialized = false;
+let couponAdminInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
 let importFolderFiles = [];
@@ -66,6 +68,7 @@ async function showAdminPanel() {
     apiLoaded = true;
     await applyStoreEnvironmentConfig();
     await loadAdminStoreConfig();
+    await loadAdminCoupons();
     await loadAdminSecurity();
     renderAdminProducts();
     await loadAdminOrders();
@@ -85,6 +88,10 @@ async function showAdminPanel() {
     if (!storeConfigInitialized) {
         setupStoreConfigForm();
         storeConfigInitialized = true;
+    }
+    if (!couponAdminInitialized) {
+        setupCouponAdminForm();
+        couponAdminInitialized = true;
     }
     if (!adminSecurityInitialized) {
         setupAdminSecurityForm();
@@ -181,6 +188,181 @@ async function handleStoreConfigSubmit(event) {
 }
 
 // ============================================
+// CUPONS PROMOCIONAIS
+// ============================================
+
+function setupCouponAdminForm() {
+    const form = document.getElementById('admin-coupon-form');
+    if (!form) return;
+    form.addEventListener('submit', handleCouponSubmit);
+}
+
+async function loadAdminCoupons() {
+    const list = document.getElementById('admin-coupons-list');
+    if (!list) return;
+    const result = await API.getAdminCoupons();
+    if (!result.success) {
+        showToast(result.error || 'Falha ao carregar cupons', 'error');
+        return;
+    }
+    adminCoupons = result.data || [];
+    renderAdminCoupons();
+}
+
+function readCouponForm() {
+    return {
+        code: document.getElementById('coupon-code').value.trim(),
+        discount_type: document.getElementById('coupon-discount-type').value,
+        discount_value: document.getElementById('coupon-discount-value').value,
+        minimum_subtotal: document.getElementById('coupon-minimum-subtotal').value || '0',
+        usage_limit: document.getElementById('coupon-usage-limit').value || '0',
+        per_customer_limit: document.getElementById('coupon-per-customer-limit').value || '0',
+        starts_at: document.getElementById('coupon-starts-at').value,
+        ends_at: document.getElementById('coupon-ends-at').value,
+        is_active: document.getElementById('coupon-is-active').checked,
+    };
+}
+
+function resetCouponForm() {
+    const form = document.getElementById('admin-coupon-form');
+    if (!form) return;
+    form.reset();
+    document.getElementById('coupon-id').value = '';
+    document.getElementById('coupon-is-active').checked = true;
+    document.getElementById('coupon-minimum-subtotal').value = '0';
+    document.getElementById('coupon-usage-limit').value = '0';
+    document.getElementById('coupon-per-customer-limit').value = '0';
+    document.getElementById('coupon-form-title').textContent = 'Novo cupom';
+    document.getElementById('coupon-submit').textContent = 'Salvar cupom';
+}
+
+function dateInputValue(value) {
+    if (!value) return '';
+    return String(value).slice(0, 10);
+}
+
+function editCoupon(id) {
+    const coupon = adminCoupons.find(item => Number(item.id) === Number(id));
+    if (!coupon) return;
+    document.getElementById('coupon-id').value = coupon.id;
+    document.getElementById('coupon-code').value = coupon.code || '';
+    document.getElementById('coupon-discount-type').value = coupon.discount_type || 'percent';
+    document.getElementById('coupon-discount-value').value = coupon.discount_value || '';
+    document.getElementById('coupon-minimum-subtotal').value = coupon.minimum_subtotal || 0;
+    document.getElementById('coupon-usage-limit').value = coupon.usage_limit || 0;
+    document.getElementById('coupon-per-customer-limit').value = coupon.per_customer_limit || 0;
+    document.getElementById('coupon-starts-at').value = dateInputValue(coupon.starts_at);
+    document.getElementById('coupon-ends-at').value = dateInputValue(coupon.ends_at);
+    document.getElementById('coupon-is-active').checked = Boolean(coupon.is_active);
+    document.getElementById('coupon-form-title').textContent = `Editar ${coupon.code}`;
+    document.getElementById('coupon-submit').textContent = 'Atualizar cupom';
+}
+
+async function toggleCoupon(id) {
+    const coupon = adminCoupons.find(item => Number(item.id) === Number(id));
+    if (!coupon) return;
+    const result = await API.updateAdminCoupon(id, { is_active: !coupon.is_active });
+    if (!result.success) {
+        showToast(result.error || 'Falha ao atualizar cupom', 'error');
+        return;
+    }
+    await loadAdminCoupons();
+    showToast(coupon.is_active ? 'Cupom pausado' : 'Cupom reativado', 'success');
+}
+
+async function handleCouponSubmit(event) {
+    event.preventDefault();
+    const id = document.getElementById('coupon-id').value;
+    const submit = document.getElementById('coupon-submit');
+    const payload = readCouponForm();
+
+    if (submit) {
+        submit.disabled = true;
+        submit.textContent = id ? 'Atualizando...' : 'Criando...';
+    }
+
+    const result = id
+        ? await API.updateAdminCoupon(id, payload)
+        : await API.createAdminCoupon(payload);
+
+    if (submit) {
+        submit.disabled = false;
+        submit.textContent = id ? 'Atualizar cupom' : 'Salvar cupom';
+    }
+
+    if (!result.success) {
+        showToast(result.error || 'Falha ao salvar cupom', 'error');
+        return;
+    }
+
+    resetCouponForm();
+    await loadAdminCoupons();
+    await loadAdminSecurity();
+    showToast('Cupom salvo com sucesso', 'success');
+}
+
+function couponDiscountLabel(coupon) {
+    if (coupon.discount_type === 'fixed') {
+        return `${formatPrice(coupon.discount_value || 0)} OFF`;
+    }
+    return `${Number(coupon.discount_value || coupon.discount_percent || 0)}% OFF`;
+}
+
+function couponValidityLabel(coupon) {
+    const start = coupon.starts_at ? dateInputValue(coupon.starts_at) : 'agora';
+    const end = coupon.ends_at ? dateInputValue(coupon.ends_at) : 'sem fim';
+    return `${start} ate ${end}`;
+}
+
+function renderAdminCoupons() {
+    const container = document.getElementById('admin-coupons-list');
+    if (!container) return;
+
+    if (!adminCoupons.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">CUP</div>
+                <p>Nenhum cupom cadastrado ainda.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminCoupons.map(coupon => {
+        const redemptions = Array.isArray(coupon.redemptions) ? coupon.redemptions : [];
+        const latest = redemptions.slice(0, 3).map(redemption => `
+            <small>${escapeHTML(redemption.customer_email || redemption.customer_cpf || 'cliente')} - ${formatPrice(redemption.discount_amount || 0)}</small>
+        `).join('');
+        const usageLimit = coupon.usage_limit > 0 ? coupon.usage_limit : 'sem limite';
+        const perCustomer = coupon.per_customer_limit > 0 ? coupon.per_customer_limit : 'sem limite';
+        return `
+            <div class="admin-coupon-row ${coupon.is_active ? '' : 'inactive'}">
+                <div class="admin-coupon-main">
+                    <div>
+                        <strong>${escapeHTML(coupon.code)}</strong>
+                        <span>${escapeHTML(couponDiscountLabel(coupon))}</span>
+                    </div>
+                    <span class="coupon-status">${coupon.is_active ? 'Ativo' : 'Pausado'}</span>
+                </div>
+                <div class="admin-coupon-meta">
+                    <small>Usos: ${coupon.used_count || 0}/${usageLimit}</small>
+                    <small>Por cliente: ${perCustomer}</small>
+                    <small>Minimo: ${formatPrice(coupon.minimum_subtotal || 0)}</small>
+                    <small>Validade: ${escapeHTML(couponValidityLabel(coupon))}</small>
+                </div>
+                ${latest ? `<div class="admin-coupon-redemptions">${latest}</div>` : ''}
+                <div class="admin-coupon-actions">
+                    <button class="btn btn-outline" type="button" onclick="editCoupon(${coupon.id})">Editar</button>
+                    <button class="btn btn-outline" type="button" onclick="toggleCoupon(${coupon.id})">
+                        ${coupon.is_active ? 'Pausar' : 'Reativar'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
 // ADMINISTRADORES E AUDITORIA
 // ============================================
 
@@ -212,6 +394,8 @@ function adminAuditLabel(action) {
         'store.config.updated': 'Configuracoes da loja alteradas',
         'catalog.imported': 'Catalogo importado',
         'catalog.cleared': 'Catalogo limpo',
+        'coupon.created': 'Cupom criado',
+        'coupon.updated': 'Cupom alterado',
     }[action] || action || 'Evento';
 }
 

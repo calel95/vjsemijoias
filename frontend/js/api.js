@@ -333,8 +333,20 @@ const API = {
     // CUPONS
     // ============================================
 
-    async validateCoupon(code) {
-        return this.request('POST', '/coupons/validate', { code });
+    async validateCoupon(code, options = {}) {
+        return this.request('POST', '/coupons/validate', { code, ...options });
+    },
+
+    async getAdminCoupons() {
+        return this.request('GET', '/admin/coupons');
+    },
+
+    async createAdminCoupon(data) {
+        return this.request('POST', '/admin/coupons', data);
+    },
+
+    async updateAdminCoupon(id, data) {
+        return this.request('PUT', `/admin/coupons/${encodeURIComponent(id)}`, data);
     },
 
     // ============================================

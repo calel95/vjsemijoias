@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -16,6 +16,11 @@ from backend.services.orders import (
     money,
     normalize_order_status,
     validate_order_data,
+)
+from backend.services.admin_security import record_admin_audit
+from backend.services.coupons import (
+    normalize_coupon_payload,
+    validate_coupon_for_order,
 )
 from backend.services.order_events import record_status_event
 from backend.services.validation import normalize_email
@@ -135,27 +140,119 @@ def validate_coupon(
     data: dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
-    active_settings = effective_store_settings(db)
-    code = data.get("code", "").upper()
-    active_coupon_code = active_settings.coupon.code.upper()
-    if not active_settings.coupon.enabled or not active_coupon_code:
-        raise HTTPException(status_code=404, detail="Cupons desativados")
-    if code != active_coupon_code:
-        raise HTTPException(status_code=404, detail="Cupom invalido ou expirado")
-    coupon = db.scalar(
-        select(Coupon).where(Coupon.code == code, Coupon.is_active.is_(True))
+    try:
+        coupon, discount = validate_coupon_for_order(
+            db,
+            data.get("code", ""),
+            data.get("total", 0),
+            customer_email=data.get("customer_email", ""),
+            customer_cpf=data.get("customer_cpf", ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    discount_percent = (
+        float(coupon.discount_value) if coupon.discount_type == "percent" else 0.0
     )
-    if not coupon:
-        raise HTTPException(status_code=404, detail="Cupom invalido ou expirado")
-    if coupon.used_count >= coupon.usage_limit:
-        raise HTTPException(status_code=400, detail="Cupom esgotado")
-    discount_percent = float(coupon.discount_percent)
     return {
         "valid": True,
         "code": coupon.code,
         "discount_percent": discount_percent,
-        "message": f"Cupom {coupon.code} aplicado! {discount_percent:.0f}% de desconto",
+        "discount_type": coupon.discount_type,
+        "discount_value": float(coupon.discount_value),
+        "minimum_subtotal": float(coupon.minimum_subtotal or 0),
+        "discount": float(discount),
+        "message": f"Cupom {coupon.code} aplicado!",
     }
+
+
+@router.get("/admin/coupons")
+def list_admin_coupons(
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    coupons = db.scalars(select(Coupon).order_by(Coupon.created_at.desc(), Coupon.id.desc())).all()
+    return [coupon.to_dict(include_redemptions=True) for coupon in coupons]
+
+
+@router.post("/admin/coupons", status_code=201)
+def create_admin_coupon(
+    request: Request,
+    data: dict[str, Any] = Body(default_factory=dict),
+    claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = normalize_coupon_payload(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if db.scalar(select(Coupon).where(Coupon.code == payload["code"])):
+        raise HTTPException(status_code=409, detail="Cupom ja cadastrado")
+
+    coupon = Coupon(**payload)
+    if coupon.discount_type == "percent":
+        coupon.discount_percent = coupon.discount_value
+    db.add(coupon)
+
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "coupon.created",
+        admin_user=actor,
+        resource="coupon",
+        resource_id=payload["code"],
+        metadata={
+            "code": payload["code"],
+            "discount_type": payload["discount_type"],
+            "usage_limit": payload["usage_limit"],
+            "per_customer_limit": payload["per_customer_limit"],
+        },
+    )
+    db.commit()
+    db.refresh(coupon)
+    return coupon.to_dict(include_redemptions=True)
+
+
+@router.put("/admin/coupons/{coupon_id}")
+def update_admin_coupon(
+    coupon_id: int,
+    request: Request,
+    data: dict[str, Any] = Body(default_factory=dict),
+    claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    coupon = get_or_404(db, Coupon, coupon_id)
+    try:
+        payload = normalize_coupon_payload(data, partial=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if "code" in payload and payload["code"] != coupon.code:
+        if db.scalar(select(Coupon).where(Coupon.code == payload["code"])):
+            raise HTTPException(status_code=409, detail="Cupom ja cadastrado")
+
+    changed_keys = []
+    for key, value in payload.items():
+        if getattr(coupon, key) != value:
+            setattr(coupon, key, value)
+            changed_keys.append(key)
+    if coupon.discount_type == "percent":
+        coupon.discount_percent = coupon.discount_value
+
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "coupon.updated",
+        admin_user=actor,
+        resource="coupon",
+        resource_id=str(coupon.id),
+        metadata={"code": coupon.code, "changed_keys": changed_keys},
+    )
+    db.commit()
+    db.refresh(coupon)
+    return coupon.to_dict(include_redemptions=True)
 
 
 @router.post("/shipping/calculate")

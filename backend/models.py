@@ -202,6 +202,10 @@ class Order(Base):
         cascade="all, delete-orphan",
         order_by="OrderEvent.created_at",
     )
+    coupon_redemptions: Mapped[list["CouponRedemption"]] = relationship(
+        back_populates="order",
+        cascade="all, delete-orphan",
+    )
 
     def to_dict(self):
         return {
@@ -326,10 +330,77 @@ class Coupon(Base):
         PERCENT_COLUMN,
         default=Decimal("10.00"),
     )
+    discount_type: Mapped[str] = mapped_column(String(20), default="percent")
+    discount_value: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("10.00"))
+    minimum_subtotal: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     usage_limit: Mapped[int] = mapped_column(Integer, default=100)
     used_count: Mapped[int] = mapped_column(Integer, default=0)
+    per_customer_limit: Mapped[int] = mapped_column(Integer, default=0)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    redemptions: Mapped[list["CouponRedemption"]] = relationship(
+        back_populates="coupon",
+        cascade="all, delete-orphan",
+        order_by="CouponRedemption.created_at",
+    )
+
+    def to_dict(self, include_redemptions: bool = False):
+        data = {
+            "id": self.id,
+            "code": self.code,
+            "discount_percent": decimal_to_float(self.discount_percent),
+            "discount_type": self.discount_type,
+            "discount_value": decimal_to_float(self.discount_value),
+            "minimum_subtotal": decimal_to_float(self.minimum_subtotal),
+            "is_active": self.is_active,
+            "usage_limit": self.usage_limit,
+            "used_count": self.used_count,
+            "per_customer_limit": self.per_customer_limit,
+            "starts_at": self.starts_at.isoformat() if self.starts_at else None,
+            "ends_at": self.ends_at.isoformat() if self.ends_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_redemptions:
+            data["redemptions"] = [
+                redemption.to_dict()
+                for redemption in sorted(
+                    self.redemptions,
+                    key=lambda item: item.created_at or datetime.min.replace(tzinfo=UTC),
+                    reverse=True,
+                )[:20]
+            ]
+        return data
+
+
+class CouponRedemption(Base):
+    __tablename__ = "coupon_redemptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    coupon_id: Mapped[int] = mapped_column(ForeignKey("coupons.id"), index=True)
+    order_id: Mapped[str] = mapped_column(ForeignKey("orders.id"), unique=True, index=True)
+    customer_email: Mapped[str | None] = mapped_column(String(200), index=True, nullable=True)
+    customer_cpf: Mapped[str | None] = mapped_column(String(20), index=True, nullable=True)
+    discount_amount: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    coupon: Mapped[Coupon] = relationship(back_populates="redemptions")
+    order: Mapped[Order] = relationship(back_populates="coupon_redemptions")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "coupon_id": self.coupon_id,
+            "order_id": self.order_id,
+            "customer_email": self.customer_email,
+            "customer_cpf": self.customer_cpf,
+            "discount_amount": decimal_to_float(self.discount_amount),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
 
 
 class StoreSetting(Base):

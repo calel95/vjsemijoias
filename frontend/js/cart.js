@@ -163,7 +163,7 @@ const Cart = {
             return { code: '', percent: 0, discount: 0 };
         }
 
-        const result = await API.validateCoupon(code);
+        const result = await API.validateCoupon(code, { total: subtotal });
         if (!result.success || !result.data.valid) {
             localStorage.removeItem(COUPON_KEY);
             localStorage.removeItem(COUPON_PERCENT_KEY);
@@ -171,12 +171,13 @@ const Cart = {
         }
 
         const percent = Number(result.data.discount_percent || 0);
+        const discount = Number(result.data.discount || 0);
         localStorage.setItem(COUPON_KEY, result.data.code);
         localStorage.setItem(COUPON_PERCENT_KEY, String(percent));
         return {
             code: result.data.code,
             percent,
-            discount: subtotal * (percent / 100),
+            discount: discount || subtotal * (percent / 100),
         };
     },
 
