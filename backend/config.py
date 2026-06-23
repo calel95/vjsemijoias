@@ -76,6 +76,13 @@ class Settings:
         os.getenv("PUBLIC_BASE_URL", "").strip().startswith("https://"),
     )
     admin_cookie_samesite: str = os.getenv("ADMIN_COOKIE_SAMESITE", "lax").strip().lower()
+    user_token_expire_days: int = int(os.getenv("USER_TOKEN_EXPIRE_DAYS", "7"))
+    user_cookie_name: str = os.getenv("USER_COOKIE_NAME", "vj_user_token")
+    user_cookie_secure: bool = env_bool(
+        "USER_COOKIE_SECURE",
+        os.getenv("PUBLIC_BASE_URL", "").strip().startswith("https://"),
+    )
+    user_cookie_samesite: str = os.getenv("USER_COOKIE_SAMESITE", "lax").strip().lower()
     infinitepay_handle: str = os.getenv("INFINITEPAY_HANDLE", "").strip().lstrip("$")
     infinitepay_api_base: str = os.getenv(
         "INFINITEPAY_API_BASE",

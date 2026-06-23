@@ -80,6 +80,33 @@ def test_admin_cookie_is_httponly_and_can_authenticate_admin_routes():
     finally:
         object.__setattr__(settings, 'admin_cookie_secure', original_secure)
 
+def test_user_cookie_is_httponly_and_can_authenticate_me():
+    original_secure = settings.user_cookie_secure
+    cookie_client = TestClient(app)
+    try:
+        object.__setattr__(settings, 'user_cookie_secure', False)
+        register = cookie_client.post('/api/auth/register', json={
+            'name': 'Cliente Cookie',
+            'email': 'cliente-cookie@example.com',
+            'password': 'senha123',
+            'cpf': '12345678909',
+        })
+        me = cookie_client.get('/api/auth/me')
+        logout = cookie_client.post('/api/auth/logout')
+        after_logout = cookie_client.get('/api/auth/me')
+
+        set_cookie = register.headers.get('set-cookie', '')
+        assert register.status_code == 201
+        assert f'{settings.user_cookie_name}=' in set_cookie
+        assert 'HttpOnly' in set_cookie
+        assert 'SameSite=lax' in set_cookie
+        assert me.status_code == 200
+        assert me.json()['email'] == 'cliente-cookie@example.com'
+        assert logout.status_code == 200
+        assert after_logout.status_code == 401
+    finally:
+        object.__setattr__(settings, 'user_cookie_secure', original_secure)
+
 def test_admin_can_create_another_admin_user():
     headers = admin_headers()
 

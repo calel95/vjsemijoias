@@ -1,4 +1,7 @@
-from backend.models import Product
+from decimal import Decimal
+
+from backend.database import SessionLocal
+from backend.models import Order, Product
 from tests.helpers import admin_login, client
 
 
@@ -27,6 +30,12 @@ def test_order_total_is_calculated_by_server():
     assert order['discount'] == 29.98
     assert order['total'] == 269.82
     assert order['status'] == 'pending'
+
+    with SessionLocal() as db:
+        stored = db.get(Order, order['id'])
+        assert stored.subtotal == Decimal('299.80')
+        assert stored.discount == Decimal('29.98')
+        assert stored.total == Decimal('269.82')
 
 def test_order_rejects_invalid_cpf_and_sanitizes_customer_text():
     invalid = client.post('/api/orders', json={

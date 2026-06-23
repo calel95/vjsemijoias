@@ -136,11 +136,12 @@ def validate_coupon(
         raise HTTPException(status_code=404, detail="Cupom invalido ou expirado")
     if coupon.used_count >= coupon.usage_limit:
         raise HTTPException(status_code=400, detail="Cupom esgotado")
+    discount_percent = float(coupon.discount_percent)
     return {
         "valid": True,
         "code": coupon.code,
-        "discount_percent": coupon.discount_percent,
-        "message": f"Cupom {coupon.code} aplicado! {coupon.discount_percent:.0f}% de desconto",
+        "discount_percent": discount_percent,
+        "message": f"Cupom {coupon.code} aplicado! {discount_percent:.0f}% de desconto",
     }
 
 
@@ -181,6 +182,6 @@ def get_admin_stats(
         "total_orders": db.scalar(select(func.count(Order.id))),
         "total_users": db.scalar(select(func.count(User.id))),
         "total_newsletter": db.scalar(select(func.count(Newsletter.id))),
-        "total_revenue": total_revenue,
+        "total_revenue": float(total_revenue),
         "recent_orders": [order.to_dict() for order in recent_orders],
     }

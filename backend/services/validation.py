@@ -2,6 +2,7 @@ import base64
 import binascii
 import io
 import re
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from html import unescape
 from pathlib import Path
 
@@ -121,18 +122,29 @@ def clean_text_list(values, *, field="campo", max_items=20, max_item_length=120)
     ]
 
 
-def normalize_money_float(value, *, field="valor", required=True, minimum=0.0):
+def normalize_money_decimal(value, *, field="valor", required=True, minimum=Decimal("0.00")):
     if value in (None, ""):
         if required:
             raise ValueError(f"Campo obrigatorio: {field}")
         return None
     try:
-        number = float(value)
-    except (TypeError, ValueError) as exc:
+        number = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError) as exc:
         raise ValueError(f"{field} invalido") from exc
+    minimum = Decimal(str(minimum))
     if number < minimum:
         raise ValueError(f"{field} nao pode ser negativo")
     return number
+
+
+def normalize_money_float(value, *, field="valor", required=True, minimum=0.0):
+    number = normalize_money_decimal(
+        value,
+        field=field,
+        required=required,
+        minimum=minimum,
+    )
+    return float(number) if number is not None else None
 
 
 def safe_image_extension(content_type: str, filename: str = "") -> str:

@@ -127,7 +127,7 @@ def test_database_url_uses_psycopg_for_postgresql(monkeypatch):
 def test_alembic_migrations_create_current_schema():
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import create_engine, inspect
+    from sqlalchemy import Numeric, create_engine, inspect
 
     tmp_root = Path('.tmp')
     tmp_root.mkdir(exist_ok=True)
@@ -147,6 +147,15 @@ def test_alembic_migrations_create_current_schema():
         product_columns = {
             column['name'] for column in inspector.get_columns('products')
         }
+        product_columns_by_name = {
+            column['name']: column for column in inspector.get_columns('products')
+        }
+        order_columns_by_name = {
+            column['name']: column for column in inspector.get_columns('orders')
+        }
+        coupon_columns_by_name = {
+            column['name']: column for column in inspector.get_columns('coupons')
+        }
 
         assert {
             'products',
@@ -160,6 +169,10 @@ def test_alembic_migrations_create_current_schema():
             'alembic_version',
         }.issubset(tables)
         assert {'is_active', 'stock_status'}.issubset(product_columns)
+        assert isinstance(product_columns_by_name['price']['type'], Numeric)
+        assert isinstance(product_columns_by_name['oldPrice']['type'], Numeric)
+        assert isinstance(order_columns_by_name['total']['type'], Numeric)
+        assert isinstance(coupon_columns_by_name['discount_percent']['type'], Numeric)
     finally:
         if engine is not None:
             engine.dispose()
@@ -201,6 +214,13 @@ def test_admin_frontend_does_not_store_admin_jwt_in_web_storage():
     assert "sessionStorage.setItem('vj_admin_token'" not in api_js
     assert "localStorage.setItem('vj_admin_token'" not in api_js
     assert "vj_admin_authenticated" in api_js
+    assert "credentials: 'include'" in api_js
+
+def test_frontend_does_not_store_user_jwt_in_local_storage():
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+
+    assert "localStorage.setItem('vj_api_token'" not in api_js
+    assert "headers['Authorization']" not in api_js
     assert "credentials: 'include'" in api_js
 
 def test_checkout_has_cep_autofill_wiring():

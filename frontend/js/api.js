@@ -18,7 +18,7 @@ function getFilenameFromDisposition(disposition) {
 
 const API = {
     baseUrl: `${API_BASE}/api`,
-    token: localStorage.getItem('vj_api_token'),
+    authenticated: false,
 
     // ============================================
     // UTILITÁRIOS
@@ -26,20 +26,16 @@ const API = {
 
     setToken(token, options = {}) {
         const isAdminToken = options.admin === true;
+        localStorage.removeItem('vj_api_token');
+        sessionStorage.removeItem('vj_admin_token');
         if (isAdminToken) {
-            this.token = null;
-            localStorage.removeItem('vj_api_token');
-            sessionStorage.removeItem('vj_admin_token');
+            this.authenticated = false;
             sessionStorage.setItem('vj_admin_authenticated', 'true');
         } else if (token) {
-            this.token = token;
-            localStorage.setItem('vj_api_token', token);
-            sessionStorage.removeItem('vj_admin_token');
+            this.authenticated = true;
             sessionStorage.removeItem('vj_admin_authenticated');
         } else {
-            this.token = null;
-            localStorage.removeItem('vj_api_token');
-            sessionStorage.removeItem('vj_admin_token');
+            this.authenticated = false;
             sessionStorage.removeItem('vj_admin_authenticated');
         }
     },
@@ -49,13 +45,9 @@ const API = {
     },
 
     getHeaders() {
-        const headers = {
+        return {
             'Content-Type': 'application/json',
         };
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
-        return headers;
     },
 
     async request(method, endpoint, body = null) {
@@ -122,9 +114,6 @@ const API = {
         }
 
         const headers = {};
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
 
         try {
             const response = await fetch(`${this.baseUrl}/products/import-folder`, {
@@ -154,9 +143,6 @@ const API = {
 
     async generateCatalogPdf(formData) {
         const headers = {};
-        if (this.token) {
-            headers['Authorization'] = `Bearer ${this.token}`;
-        }
 
         try {
             const response = await fetch(`${this.baseUrl}/admin/catalog-pdf`, {
@@ -215,16 +201,16 @@ const API = {
 
     async register(userData) {
         const result = await this.request('POST', '/auth/register', userData);
-        if (result.success && result.data.token) {
-            this.setToken(result.data.token);
+        if (result.success) {
+            this.setToken(result.data.token || 'cookie');
         }
         return result;
     },
 
     async login(email, password) {
         const result = await this.request('POST', '/auth/login', { email, password });
-        if (result.success && result.data.token) {
-            this.setToken(result.data.token);
+        if (result.success) {
+            this.setToken(result.data.token || 'cookie');
         }
         return result;
     },
@@ -254,7 +240,7 @@ const API = {
     },
 
     isLoggedIn() {
-        return !!this.token;
+        return this.authenticated;
     },
 
     // ============================================

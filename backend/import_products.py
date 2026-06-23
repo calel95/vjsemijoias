@@ -4,7 +4,7 @@ import os
 import shutil
 import unicodedata
 from collections import Counter, defaultdict
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from sqlalchemy import select
@@ -60,7 +60,7 @@ def slugify(value):
 
 def parse_price(value):
     if isinstance(value, (int, float, Decimal)):
-        return float(value)
+        return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     text = str(value).strip()
     if not text:
@@ -76,7 +76,7 @@ def parse_price(value):
         text = text.replace(".", "").replace(",", ".")
 
     try:
-        return float(Decimal(text))
+        return Decimal(text).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError):
         raise ValueError(f"Preco invalido: {value!r}") from None
 

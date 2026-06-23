@@ -206,21 +206,30 @@ const Auth = {
     init() {
         const stored = localStorage.getItem(USER_KEY);
         this.user = stored ? JSON.parse(stored) : null;
-        if (API.token) {
-            API.getMe().then(result => {
-                if (result.success) {
-                    this.user = result.data;
-                    localStorage.setItem(USER_KEY, JSON.stringify(this.user));
-                    this.updateUI();
-                } else {
-                    this.logout();
-                }
-            }).catch(() => { });
-        } else {
-            this.user = null;
-            localStorage.removeItem(USER_KEY);
-        }
         this.updateUI();
+
+        API.getMe().then(result => {
+            if (result.success) {
+                if (result.data?.is_admin && API.hasAdminToken()) {
+                    API.authenticated = false;
+                    this.user = null;
+                    localStorage.removeItem(USER_KEY);
+                    this.updateUI();
+                    return;
+                }
+                API.authenticated = true;
+                this.user = result.data;
+                localStorage.setItem(USER_KEY, JSON.stringify(this.user));
+            } else {
+                API.authenticated = false;
+                this.user = null;
+                localStorage.removeItem(USER_KEY);
+            }
+            this.updateUI();
+        }).catch(() => {
+            API.authenticated = !!this.user;
+            this.updateUI();
+        });
     },
 
     async register(userData) {
@@ -283,7 +292,7 @@ const Auth = {
         this.updateUI();
     },
 
-    isLoggedIn() { return !!API.token; },
+    isLoggedIn() { return API.isLoggedIn() || !!this.user; },
 
     getUserName() {
         if (this.user) return this.user.name;

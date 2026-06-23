@@ -108,6 +108,15 @@ Tokens comuns de usuario, mesmo de um usuario marcado como admin no banco, nao
 acessam rotas administrativas. Para producao, use uma `ADMIN_PASSWORD` forte e
 uma `JWT_SECRET_KEY` longa e aleatoria.
 
+O login de clientes tambem usa cookie `HttpOnly`, configuravel por:
+
+```env
+USER_TOKEN_EXPIRE_DAYS=7
+USER_COOKIE_NAME=vj_user_token
+USER_COOKIE_SECURE=true
+USER_COOKIE_SAMESITE=lax
+```
+
 ## Estrutura do projeto
 
 ```text

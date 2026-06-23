@@ -20,7 +20,7 @@ from backend.services.product_media import (
     store_admin_gallery_images,
 )
 from backend.services.storage import storage_status
-from backend.services.validation import clean_text, clean_text_list, normalize_money_float
+from backend.services.validation import clean_text, clean_text_list, normalize_money_decimal
 
 
 router = APIRouter(prefix="/api")
@@ -51,9 +51,9 @@ def normalize_product_payload(data: dict[str, Any], *, partial=False):
     if "categoryName" not in cleaned and "category" in cleaned:
         cleaned["categoryName"] = cleaned["category"].capitalize()
     if "price" in data or not partial:
-        cleaned["price"] = normalize_money_float(data.get("price"), field="price")
+        cleaned["price"] = normalize_money_decimal(data.get("price"), field="price")
     if "oldPrice" in data:
-        cleaned["oldPrice"] = normalize_money_float(
+        cleaned["oldPrice"] = normalize_money_decimal(
             data.get("oldPrice"),
             field="oldPrice",
             required=False,

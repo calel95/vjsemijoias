@@ -42,6 +42,8 @@ INFINITEPAY_HANDLE=sua_infinite_tag
 RATE_LIMIT_ENABLED=true
 ADMIN_COOKIE_SECURE=true
 ADMIN_COOKIE_SAMESITE=lax
+USER_COOKIE_SECURE=true
+USER_COOKIE_SAMESITE=lax
 ```
 
 Use `.env.dev.example` como checklist. Nunca envie `backend/.env` para o Git.
@@ -93,6 +95,9 @@ JWT_SECRET_KEY=gere-outra-chave-longa
 ADMIN_PASSWORD=uma-senha-dev-forte
 ADMIN_COOKIE_SECURE=true
 ADMIN_COOKIE_SAMESITE=lax
+USER_TOKEN_EXPIRE_DAYS=7
+USER_COOKIE_SECURE=true
+USER_COOKIE_SAMESITE=lax
 INFINITEPAY_HANDLE=sua_infinite_tag
 INFINITEPAY_API_BASE=https://api.checkout.infinitepay.io
 STORAGE_BACKEND=r2

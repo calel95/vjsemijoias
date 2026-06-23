@@ -349,7 +349,7 @@ def sync_coupon_record(db: Session, active_settings: StoreSettings):
     if not coupon:
         coupon = Coupon(code=active_settings.coupon.code)
         db.add(coupon)
-    coupon.discount_percent = float(money_value(active_settings.coupon.discount_percent))
+    coupon.discount_percent = money_value(active_settings.coupon.discount_percent)
     coupon.usage_limit = active_settings.coupon.usage_limit
     coupon.is_active = active_settings.coupon.enabled
 

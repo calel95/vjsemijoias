@@ -8,8 +8,8 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.auth import (
     admin_claims,
-    create_access_token,
     create_admin_access_token,
+    create_user_access_token,
     required_claims,
 )
 from backend.config import settings
@@ -32,6 +32,38 @@ from backend.services.validation import (
 
 router = APIRouter(prefix="/api/auth")
 DEFAULT_ADMIN_EMAIL = "admin@vjsemijoias.com"
+
+
+def set_user_cookie(response: Response, token: str):
+    response.set_cookie(
+        key=settings.user_cookie_name,
+        value=token,
+        max_age=settings.user_token_expire_days * 24 * 60 * 60,
+        httponly=True,
+        secure=settings.user_cookie_secure,
+        samesite=settings.user_cookie_samesite,
+        path="/",
+    )
+
+
+def delete_user_cookie(response: Response):
+    response.delete_cookie(
+        key=settings.user_cookie_name,
+        path="/",
+        secure=settings.user_cookie_secure,
+        httponly=True,
+        samesite=settings.user_cookie_samesite,
+    )
+
+
+def delete_admin_cookie(response: Response):
+    response.delete_cookie(
+        key=settings.admin_cookie_name,
+        path="/",
+        secure=settings.admin_cookie_secure,
+        httponly=True,
+        samesite=settings.admin_cookie_samesite,
+    )
 
 
 def has_admin_user(db: Session):
@@ -72,6 +104,7 @@ def fail_admin_login(db: Session, request: Request, email: str, message: str):
 
 @router.post("/register", status_code=201)
 def register(
+    response: Response,
     data: dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
@@ -102,11 +135,19 @@ def register(
     )
     db.add(user)
     db.commit()
-    return {"token": create_access_token(user), "user": user.to_dict()}
+    token = create_user_access_token(user)
+    set_user_cookie(response, token)
+    return {
+        "token": token,
+        "token_type": "user",
+        "expires_in": settings.user_token_expire_days * 24 * 60 * 60,
+        "user": user.to_dict(),
+    }
 
 
 @router.post("/login")
 def login(
+    response: Response,
     data: dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
@@ -119,7 +160,14 @@ def login(
     user = db.scalar(select(User).where(User.email == email))
     if not user or not check_password_hash(user.password_hash, data["password"]):
         raise HTTPException(status_code=401, detail="E-mail ou senha incorretos")
-    return {"token": create_access_token(user), "user": user.to_dict()}
+    token = create_user_access_token(user)
+    set_user_cookie(response, token)
+    return {
+        "token": token,
+        "token_type": "user",
+        "expires_in": settings.user_token_expire_days * 24 * 60 * 60,
+        "user": user.to_dict(),
+    }
 
 
 @router.get("/me")
@@ -196,13 +244,8 @@ def admin_login(
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(
-        key=settings.admin_cookie_name,
-        path="/",
-        secure=settings.admin_cookie_secure,
-        httponly=True,
-        samesite=settings.admin_cookie_samesite,
-    )
+    delete_user_cookie(response)
+    delete_admin_cookie(response)
     return {"message": "Sessao encerrada"}
 
 

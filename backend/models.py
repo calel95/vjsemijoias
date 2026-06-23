@@ -1,14 +1,25 @@
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
 
 
+MONEY_COLUMN = Numeric(12, 2)
+PERCENT_COLUMN = Numeric(5, 2)
+
+
 def utc_now():
     return datetime.now(UTC)
+
+
+def decimal_to_float(value):
+    if value is None:
+        return None
+    return float(value)
 
 
 class Product(Base):
@@ -18,8 +29,8 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[str] = mapped_column(String(50))
     categoryName: Mapped[str] = mapped_column(String(50))
-    price: Mapped[float] = mapped_column(Float)
-    oldPrice: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    oldPrice: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
     image: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
     badge: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -56,8 +67,8 @@ class Product(Base):
             "name": self.name,
             "category": self.category,
             "categoryName": self.categoryName,
-            "price": self.price,
-            "oldPrice": self.oldPrice,
+            "price": decimal_to_float(self.price),
+            "oldPrice": decimal_to_float(self.oldPrice),
             "image": self.image,
             "images": images,
             "icon": self.icon or "💎",
@@ -166,10 +177,10 @@ class Order(Base):
     address_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     address_state: Mapped[str | None] = mapped_column(String(10), nullable=True)
     items: Mapped[str] = mapped_column(Text)
-    subtotal: Mapped[float] = mapped_column(Float)
-    shipping: Mapped[float] = mapped_column(Float, default=0)
-    discount: Mapped[float] = mapped_column(Float, default=0)
-    total: Mapped[float] = mapped_column(Float)
+    subtotal: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    shipping: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    discount: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    total: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="pending")
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -192,10 +203,10 @@ class Order(Base):
             "address_city": self.address_city,
             "address_state": self.address_state,
             "items": json.loads(self.items) if self.items else [],
-            "subtotal": self.subtotal,
-            "shipping": self.shipping,
-            "discount": self.discount,
-            "total": self.total,
+            "subtotal": decimal_to_float(self.subtotal),
+            "shipping": decimal_to_float(self.shipping),
+            "discount": decimal_to_float(self.discount),
+            "total": decimal_to_float(self.total),
             "payment_method": self.payment_method,
             "status": self.status,
             "coupon": self.coupon,
@@ -262,7 +273,10 @@ class Coupon(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(20), unique=True)
-    discount_percent: Mapped[float] = mapped_column(Float, default=10)
+    discount_percent: Mapped[Decimal] = mapped_column(
+        PERCENT_COLUMN,
+        default=Decimal("10.00"),
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     usage_limit: Mapped[int] = mapped_column(Integer, default=100)
     used_count: Mapped[int] = mapped_column(Integer, default=0)

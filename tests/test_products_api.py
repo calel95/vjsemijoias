@@ -1,4 +1,5 @@
 import shutil
+from decimal import Decimal
 from pathlib import Path
 
 from backend.config import FRONTEND_ROOT
@@ -26,7 +27,13 @@ def test_admin_can_create_product_with_api_token():
     )
 
     assert response.status_code == 201
-    assert response.json()['name'] == 'Brinco Teste'
+    product = response.json()
+    assert product['name'] == 'Brinco Teste'
+    assert product['price'] == 89.9
+
+    with SessionLocal() as db:
+        stored = db.get(Product, product['id'])
+        assert stored.price == Decimal('89.90')
 
 def test_admin_product_input_is_sanitized_and_validated():
     token = admin_login().json()['token']
