@@ -162,6 +162,8 @@ MELHOR_ENVIO_TOKEN=seu_token
 MELHOR_ENVIO_FROM_POSTAL_CODE=01001000
 # Opcional: restrinja servicos especificos, por exemplo PAC/Sedex conforme sua conta.
 MELHOR_ENVIO_SERVICES=1,2
+# Correios,Jadlog,Loggi,J&T,Buslog,LATAM Cargo
+MELHOR_ENVIO_ALLOWED_COMPANY_IDS=1,2,14,15,12,6
 MELHOR_ENVIO_TIMEOUT_SECONDS=6
 ```
 ## E-mails transacionais

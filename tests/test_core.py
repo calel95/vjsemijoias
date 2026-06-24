@@ -257,6 +257,9 @@ def test_alembic_migrations_create_current_schema():
             'shipping_service',
             'shipping_estimated_days',
             'shipping_destination_zip',
+            'shipping_option_id',
+            'shipping_company_id',
+            'shipping_company',
         }.issubset(order_columns_by_name)
         assert 'checkout_url' in payment_columns_by_name
     finally:
@@ -327,6 +330,15 @@ def test_frontend_shipping_calculation_sends_cart_items():
     assert 'API.calculateShipping(subtotal, zipCode, this.items)' in cart_js
     assert 'API.calculateShipping(' in product_html
     assert '{ id: product.id, quantity: 1 }' in product_html
+
+def test_checkout_exposes_shipping_option_selection():
+    checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
+
+    assert 'checkoutShippingOptions' in checkout_html
+    assert 'renderShippingOptionsHTML' in checkout_html
+    assert 'selectCheckoutShippingOption' in checkout_html
+    assert 'refreshCheckoutShippingOptions' in checkout_html
+    assert 'shipping_option_id: checkoutSelectedShippingId' in checkout_html
 
 def test_catalog_loads_categories_from_api():
     catalog_html = (FRONTEND_ROOT / 'catalogo.html').read_text(encoding='utf-8')

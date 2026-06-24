@@ -127,6 +127,7 @@ def test_melhor_envio_provider_returns_external_options(monkeypatch):
             melhor_envio_from_postal_code='01001000',
             melhor_envio_api_base='https://example.test',
             melhor_envio_services='1,2',
+            melhor_envio_allowed_company_ids='',
             melhor_envio_timeout_seconds=1,
         ),
     )
@@ -157,6 +158,52 @@ def test_melhor_envio_provider_returns_external_options(monkeypatch):
     assert options[0]['shipping'] == money('18.50')
 
 
+def test_melhor_envio_filters_allowed_company_ids(monkeypatch):
+    package = {
+        'item_count': 1,
+        'weight_grams': 120,
+        'height_cm': money('2'),
+        'width_cm': money('10'),
+        'length_cm': money('15'),
+        'shipping_profile': 'default',
+    }
+    monkeypatch.setattr(
+        shipping_service,
+        'settings',
+        SimpleNamespace(melhor_envio_allowed_company_ids='1,2,14,15,12,6'),
+    )
+
+    options = shipping_service.parse_melhor_envio_options(
+        [
+            {
+                'id': 1,
+                'name': 'PAC',
+                'price': '18.50',
+                'delivery_time': 6,
+                'company': {'id': 1, 'name': 'Correios'},
+            },
+            {
+                'id': 33,
+                'name': 'Total Express',
+                'price': '17.00',
+                'delivery_time': 5,
+                'company': {'id': 8, 'name': 'Total Express'},
+            },
+            {
+                'id': 12,
+                'name': 'eFacil',
+                'price': '20.00',
+                'delivery_time': 4,
+                'company': {'id': 6, 'name': 'LATAM Cargo'},
+            },
+        ],
+        destination_zip='01001000',
+        package=package,
+    )
+
+    assert [option['company_id'] for option in options] == [1, 6]
+    assert all(option['company_id'] in {1, 2, 14, 15, 12, 6} for option in options)
+
 def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypatch):
     package = {
         'item_count': 1,
@@ -175,6 +222,7 @@ def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypat
             melhor_envio_from_postal_code='01001000',
             melhor_envio_api_base='https://example.test',
             melhor_envio_services='',
+            melhor_envio_allowed_company_ids='',
             melhor_envio_timeout_seconds=1,
         ),
     )

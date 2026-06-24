@@ -134,10 +134,21 @@ def melhor_envio_payload(subtotal, destination_zip: str, package: dict):
     return payload
 
 
+def allowed_company_ids():
+    raw_ids = settings.melhor_envio_allowed_company_ids
+    if not raw_ids:
+        return set()
+    try:
+        return {int(item.strip()) for item in raw_ids.split(",") if item.strip()}
+    except ValueError as exc:
+        raise ValueError("MELHOR_ENVIO_ALLOWED_COMPANY_IDS deve conter apenas numeros separados por virgula") from exc
+
+
 def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
     if not isinstance(data, list):
         raise ValueError("Resposta invalida do Melhor Envio")
 
+    allowed_companies = allowed_company_ids()
     options = []
     for item in data:
         if not isinstance(item, dict) or item.get("error"):
@@ -147,6 +158,9 @@ def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
             continue
         service_id = str(item.get("id") or item.get("service_id") or "")
         company = item.get("company") if isinstance(item.get("company"), dict) else {}
+        company_id = company.get("id")
+        if allowed_companies and company_id not in allowed_companies:
+            continue
         service = item.get("name") or company.get("name") or f"Servico {service_id}".strip()
         estimated_days = item.get("custom_delivery_time") or item.get("delivery_time") or ""
         shipping = money(price)
@@ -160,6 +174,8 @@ def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
                 "estimated_days": str(estimated_days),
                 "destination_zip": destination_zip,
                 "package": package,
+                "company_id": company_id,
+                "company": company.get("name"),
                 "raw_service_id": service_id,
             }
         )

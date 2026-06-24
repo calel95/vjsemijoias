@@ -125,6 +125,7 @@ class Settings:
     melhor_envio_token: str = os.getenv("MELHOR_ENVIO_TOKEN", "").strip()
     melhor_envio_from_postal_code: str = os.getenv("MELHOR_ENVIO_FROM_POSTAL_CODE", "").strip()
     melhor_envio_services: str = os.getenv("MELHOR_ENVIO_SERVICES", "").strip()
+    melhor_envio_allowed_company_ids: str = os.getenv("MELHOR_ENVIO_ALLOWED_COMPANY_IDS", "").strip()
     melhor_envio_timeout_seconds: float = float(os.getenv("MELHOR_ENVIO_TIMEOUT_SECONDS", "6"))
 
     @property

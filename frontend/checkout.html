@@ -99,6 +99,10 @@
     <script>
         let paymentPollTimer = null;
         let checkoutBusy = false;
+        let checkoutShippingOptions = [];
+        let checkoutSelectedShippingId = '';
+        let checkoutShippingLoading = false;
+        let checkoutShippingError = '';
         const CHECKOUT_IDEMPOTENCY_KEY = 'vj_checkout_idempotency_key';
 
         function escapeAttribute(value) {
@@ -107,6 +111,45 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;');
+        }
+
+        function escapeText(value) {
+            return String(value || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+        }
+
+        function shippingOptionLabel(option) {
+            const company = option.company || option.provider || '';
+            const service = option.service || 'Frete';
+            return company && !String(service).includes(company)
+                ? `${company} - ${service}`
+                : service;
+        }
+
+        function renderShippingOptionsHTML() {
+            if (checkoutShippingLoading) {
+                return '<div style="padding: 0.85rem; background: var(--cream); border-radius: 8px; font-size: 0.9rem;">Calculando frete...</div>';
+            }
+            if (checkoutShippingError) {
+                return `<div style="padding: 0.85rem; background: #fff3cd; color: #856404; border-radius: 8px; font-size: 0.9rem;">${escapeText(checkoutShippingError)}</div>`;
+            }
+            if (!checkoutShippingOptions.length) {
+                return '<div style="padding: 0.85rem; background: var(--cream); border-radius: 8px; font-size: 0.9rem; color: var(--gray);">Informe o CEP para ver as opcoes de frete.</div>';
+            }
+            return checkoutShippingOptions.map(option => {
+                const checked = option.id === checkoutSelectedShippingId ? 'checked' : '';
+                const estimated = option.estimated_days ? `${escapeText(option.estimated_days)} dias` : 'prazo a confirmar';
+                return `
+                    <label style="display: block; padding: 0.85rem; border: 1px solid var(--gray-light); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; background: ${checked ? 'var(--cream)' : 'var(--white)'};">
+                        <input type="radio" name="shipping_option" value="${escapeAttribute(option.id)}" ${checked} onchange="selectCheckoutShippingOption(this.value)" style="margin-right: 0.5rem;">
+                        <strong>${escapeText(shippingOptionLabel(option))}</strong>
+                        <span style="float: right; font-weight: 700;">${formatPrice(Number(option.shipping || 0))}</span>
+                        <small style="display: block; margin-left: 1.6rem; color: var(--gray);">Prazo estimado: ${estimated}</small>
+                    </label>
+                `;
+            }).join('');
         }
 
         async function renderCheckout() {
@@ -252,10 +295,14 @@
                                         </div>
                                     `).join('')}
                                 </div>
-                                <div class="summary-row"><span>Subtotal:</span><span>${formatPrice(subtotal)}</span></div>
-                                <div class="summary-row"><span>Frete:</span><span>${shipping === 0 ? '🎁 Grátis' : formatPrice(shipping)}</span></div>
-                                ${discount > 0 ? `<div class="summary-row" style="color: var(--success);"><span>Desconto:</span><span>-${formatPrice(discount)}</span></div>` : ''}
-                                <div class="summary-row total"><span>Total:</span><span class="price">${formatPrice(total)}</span></div>
+                                <div class="summary-row"><span>Subtotal:</span><span id="checkout-subtotal-price">${formatPrice(subtotal)}</span></div>
+                                <div style="margin: 1rem 0;">
+                                    <strong style="display: block; margin-bottom: 0.6rem;">Opcoes de frete</strong>
+                                    <div id="checkout-shipping-options">${renderShippingOptionsHTML()}</div>
+                                </div>
+                                <div class="summary-row"><span>Frete:</span><span id="checkout-shipping-price">${shipping === 0 ? 'Gratis' : formatPrice(shipping)}</span></div>
+                                ${discount > 0 ? `<div class="summary-row" style="color: var(--success);"><span>Desconto:</span><span id="checkout-discount-price">-${formatPrice(discount)}</span></div>` : ''}
+                                <div class="summary-row total"><span>Total:</span><span id="checkout-total-price" class="price">${formatPrice(total)}</span></div>
                                 
                                 <button id="checkout-submit" type="button" class="btn btn-primary btn-block" style="margin-top: 1.5rem;" onclick="processInfinitePayCheckout()">
                                     Ir para o pagamento seguro
@@ -283,6 +330,72 @@
 
         function digitsOnly(value) {
             return String(value || '').replace(/\D/g, '');
+        }
+
+        function renderCheckoutShippingOptions() {
+            const container = document.getElementById('checkout-shipping-options');
+            if (container) container.innerHTML = renderShippingOptionsHTML();
+        }
+
+        function updateCheckoutTotals() {
+            const shipping = Cart.getShipping();
+            const total = Cart.getFinalTotal();
+            const shippingEl = document.getElementById('checkout-shipping-price');
+            const totalEl = document.getElementById('checkout-total-price');
+            if (shippingEl) shippingEl.textContent = shipping === 0 ? 'Gratis' : formatPrice(shipping);
+            if (totalEl) totalEl.textContent = formatPrice(total);
+        }
+
+        function applyCheckoutShippingOption(option) {
+            if (!option) return;
+            Cart.pricing.shippingOption = option;
+            Cart.pricing.shipping = Number(option.shipping || 0);
+            Cart.pricing.shippingMessage = option.message || '';
+            Cart.pricing.shippingService = option.service || '';
+            Cart.pricing.shippingEstimatedDays = option.estimated_days || '';
+            Cart.pricing.loaded = true;
+            updateCheckoutTotals();
+        }
+
+        function selectCheckoutShippingOption(optionId) {
+            const option = checkoutShippingOptions.find(item => item.id === optionId);
+            if (!option) return;
+            checkoutSelectedShippingId = option.id;
+            applyCheckoutShippingOption(option);
+            renderCheckoutShippingOptions();
+        }
+
+        async function refreshCheckoutShippingOptions(zipCode) {
+            const cepDigits = digitsOnly(zipCode);
+            if (cepDigits.length !== 8) {
+                checkoutShippingOptions = [];
+                checkoutSelectedShippingId = '';
+                checkoutShippingError = '';
+                renderCheckoutShippingOptions();
+                return;
+            }
+
+            checkoutShippingLoading = true;
+            checkoutShippingError = '';
+            renderCheckoutShippingOptions();
+
+            const result = await API.calculateShipping(Cart.getSubtotal(), cepDigits, Cart.items);
+            checkoutShippingLoading = false;
+            if (!result.success) {
+                checkoutShippingOptions = [];
+                checkoutSelectedShippingId = '';
+                checkoutShippingError = result.error || 'Nao foi possivel calcular o frete.';
+                renderCheckoutShippingOptions();
+                return;
+            }
+
+            checkoutShippingOptions = Array.isArray(result.data.options) && result.data.options.length
+                ? result.data.options
+                : (result.data.selected_option ? [result.data.selected_option] : []);
+            const stillAvailable = checkoutShippingOptions.find(item => item.id === checkoutSelectedShippingId);
+            checkoutSelectedShippingId = (stillAvailable || checkoutShippingOptions[0] || {}).id || '';
+            applyCheckoutShippingOption(checkoutShippingOptions.find(item => item.id === checkoutSelectedShippingId));
+            renderCheckoutShippingOptions();
         }
 
         function setCheckoutField(name, value, { overwrite = true } = {}) {
@@ -318,17 +431,26 @@
                 setCheckoutField('city', address.city);
                 setCheckoutField('state', address.state);
                 setCheckoutField('complement', address.complement, { overwrite: false });
+                await refreshCheckoutShippingOptions(cepDigits);
                 document.querySelector('#checkout-form [name="number"]')?.focus();
             }
 
             cepInput.addEventListener('input', () => {
                 delete cepInput.dataset.lastCepLookup;
                 clearTimeout(lookupTimer);
-                if (digitsOnly(cepInput.value).length === 8) {
+                const cepDigits = digitsOnly(cepInput.value);
+                if (cepDigits.length === 8) {
                     lookupTimer = setTimeout(lookupCurrentCep, 250);
+                    refreshCheckoutShippingOptions(cepDigits);
+                } else {
+                    checkoutShippingOptions = [];
+                    checkoutSelectedShippingId = '';
+                    checkoutShippingError = '';
+                    renderCheckoutShippingOptions();
                 }
             });
             cepInput.addEventListener('blur', lookupCurrentCep);
+            if (digitsOnly(cepInput.value).length === 8) refreshCheckoutShippingOptions(cepInput.value);
         }
 
         function getInstallmentOptions(total) {
@@ -407,6 +529,16 @@
                 return null;
             }
 
+            if (digitsOnly(data.cep).length === 8 && checkoutShippingOptions.length === 0) {
+                showToast('Calcule o frete antes de continuar', 'error', 'Frete pendente');
+                refreshCheckoutShippingOptions(data.cep);
+                return null;
+            }
+            if (checkoutShippingOptions.length > 0 && !checkoutSelectedShippingId) {
+                showToast('Selecione uma opcao de frete', 'error', 'Frete pendente');
+                return null;
+            }
+
             return {
                 customer_name: data.name,
                 customer_email: data.email,
@@ -421,6 +553,7 @@
                 address_state: data.state,
                 items: Cart.items.map(item => ({ id: item.id, quantity: item.quantity })),
                 coupon: localStorage.getItem('vj_coupon') || '',
+                shipping_option_id: checkoutSelectedShippingId,
                 idempotency_key: getCheckoutIdempotencyKey()
             };
         }

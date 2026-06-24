@@ -120,6 +120,42 @@ def test_shipping_is_free_below_old_threshold():
     assert shipping_response.json()['selected_option']['shipping'] == 0
     assert shipping_response.json()['options'][0]['destination_zip'] == '01001000'
 
+def test_order_rejects_invalid_shipping_option():
+    response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Frete Invalido',
+        'customer_email': 'frete-invalido@example.com',
+        'customer_cpf': '12345678909',
+        'address_zip': '01001-000',
+        'items': [{'id': 1, 'quantity': 1}],
+        'shipping_option_id': 'opcao-inexistente',
+    })
+
+    assert response.status_code == 400
+    assert 'frete invalida' in response.json()['error']
+
+
+def test_order_saves_selected_shipping_option():
+    quote = client.post('/api/shipping/calculate', json={
+        'zip_code': '01001-000',
+        'items': [{'id': 1, 'quantity': 1}],
+    })
+    option_id = quote.json()['selected_option']['id']
+    response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Frete Selecionado',
+        'customer_email': 'frete-selecionado@example.com',
+        'customer_cpf': '12345678909',
+        'address_zip': '01001-000',
+        'items': [{'id': 1, 'quantity': 1}],
+        'shipping_option_id': option_id,
+    })
+
+    assert quote.status_code == 200
+    assert response.status_code == 201
+    order = response.json()
+    assert order['shipping_option_id'] == option_id
+    assert order['shipping_provider'] == quote.json()['selected_option']['provider']
+    assert order['shipping_service'] == quote.json()['selected_option']['service']
+
 def test_shipping_calculation_uses_items_from_database():
     response = client.post('/api/shipping/calculate', json={
         'total': 0.01,

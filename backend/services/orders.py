@@ -17,7 +17,7 @@ from backend.services.validation import (
 )
 from backend.services.stock import deduct_stock_for_order, ensure_orderable_stock
 from backend.services.order_events import record_status_event
-from backend.services.shipping import build_shipping_package, calculate_shipping
+from backend.services.shipping import build_shipping_package, calculate_shipping_options
 
 
 ORDER_STATUSES = {
@@ -45,8 +45,16 @@ def configured_shipping(
     *,
     zip_code: str = "",
     package: dict | None = None,
+    selected_option_id: str = "",
 ):
-    return calculate_shipping(subtotal, zip_code=zip_code, package=package, db=db)
+    options = calculate_shipping_options(subtotal, zip_code=zip_code, package=package, db=db)
+    selected_option_id = str(selected_option_id or "").strip()
+    if selected_option_id:
+        for option in options:
+            if option["id"] == selected_option_id:
+                return option
+        raise ValueError("Opcao de frete invalida ou indisponivel")
+    return options[0]
 
 
 def calculate_order(
@@ -57,6 +65,7 @@ def calculate_order(
     customer_email: str = "",
     customer_cpf: str = "",
     zip_code: str = "",
+    selected_shipping_option_id: str = "",
 ):
     if not isinstance(items, list) or not items:
         raise ValueError("O pedido deve conter ao menos um produto")
@@ -109,7 +118,13 @@ def calculate_order(
         )
 
     package = build_shipping_package(shipping_items)
-    shipping_data = configured_shipping(subtotal, db, zip_code=zip_code, package=package)
+    shipping_data = configured_shipping(
+        subtotal,
+        db,
+        zip_code=zip_code,
+        package=package,
+        selected_option_id=selected_shipping_option_id,
+    )
     shipping = shipping_data["shipping"]
     coupon_code = str(coupon_code or "").strip().upper()
     discount = Decimal("0.00")
@@ -134,6 +149,9 @@ def calculate_order(
         "shipping_message": shipping_data["message"],
         "shipping_estimated_days": shipping_data["estimated_days"],
         "shipping_destination_zip": shipping_data["destination_zip"],
+        "shipping_option_id": shipping_data.get("id"),
+        "shipping_company_id": shipping_data.get("company_id"),
+        "shipping_company": shipping_data.get("company"),
         "discount": discount,
         "total": subtotal + shipping - discount,
         "coupon": coupon_code,
@@ -190,6 +208,7 @@ def validate_order_data(db: Session, data):
         customer_email=data["customer_email"],
         customer_cpf=data["customer_cpf"],
         zip_code=data.get("address_zip", ""),
+        selected_shipping_option_id=data.get("shipping_option_id", ""),
     )
 
 
@@ -230,6 +249,9 @@ def create_local_order(
         shipping_service=totals.get("shipping_service"),
         shipping_estimated_days=totals.get("shipping_estimated_days"),
         shipping_destination_zip=totals.get("shipping_destination_zip"),
+        shipping_option_id=totals.get("shipping_option_id"),
+        shipping_company_id=totals.get("shipping_company_id"),
+        shipping_company=totals.get("shipping_company"),
         discount=totals["discount"],
         total=totals["total"],
         payment_method=payment_method,

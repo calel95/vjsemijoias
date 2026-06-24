@@ -11,6 +11,7 @@ os.environ["INFINITEPAY_HANDLE"] = "vjsemijoias"
 os.environ["PUBLIC_BASE_URL"] = "https://vj.example.com"
 os.environ["CORS_ALLOWED_ORIGINS"] = "https://vj.example.com,http://localhost:5000"
 os.environ["STORAGE_BACKEND"] = "local"
+os.environ["SHIPPING_PROVIDER"] = "internal"
 
 from backend.database import Base, engine  # noqa: E402
 import backend.models  # noqa: E402,F401

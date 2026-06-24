@@ -208,6 +208,9 @@ class Order(Base):
     shipping_service: Mapped[str | None] = mapped_column(String(100), nullable=True)
     shipping_estimated_days: Mapped[str | None] = mapped_column(String(50), nullable=True)
     shipping_destination_zip: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    shipping_option_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_company_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shipping_company: Mapped[str | None] = mapped_column(String(100), nullable=True)
     discount: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -254,6 +257,9 @@ class Order(Base):
             "shipping_service": self.shipping_service,
             "shipping_estimated_days": self.shipping_estimated_days,
             "shipping_destination_zip": self.shipping_destination_zip,
+            "shipping_option_id": self.shipping_option_id,
+            "shipping_company_id": self.shipping_company_id,
+            "shipping_company": self.shipping_company,
             "discount": decimal_to_float(self.discount),
             "total": decimal_to_float(self.total),
             "payment_method": self.payment_method,
