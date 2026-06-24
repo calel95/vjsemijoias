@@ -1,0 +1,27 @@
+/* VJ Semijoias - Main CSS Entrypoint for React SPA */
+@import "./style.css";
+@import "./admin.css";
+
+/* Adicionais específicos de transições do React Router ou React */
+.fade-enter {
+  opacity: 0;
+  z-index: 1;
+}
+
+.fade-enter.fade-enter-active {
+  opacity: 1;
+  transition: opacity 250ms ease-in;
+}
+
+/* Garante que o scroll de topo funcione perfeitamente */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Correções de foco ou router links */
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--gold-primary);
+  outline-offset: 4px;
+}
