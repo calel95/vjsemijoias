@@ -107,7 +107,11 @@
 
             document.getElementById('breadcrumb-product').textContent = product.name;
             document.title = `${product.name} - VJ Semijoias`;
-            const shippingResult = await API.calculateShipping(product.price || 0);
+            const shippingResult = await API.calculateShipping(
+                product.price || 0,
+                '',
+                [{ id: product.id, quantity: 1 }]
+            );
             const shippingMessage = shippingResult.success
                 ? shippingResult.data.message
                 : 'Frete calculado no carrinho';

@@ -18,6 +18,7 @@ def test_order_total_is_calculated_by_server():
         'customer_name': 'Cliente Teste',
         'customer_email': 'cliente@example.com',
         'customer_cpf': '12345678909',
+        'address_zip': '01001-000',
         'items': [{'id': 1, 'quantity': 2, 'price': 0.01}],
         'total': 0.01,
         'coupon': 'VJ10',
@@ -27,6 +28,10 @@ def test_order_total_is_calculated_by_server():
     order = response.json()
     assert order['subtotal'] == 299.8
     assert order['shipping'] == 0.0
+    assert order['shipping_provider'] == 'internal'
+    assert order['shipping_service']
+    assert order['shipping_estimated_days']
+    assert order['shipping_destination_zip'] == '01001000'
     assert order['discount'] == 29.98
     assert order['total'] == 269.82
     assert order['status'] == 'pending'
@@ -36,6 +41,8 @@ def test_order_total_is_calculated_by_server():
     with SessionLocal() as db:
         stored = db.get(Order, order['id'])
         assert stored.subtotal == Decimal('299.80')
+        assert stored.shipping_provider == 'internal'
+        assert stored.shipping_destination_zip == '01001000'
         assert stored.discount == Decimal('29.98')
         assert stored.total == Decimal('269.82')
         events = db.query(OrderEvent).filter_by(order_id=order['id']).all()
@@ -109,6 +116,26 @@ def test_shipping_is_free_below_old_threshold():
     assert order_response.json()['total'] == 99.9
     assert shipping_response.status_code == 200
     assert shipping_response.json()['shipping'] == 0
+    assert shipping_response.json()['provider'] == 'internal'
+    assert shipping_response.json()['selected_option']['shipping'] == 0
+    assert shipping_response.json()['options'][0]['destination_zip'] == '01001000'
+
+def test_shipping_calculation_uses_items_from_database():
+    response = client.post('/api/shipping/calculate', json={
+        'total': 0.01,
+        'zip_code': '01001-000',
+        'items': [{'id': 1, 'quantity': 2}],
+    })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data['subtotal'] == 299.8
+    assert data['package']['item_count'] == 2
+    assert data['package']['weight_grams'] == 200
+    assert data['package']['height_cm'] == 4.0
+    assert data['package']['width_cm'] == 10.0
+    assert data['package']['length_cm'] == 15.0
+    assert data['selected_option']['package'] == data['package']
 
 def test_admin_can_update_order_status():
     login = admin_login()

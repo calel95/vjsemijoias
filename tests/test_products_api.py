@@ -23,6 +23,11 @@ def test_admin_can_create_product_with_api_token():
             'price': 89.9,
             'description': 'Produto criado pelo teste da API.',
             'features': ['Banho de ouro 18k'],
+            'weight_grams': 120,
+            'height_cm': 3,
+            'width_cm': 8,
+            'length_cm': 12,
+            'shipping_profile': 'semijoias',
         },
     )
 
@@ -30,12 +35,19 @@ def test_admin_can_create_product_with_api_token():
     product = response.json()
     assert product['name'] == 'Brinco Teste'
     assert product['price'] == 89.9
+    assert product['weight_grams'] == 120
+    assert product['height_cm'] == 3.0
+    assert product['width_cm'] == 8.0
+    assert product['length_cm'] == 12.0
+    assert product['shipping_profile'] == 'semijoias'
     assert product['stock_quantity'] == 0
     assert product['stock_status'] == 'out_of_stock'
 
     with SessionLocal() as db:
         stored = db.get(Product, product['id'])
         assert stored.price == Decimal('89.90')
+        assert stored.weight_grams == 120
+        assert stored.height_cm == Decimal('3.00')
 
 def test_public_products_support_pagination_without_breaking_legacy_list():
     legacy_response = client.get('/api/products')
@@ -139,6 +151,58 @@ def test_admin_can_manage_product_stock_fields():
     assert duplicate.status_code == 409
     assert updated.status_code == 200
     assert updated.json()['stock_status'] == 'out_of_stock'
+
+def test_admin_can_manage_product_shipping_fields():
+    token = admin_login().json()['token']
+
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Frete Teste',
+            'category': 'colares',
+            'price': 129.9,
+            'description': 'Produto com dados logisticos.',
+            'weight_grams': 250,
+            'height_cm': 4.5,
+            'width_cm': 11,
+            'length_cm': 16,
+            'shipping_profile': 'caixa-p',
+        },
+    )
+    invalid = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Frete Invalido',
+            'category': 'colares',
+            'price': 99.9,
+            'description': 'Peso invalido.',
+            'weight_grams': 0,
+        },
+    )
+    updated = client.put(
+        f"/api/products/{created.json()['id']}",
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'weight_grams': 300,
+            'height_cm': 5,
+            'shipping_profile': 'caixa-m',
+        },
+    )
+
+    assert created.status_code == 201
+    data = created.json()
+    assert data['weight_grams'] == 250
+    assert data['height_cm'] == 4.5
+    assert data['width_cm'] == 11.0
+    assert data['length_cm'] == 16.0
+    assert data['shipping_profile'] == 'caixa-p'
+    assert invalid.status_code == 400
+    assert updated.status_code == 200
+    assert updated.json()['weight_grams'] == 300
+    assert updated.json()['height_cm'] == 5.0
+    assert updated.json()['shipping_profile'] == 'caixa-m'
 
 def test_admin_product_input_is_sanitized_and_validated():
     token = admin_login().json()['token']

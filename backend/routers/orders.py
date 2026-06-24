@@ -18,6 +18,7 @@ from backend.services.orders import (
     normalize_order_status,
     validate_order_data,
 )
+from backend.services.shipping import build_shipping_package, serialize_shipping_option
 from backend.services.admin_security import record_admin_audit
 from backend.services.coupons import (
     normalize_coupon_payload,
@@ -33,6 +34,52 @@ from backend.store_config import effective_store_settings, public_store_config
 
 
 router = APIRouter(prefix="/api")
+
+
+def shipping_quote_input(data: dict[str, Any], db: Session):
+    raw_items = data.get("items")
+    if not raw_items:
+        return money(data.get("total", 0)), None
+    if not isinstance(raw_items, list):
+        raise ValueError("items deve ser uma lista")
+
+    product_ids = []
+    quantities = {}
+    for item in raw_items:
+        try:
+            product_id = int(item["id"])
+            quantity = int(item.get("quantity", 1))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Item de frete invalido") from exc
+        if quantity < 1 or quantity > 20:
+            raise ValueError("A quantidade deve estar entre 1 e 20")
+        if product_id not in quantities:
+            product_ids.append(product_id)
+            quantities[product_id] = 0
+        quantities[product_id] += quantity
+
+    if not product_ids:
+        raise ValueError("Informe ao menos um item para calcular frete")
+
+    products = db.scalars(
+        select(Product).where(
+            Product.id.in_(product_ids),
+            Product.is_active.is_(True),
+            Product.stock_status != "out_of_stock",
+        )
+    ).all()
+    products_by_id = {product.id: product for product in products}
+    if len(products_by_id) != len(product_ids):
+        raise ValueError("Um ou mais produtos nao estao disponiveis")
+
+    subtotal = money("0")
+    shipping_items = []
+    for product_id in product_ids:
+        product = products_by_id[product_id]
+        quantity = quantities[product_id]
+        subtotal += money(product.price) * quantity
+        shipping_items.append((product, quantity))
+    return subtotal, build_shipping_package(shipping_items)
 
 
 @router.post("/orders", status_code=201)
@@ -319,13 +366,27 @@ def calculate_shipping(
     db: Session = Depends(get_db),
 ):
     try:
-        shipping_data = configured_shipping(data.get("total", 0), db)
+        subtotal, package = shipping_quote_input(data, db)
+        shipping_data = configured_shipping(
+            subtotal,
+            db,
+            zip_code=data.get("zip_code", ""),
+            package=package,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    selected_option = serialize_shipping_option(shipping_data)
     return {
-        "shipping": float(shipping_data["shipping"]),
+        "subtotal": float(subtotal),
+        "shipping": selected_option["shipping"],
         "message": shipping_data["message"],
         "estimated_days": shipping_data["estimated_days"],
+        "provider": shipping_data["provider"],
+        "service": shipping_data["service"],
+        "destination_zip": shipping_data["destination_zip"],
+        "package": selected_option["package"],
+        "selected_option": selected_option,
+        "options": [selected_option],
     }
 
 

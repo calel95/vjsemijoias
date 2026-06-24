@@ -21,6 +21,11 @@ from backend.services.product_media import (
     replace_product_gallery,
     store_admin_gallery_images,
 )
+from backend.services.product_shipping import (
+    normalize_dimension_cm,
+    normalize_shipping_profile,
+    normalize_weight_grams,
+)
 from backend.services.storage import storage_status
 from backend.services.stock import (
     normalize_low_stock_alert,
@@ -86,6 +91,19 @@ def normalize_product_payload(data: dict[str, Any], *, partial=False):
         cleaned["low_stock_alert"] = normalize_low_stock_alert(data.get("low_stock_alert"))
     elif not partial:
         cleaned["low_stock_alert"] = 1
+    if "weight_grams" in data:
+        cleaned["weight_grams"] = normalize_weight_grams(data.get("weight_grams"))
+    elif not partial:
+        cleaned["weight_grams"] = normalize_weight_grams(None)
+    for field in ["height_cm", "width_cm", "length_cm"]:
+        if field in data:
+            cleaned[field] = normalize_dimension_cm(data.get(field), field=field)
+        elif not partial:
+            cleaned[field] = normalize_dimension_cm(None, field=field)
+    if "shipping_profile" in data:
+        cleaned["shipping_profile"] = normalize_shipping_profile(data.get("shipping_profile"))
+    elif not partial:
+        cleaned["shipping_profile"] = normalize_shipping_profile(None)
     if "features" in data:
         cleaned["features"] = clean_text_list(data.get("features"), field="features")
     return cleaned
@@ -187,6 +205,11 @@ def create_product(
         stock_status=normalize_stock_status(data.get("stock_status")),
         stock_quantity=cleaned["stock_quantity"],
         low_stock_alert=cleaned["low_stock_alert"],
+        weight_grams=cleaned["weight_grams"],
+        height_cm=cleaned["height_cm"],
+        width_cm=cleaned["width_cm"],
+        length_cm=cleaned["length_cm"],
+        shipping_profile=cleaned["shipping_profile"],
         description=cleaned["description"],
         features=json.dumps(cleaned.get("features", []), ensure_ascii=False),
         custom=True,
@@ -234,6 +257,9 @@ def update_product(
         product.stock_quantity = cleaned["stock_quantity"]
     if "low_stock_alert" in cleaned:
         product.low_stock_alert = cleaned["low_stock_alert"]
+    for field in ["weight_grams", "height_cm", "width_cm", "length_cm", "shipping_profile"]:
+        if field in cleaned:
+            setattr(product, field, cleaned[field])
     if data.get("price") is not None:
         product.price = cleaned["price"]
     if "oldPrice" in data:

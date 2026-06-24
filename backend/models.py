@@ -39,6 +39,11 @@ class Product(Base):
     stock_status: Mapped[str] = mapped_column(String(30), default="available")
     stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
     low_stock_alert: Mapped[int] = mapped_column(Integer, default=1)
+    weight_grams: Mapped[int] = mapped_column(Integer, default=100)
+    height_cm: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("2.00"))
+    width_cm: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("10.00"))
+    length_cm: Mapped[Decimal] = mapped_column(Numeric(6, 2), default=Decimal("15.00"))
+    shipping_profile: Mapped[str] = mapped_column(String(50), default="default")
     description: Mapped[str] = mapped_column(Text)
     features: Mapped[str | None] = mapped_column(Text, nullable=True)
     custom: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -81,6 +86,11 @@ class Product(Base):
             "stock_status": self.stock_status or "available",
             "stock_quantity": self.stock_quantity or 0,
             "low_stock_alert": self.low_stock_alert or 0,
+            "weight_grams": self.weight_grams or 100,
+            "height_cm": decimal_to_float(self.height_cm) or 2.0,
+            "width_cm": decimal_to_float(self.width_cm) or 10.0,
+            "length_cm": decimal_to_float(self.length_cm) or 15.0,
+            "shipping_profile": self.shipping_profile or "default",
             "stock_is_low": (
                 (self.stock_quantity or 0) <= (self.low_stock_alert or 0)
                 and (self.stock_status or "available") != "out_of_stock"
@@ -194,6 +204,10 @@ class Order(Base):
     items: Mapped[str] = mapped_column(Text)
     subtotal: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     shipping: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    shipping_provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    shipping_service: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_estimated_days: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    shipping_destination_zip: Mapped[str | None] = mapped_column(String(20), nullable=True)
     discount: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
     total: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     payment_method: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -236,6 +250,10 @@ class Order(Base):
             "items": json.loads(self.items) if self.items else [],
             "subtotal": decimal_to_float(self.subtotal),
             "shipping": decimal_to_float(self.shipping),
+            "shipping_provider": self.shipping_provider,
+            "shipping_service": self.shipping_service,
+            "shipping_estimated_days": self.shipping_estimated_days,
+            "shipping_destination_zip": self.shipping_destination_zip,
             "discount": decimal_to_float(self.discount),
             "total": decimal_to_float(self.total),
             "payment_method": self.payment_method,

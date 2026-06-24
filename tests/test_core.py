@@ -235,7 +235,16 @@ def test_alembic_migrations_create_current_schema():
             'starts_at',
             'ends_at',
         }.issubset(coupon_columns_by_name)
-        assert {'sku', 'stock_quantity', 'low_stock_alert'}.issubset(product_columns)
+        assert {
+            'sku',
+            'stock_quantity',
+            'low_stock_alert',
+            'weight_grams',
+            'height_cm',
+            'width_cm',
+            'length_cm',
+            'shipping_profile',
+        }.issubset(product_columns)
         assert 'stock_deducted' in order_columns_by_name
         assert {
             'idempotency_key',
@@ -244,6 +253,10 @@ def test_alembic_migrations_create_current_schema():
             'tracking_carrier',
             'shipped_at',
             'delivered_at',
+            'shipping_provider',
+            'shipping_service',
+            'shipping_estimated_days',
+            'shipping_destination_zip',
         }.issubset(order_columns_by_name)
         assert 'checkout_url' in payment_columns_by_name
     finally:
@@ -291,6 +304,29 @@ def test_home_uses_paginated_featured_products():
     assert 'page=${encodeURIComponent(options.page)}' in api_js
     assert 'per_page=${encodeURIComponent(options.perPage)}' in api_js
     assert 'Array.isArray(data.items)' in products_js
+
+def test_admin_product_form_exposes_shipping_dimensions():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+
+    assert 'product-weight-grams' in admin_html
+    assert 'product-height-cm' in admin_html
+    assert 'product-width-cm' in admin_html
+    assert 'product-length-cm' in admin_html
+    assert 'product-shipping-profile' in admin_html
+    assert 'weight_grams' in admin_js
+    assert 'shipping_profile' in admin_js
+
+def test_frontend_shipping_calculation_sends_cart_items():
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+    cart_js = (FRONTEND_ROOT / 'js' / 'cart.js').read_text(encoding='utf-8')
+    product_html = (FRONTEND_ROOT / 'produto.html').read_text(encoding='utf-8')
+
+    assert 'async calculateShipping(total, zipCode = \'\', items = [])' in api_js
+    assert 'payload.items = items.map' in api_js
+    assert 'API.calculateShipping(subtotal, zipCode, this.items)' in cart_js
+    assert 'API.calculateShipping(' in product_html
+    assert '{ id: product.id, quantity: 1 }' in product_html
 
 def test_catalog_loads_categories_from_api():
     catalog_html = (FRONTEND_ROOT / 'catalogo.html').read_text(encoding='utf-8')

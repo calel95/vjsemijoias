@@ -380,8 +380,15 @@ const API = {
     // FRETE
     // ============================================
 
-    async calculateShipping(total, zipCode = '') {
-        return this.request('POST', '/shipping/calculate', { total, zip_code: zipCode });
+    async calculateShipping(total, zipCode = '', items = []) {
+        const payload = { total, zip_code: zipCode };
+        if (Array.isArray(items) && items.length > 0) {
+            payload.items = items.map(item => ({
+                id: item.id,
+                quantity: item.quantity || 1,
+            }));
+        }
+        return this.request('POST', '/shipping/calculate', payload);
     },
 
     // ============================================

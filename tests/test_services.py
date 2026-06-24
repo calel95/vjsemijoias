@@ -17,6 +17,7 @@ from backend.services.product_media import (
     store_admin_gallery_images,
     storage_slug,
 )
+from backend.services.shipping import build_shipping_package, normalize_zip
 from backend.services.storage import upload_r2_object
 from backend.services.validation import (
     clean_text,
@@ -59,12 +60,56 @@ def test_configured_shipping_threshold_mode():
         object.__setattr__(store_settings.shipping, 'free_minimum', original_minimum)
 
 
+def test_configured_shipping_returns_provider_option_details():
+    shipping = configured_shipping('149.90', zip_code='01001-000')
+
+    assert shipping['provider'] == 'internal'
+    assert shipping['service']
+    assert shipping['estimated_days']
+    assert shipping['destination_zip'] == '01001000'
+
+
+def test_normalize_zip_accepts_empty_and_rejects_invalid_values():
+    assert normalize_zip('') == ''
+    assert normalize_zip('01001-000') == '01001000'
+
+    with pytest.raises(ValueError, match='CEP'):
+        normalize_zip('123')
+
+
+def test_build_shipping_package_stacks_height_and_sums_weight():
+    product_a = SimpleNamespace(
+        weight_grams=120,
+        height_cm=money('2.50'),
+        width_cm=money('8'),
+        length_cm=money('12'),
+        shipping_profile='caixa-p',
+    )
+    product_b = SimpleNamespace(
+        weight_grams=80,
+        height_cm=money('1.50'),
+        width_cm=money('9'),
+        length_cm=money('10'),
+        shipping_profile='caixa-p',
+    )
+
+    package = build_shipping_package([(product_a, 2), (product_b, 1)])
+
+    assert package['item_count'] == 3
+    assert package['weight_grams'] == 320
+    assert package['height_cm'] == money('6.50')
+    assert package['width_cm'] == money('9')
+    assert package['length_cm'] == money('12')
+    assert package['shipping_profile'] == 'caixa-p'
+
+
 def test_calculate_order_merges_quantities_and_applies_coupon():
     with SessionLocal() as db:
         totals = calculate_order(
             db,
             [{'id': 1, 'quantity': 1}, {'id': 1, 'quantity': 2}],
             'vj10',
+            zip_code='01001-000',
         )
 
     assert len(totals['items']) == 1
@@ -73,6 +118,8 @@ def test_calculate_order_merges_quantities_and_applies_coupon():
     assert totals['discount'] == money('44.97')
     assert totals['total'] == money('404.73')
     assert totals['coupon'] == 'VJ10'
+    assert totals['shipping_provider'] == 'internal'
+    assert totals['shipping_destination_zip'] == '01001000'
 
 
 def test_validate_order_data_rejects_missing_and_invalid_customer_fields():

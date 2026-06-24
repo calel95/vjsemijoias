@@ -697,6 +697,11 @@ function currentFormProduct() {
         stock_status: document.getElementById('product-stock-status')?.value || 'available',
         stock_quantity: parseInt(document.getElementById('product-stock-quantity')?.value || '0', 10) || 0,
         low_stock_alert: parseInt(document.getElementById('product-low-stock-alert')?.value || '0', 10) || 0,
+        weight_grams: parseInt(document.getElementById('product-weight-grams')?.value || '100', 10) || 100,
+        height_cm: parseFloat(document.getElementById('product-height-cm')?.value || '2') || 2,
+        width_cm: parseFloat(document.getElementById('product-width-cm')?.value || '10') || 10,
+        length_cm: parseFloat(document.getElementById('product-length-cm')?.value || '15') || 15,
+        shipping_profile: document.getElementById('product-shipping-profile')?.value.trim() || 'default',
         description: document.getElementById('product-description').value.trim(),
     };
 }
@@ -726,6 +731,7 @@ function renderProductFormPreview() {
         ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
         : '';
     const stockHTML = `<small>SKU: ${escapeHTML(product.sku || 'sem SKU')} | Estoque: ${product.stock_quantity}</small>`;
+    const shippingHTML = `<small>Frete: ${product.weight_grams}g | ${product.length_cm} x ${product.width_cm} x ${product.height_cm} cm</small>`;
 
     container.className = 'admin-product-preview';
     container.innerHTML = `
@@ -742,6 +748,7 @@ function renderProductFormPreview() {
                 <strong>${escapeHTML(product.name || 'Nome do produto')}</strong>
                 <p>${escapeHTML(product.description || 'Descricao curta do produto.')}</p>
                 ${stockHTML}
+                ${shippingHTML}
                 <div class="preview-price">${oldPriceHTML}${priceHTML}</div>
             </div>
         </div>
@@ -792,6 +799,11 @@ async function handleProductSubmit(event) {
     data.sku = data.sku || null;
     data.stock_quantity = parseInt(data.stock_quantity || '0', 10);
     data.low_stock_alert = parseInt(data.low_stock_alert || '0', 10);
+    data.weight_grams = parseInt(data.weight_grams || '100', 10);
+    data.height_cm = parseFloat(data.height_cm || '2');
+    data.width_cm = parseFloat(data.width_cm || '10');
+    data.length_cm = parseFloat(data.length_cm || '15');
+    data.shipping_profile = data.shipping_profile || 'default';
     data.is_active = document.getElementById('product-active')?.checked ?? true;
     data.stock_status = document.getElementById('product-stock-status')?.value || 'available';
     
@@ -843,6 +855,11 @@ function resetForm() {
     document.getElementById('product-stock-status').value = 'available';
     document.getElementById('product-stock-quantity').value = '1';
     document.getElementById('product-low-stock-alert').value = '1';
+    document.getElementById('product-weight-grams').value = '100';
+    document.getElementById('product-height-cm').value = '2.00';
+    document.getElementById('product-width-cm').value = '10.00';
+    document.getElementById('product-length-cm').value = '15.00';
+    document.getElementById('product-shipping-profile').value = 'default';
     setProductGalleryImages([]);
     document.getElementById('form-title').textContent = '➕ Adicionar Novo Produto';
     editingId = null;
@@ -868,6 +885,11 @@ function editProduct(id) {
     document.getElementById('product-stock-status').value = product.stock_status || 'available';
     document.getElementById('product-stock-quantity').value = product.stock_quantity ?? 0;
     document.getElementById('product-low-stock-alert').value = product.low_stock_alert ?? 1;
+    document.getElementById('product-weight-grams').value = product.weight_grams ?? 100;
+    document.getElementById('product-height-cm').value = product.height_cm ?? 2;
+    document.getElementById('product-width-cm').value = product.width_cm ?? 10;
+    document.getElementById('product-length-cm').value = product.length_cm ?? 15;
+    document.getElementById('product-shipping-profile').value = product.shipping_profile || 'default';
     document.getElementById('product-description').value = product.description;
     document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^✓\s*/, '')).join('\n');
     setProductGalleryImages(
@@ -983,6 +1005,7 @@ function renderAdminProducts() {
         const stockBadge = `<span class="badge-mini stock ${p.stock_status || 'available'}">${stockLabel(p.stock_status)}</span>`;
         const lowStockBadge = p.stock_is_low ? '<span class="badge-mini stock low">BAIXO</span>' : '';
         const stockMeta = `SKU ${escapeHTML(p.sku || '-')} | Estoque ${p.stock_quantity ?? 0}`;
+        const shippingMeta = `${p.weight_grams ?? 100}g | ${p.length_cm ?? 15} x ${p.width_cm ?? 10} x ${p.height_cm ?? 2} cm`;
         
         return `
             <div class="admin-product-item">
@@ -990,6 +1013,7 @@ function renderAdminProducts() {
                 <div class="admin-product-info">
                     <h4>${p.name}</h4>
                     <p>${stockMeta}</p>
+                    <p>${shippingMeta}</p>
                     <div class="product-meta">
                         <span class="admin-product-price">${formatPrice(p.price)}</span>
                         ${storefrontBadge}

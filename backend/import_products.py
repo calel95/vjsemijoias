@@ -11,6 +11,11 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage, ProductImport
+from backend.services.product_shipping import (
+    normalize_dimension_cm,
+    normalize_shipping_profile,
+    normalize_weight_grams,
+)
 from backend.services.stock import (
     normalize_low_stock_alert,
     normalize_sku,
@@ -151,6 +156,13 @@ def product_low_stock_alert(item):
         if key in item and str(item[key]).strip():
             return normalize_low_stock_alert(item[key])
     return 1
+
+
+def first_present(item, *keys):
+    for key in keys:
+        if key in item and item[key] not in (None, ""):
+            return item[key]
+    return None
 
 
 def product_features(item):
@@ -335,6 +347,22 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
             product.sku = normalize_sku(item.get("sku") or item.get("codigo") or item.get("referencia"))
             product.stock_quantity = product_stock_quantity(item)
             product.low_stock_alert = product_low_stock_alert(item)
+            product.weight_grams = normalize_weight_grams(
+                first_present(item, "weight_grams", "peso_gramas", "peso")
+            )
+            product.height_cm = normalize_dimension_cm(
+                first_present(item, "height_cm", "altura_cm", "altura"),
+                field="height_cm",
+            )
+            product.width_cm = normalize_dimension_cm(
+                first_present(item, "width_cm", "largura_cm", "largura"),
+                field="width_cm",
+            )
+            product.length_cm = normalize_dimension_cm(
+                first_present(item, "length_cm", "comprimento_cm", "comprimento"),
+                field="length_cm",
+            )
+            product.shipping_profile = normalize_shipping_profile(item.get("shipping_profile"))
             product.image = image_paths[0] if image_paths else None
             product.icon = clean_text(item.get("icon") or icon, field="icon", max_length=10)
             product.badge = clean_text(item.get("badge", "new"), field="badge", max_length=20)

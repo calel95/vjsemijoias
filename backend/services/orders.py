@@ -17,7 +17,7 @@ from backend.services.validation import (
 )
 from backend.services.stock import deduct_stock_for_order, ensure_orderable_stock
 from backend.services.order_events import record_status_event
-from backend.store_config import effective_store_settings
+from backend.services.shipping import build_shipping_package, calculate_shipping
 
 
 ORDER_STATUSES = {
@@ -39,34 +39,14 @@ def money(value):
         raise ValueError("Valor monetário inválido") from exc
 
 
-def configured_shipping(subtotal, db: Session | None = None):
-    subtotal = money(subtotal)
-    active_settings = effective_store_settings(db)
-    mode = active_settings.shipping.mode
-    fixed_value = money(active_settings.shipping.fixed_value)
-    free_minimum = money(active_settings.shipping.free_minimum)
-
-    if mode == "free":
-        shipping = Decimal("0.00")
-        message = "Frete Gratis!"
-    elif mode == "fixed":
-        shipping = fixed_value
-        message = f"Frete fixo de R$ {shipping:.2f}"
-    elif mode == "threshold":
-        if subtotal >= free_minimum:
-            shipping = Decimal("0.00")
-            message = f"Frete gratis acima de R$ {free_minimum:.2f}"
-        else:
-            shipping = fixed_value
-            message = f"Frete fixo de R$ {shipping:.2f}"
-    else:
-        raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
-
-    return {
-        "shipping": shipping,
-        "message": message,
-        "estimated_days": active_settings.shipping.estimated_days,
-    }
+def configured_shipping(
+    subtotal,
+    db: Session | None = None,
+    *,
+    zip_code: str = "",
+    package: dict | None = None,
+):
+    return calculate_shipping(subtotal, zip_code=zip_code, package=package, db=db)
 
 
 def calculate_order(
@@ -76,6 +56,7 @@ def calculate_order(
     *,
     customer_email: str = "",
     customer_cpf: str = "",
+    zip_code: str = "",
 ):
     if not isinstance(items, list) or not items:
         raise ValueError("O pedido deve conter ao menos um produto")
@@ -107,11 +88,13 @@ def calculate_order(
         raise ValueError("Um ou mais produtos não estão disponíveis")
 
     normalized_items = []
+    shipping_items = []
     subtotal = Decimal("0.00")
     for product_id in product_ids:
         product = products_by_id[product_id]
         quantity = quantities[product_id]
         ensure_orderable_stock(product, quantity)
+        shipping_items.append((product, quantity))
         unit_price = money(product.price)
         subtotal += unit_price * quantity
         normalized_items.append(
@@ -125,7 +108,8 @@ def calculate_order(
             }
         )
 
-    shipping_data = configured_shipping(subtotal, db)
+    package = build_shipping_package(shipping_items)
+    shipping_data = configured_shipping(subtotal, db, zip_code=zip_code, package=package)
     shipping = shipping_data["shipping"]
     coupon_code = str(coupon_code or "").strip().upper()
     discount = Decimal("0.00")
@@ -145,6 +129,11 @@ def calculate_order(
         "items": normalized_items,
         "subtotal": subtotal,
         "shipping": shipping,
+        "shipping_provider": shipping_data["provider"],
+        "shipping_service": shipping_data["service"],
+        "shipping_message": shipping_data["message"],
+        "shipping_estimated_days": shipping_data["estimated_days"],
+        "shipping_destination_zip": shipping_data["destination_zip"],
         "discount": discount,
         "total": subtotal + shipping - discount,
         "coupon": coupon_code,
@@ -200,6 +189,7 @@ def validate_order_data(db: Session, data):
         data.get("coupon", ""),
         customer_email=data["customer_email"],
         customer_cpf=data["customer_cpf"],
+        zip_code=data.get("address_zip", ""),
     )
 
 
@@ -236,6 +226,10 @@ def create_local_order(
         items=json.dumps(totals["items"], ensure_ascii=False),
         subtotal=totals["subtotal"],
         shipping=totals["shipping"],
+        shipping_provider=totals.get("shipping_provider"),
+        shipping_service=totals.get("shipping_service"),
+        shipping_estimated_days=totals.get("shipping_estimated_days"),
+        shipping_destination_zip=totals.get("shipping_destination_zip"),
         discount=totals["discount"],
         total=totals["total"],
         payment_method=payment_method,

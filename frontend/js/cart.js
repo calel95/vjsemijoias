@@ -14,6 +14,9 @@ const Cart = {
     pricing: {
         shipping: 0,
         shippingMessage: 'Frete Gratis!',
+        shippingService: '',
+        shippingEstimatedDays: '',
+        shippingOption: null,
         discount: 0,
         discountCode: '',
         discountPercent: 0,
@@ -132,22 +135,39 @@ const Cart = {
     },
 
     getShippingMessage() {
-        return this.pricing.shippingMessage || 'Frete calculado no checkout';
+        const option = this.pricing.shippingOption || {};
+        const service = this.pricing.shippingService || option.service || '';
+        const estimatedDays = this.pricing.shippingEstimatedDays || option.estimated_days || '';
+        const message = this.pricing.shippingMessage || option.message || 'Frete calculado no checkout';
+        if (service && estimatedDays) {
+            return `${message} - ${service}, prazo estimado ${estimatedDays} dias`;
+        }
+        if (estimatedDays) {
+            return `${message} - prazo estimado ${estimatedDays} dias`;
+        }
+        return message;
     },
 
     async refreshPricing(zipCode = '') {
         const subtotal = this.getSubtotal();
         const [shippingResult, couponResult] = await Promise.all([
-            API.calculateShipping(subtotal, zipCode),
+            API.calculateShipping(subtotal, zipCode, this.items),
             this.refreshCoupon(subtotal),
         ]);
 
         if (shippingResult.success) {
-            this.pricing.shipping = Number(shippingResult.data.shipping || 0);
-            this.pricing.shippingMessage = shippingResult.data.message || '';
+            const option = shippingResult.data.selected_option || shippingResult.data.options?.[0] || null;
+            this.pricing.shippingOption = option;
+            this.pricing.shipping = Number((option?.shipping ?? shippingResult.data.shipping) || 0);
+            this.pricing.shippingMessage = option?.message || shippingResult.data.message || '';
+            this.pricing.shippingService = option?.service || shippingResult.data.service || '';
+            this.pricing.shippingEstimatedDays = option?.estimated_days || shippingResult.data.estimated_days || '';
         } else {
             this.pricing.shipping = 0;
             this.pricing.shippingMessage = 'Frete calculado no fechamento do pedido';
+            this.pricing.shippingService = '';
+            this.pricing.shippingEstimatedDays = '';
+            this.pricing.shippingOption = null;
         }
 
         this.pricing.discount = couponResult.discount;
