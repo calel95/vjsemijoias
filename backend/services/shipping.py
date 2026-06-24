@@ -1,12 +1,17 @@
+import logging
 from decimal import Decimal
 
+import requests
 from sqlalchemy.orm import Session
 
+from backend.config import settings
 from backend.services.validation import digits_only, normalize_money_decimal
 from backend.store_config import effective_store_settings
 
 
+logger = logging.getLogger(__name__)
 INTERNAL_PROVIDER = "internal"
+MELHOR_ENVIO_PROVIDER = "melhor_envio"
 
 
 def money(value):
@@ -70,13 +75,7 @@ def build_shipping_package(product_quantities):
     }
 
 
-def calculate_shipping_options(
-    subtotal,
-    *,
-    zip_code: str = "",
-    package: dict | None = None,
-    db: Session | None = None,
-):
+def internal_shipping_option(subtotal, *, zip_code: str, package: dict | None, db: Session | None):
     subtotal = money(subtotal)
     destination_zip = normalize_zip(zip_code)
     active_settings = effective_store_settings(db)
@@ -96,7 +95,7 @@ def calculate_shipping_options(
     else:
         raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
 
-    option = {
+    return {
         "id": mode,
         "provider": INTERNAL_PROVIDER,
         "service": service,
@@ -106,7 +105,129 @@ def calculate_shipping_options(
         "destination_zip": destination_zip,
         "package": package,
     }
-    return [option]
+
+
+def melhor_envio_payload(subtotal, destination_zip: str, package: dict):
+    from_zip = normalize_zip(settings.melhor_envio_from_postal_code)
+    weight_kg = max(Decimal(package["weight_grams"]) / Decimal("1000"), Decimal("0.01"))
+    product = {
+        "id": package.get("shipping_profile") or "default",
+        "width": float(package["width_cm"]),
+        "height": float(package["height_cm"]),
+        "length": float(package["length_cm"]),
+        "weight": float(weight_kg.quantize(Decimal("0.001"))),
+        "insurance_value": float(money(subtotal)),
+        "quantity": 1,
+    }
+    payload = {
+        "from": {"postal_code": from_zip},
+        "to": {"postal_code": destination_zip},
+        "products": [product],
+        "options": {
+            "receipt": False,
+            "own_hand": False,
+            "collect": False,
+        },
+    }
+    if settings.melhor_envio_services:
+        payload["services"] = settings.melhor_envio_services
+    return payload
+
+
+def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
+    if not isinstance(data, list):
+        raise ValueError("Resposta invalida do Melhor Envio")
+
+    options = []
+    for item in data:
+        if not isinstance(item, dict) or item.get("error"):
+            continue
+        price = item.get("custom_price") or item.get("price")
+        if price in (None, ""):
+            continue
+        service_id = str(item.get("id") or item.get("service_id") or "")
+        company = item.get("company") if isinstance(item.get("company"), dict) else {}
+        service = item.get("name") or company.get("name") or f"Servico {service_id}".strip()
+        estimated_days = item.get("custom_delivery_time") or item.get("delivery_time") or ""
+        shipping = money(price)
+        options.append(
+            {
+                "id": f"melhor_envio:{service_id}" if service_id else "melhor_envio",
+                "provider": MELHOR_ENVIO_PROVIDER,
+                "service": str(service),
+                "shipping": shipping,
+                "message": f"{service}: R$ {shipping:.2f}",
+                "estimated_days": str(estimated_days),
+                "destination_zip": destination_zip,
+                "package": package,
+                "raw_service_id": service_id,
+            }
+        )
+    if not options:
+        raise ValueError("Nenhuma opcao valida retornada pelo Melhor Envio")
+    return sorted(options, key=lambda option: option["shipping"])
+
+
+def fetch_melhor_envio_options(subtotal, *, destination_zip: str, package: dict):
+    if not settings.melhor_envio_token:
+        raise ValueError("MELHOR_ENVIO_TOKEN nao configurado")
+    if not settings.melhor_envio_from_postal_code:
+        raise ValueError("MELHOR_ENVIO_FROM_POSTAL_CODE nao configurado")
+
+    session = requests.Session()
+    session.trust_env = False
+    response = session.post(
+        f"{settings.melhor_envio_api_base}/me/shipment/calculate",
+        json=melhor_envio_payload(subtotal, destination_zip, package),
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {settings.melhor_envio_token}",
+            "User-Agent": "vjsemijoias/1.0",
+        },
+        timeout=settings.melhor_envio_timeout_seconds,
+    )
+    response.raise_for_status()
+    return parse_melhor_envio_options(
+        response.json(),
+        destination_zip=destination_zip,
+        package=package,
+    )
+
+
+def calculate_shipping_options(
+    subtotal,
+    *,
+    zip_code: str = "",
+    package: dict | None = None,
+    db: Session | None = None,
+):
+    subtotal = money(subtotal)
+    destination_zip = normalize_zip(zip_code)
+    internal_option = internal_shipping_option(
+        subtotal,
+        zip_code=destination_zip,
+        package=package,
+        db=db,
+    )
+
+    provider = settings.shipping_provider
+    if provider == INTERNAL_PROVIDER:
+        return [internal_option]
+    if provider != MELHOR_ENVIO_PROVIDER:
+        internal_option["fallback_reason"] = "shipping_provider_unknown"
+        logger.warning("SHIPPING_PROVIDER desconhecido: %s", provider)
+        return [internal_option]
+    if not destination_zip or not package:
+        internal_option["fallback_reason"] = "melhor_envio_requires_zip_and_package"
+        return [internal_option]
+
+    try:
+        return fetch_melhor_envio_options(subtotal, destination_zip=destination_zip, package=package)
+    except (requests.RequestException, ValueError) as exc:
+        internal_option["fallback_reason"] = "melhor_envio_unavailable"
+        logger.warning("Falha ao calcular frete no Melhor Envio: %s", exc)
+        return [internal_option]
 
 
 def calculate_shipping(

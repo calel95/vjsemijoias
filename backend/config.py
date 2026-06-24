@@ -117,6 +117,15 @@ class Settings:
     rate_limit_register_per_hour: int = int(os.getenv("RATE_LIMIT_REGISTER_PER_HOUR", "5"))
     rate_limit_write_per_minute: int = int(os.getenv("RATE_LIMIT_WRITE_PER_MINUTE", "60"))
     rate_limit_expensive_per_minute: int = int(os.getenv("RATE_LIMIT_EXPENSIVE_PER_MINUTE", "5"))
+    shipping_provider: str = os.getenv("SHIPPING_PROVIDER", "internal").strip().lower()
+    melhor_envio_api_base: str = os.getenv(
+        "MELHOR_ENVIO_API_BASE",
+        "https://www.melhorenvio.com.br/api/v2",
+    ).strip().rstrip("/")
+    melhor_envio_token: str = os.getenv("MELHOR_ENVIO_TOKEN", "").strip()
+    melhor_envio_from_postal_code: str = os.getenv("MELHOR_ENVIO_FROM_POSTAL_CODE", "").strip()
+    melhor_envio_services: str = os.getenv("MELHOR_ENVIO_SERVICES", "").strip()
+    melhor_envio_timeout_seconds: float = float(os.getenv("MELHOR_ENVIO_TIMEOUT_SECONDS", "6"))
 
     @property
     def shipping_mode(self):

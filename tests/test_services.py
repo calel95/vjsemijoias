@@ -2,6 +2,8 @@ from types import SimpleNamespace
 
 import pytest
 
+import backend.services.shipping as shipping_service
+
 from backend.database import SessionLocal
 from backend.services.orders import (
     calculate_order,
@@ -17,7 +19,11 @@ from backend.services.product_media import (
     store_admin_gallery_images,
     storage_slug,
 )
-from backend.services.shipping import build_shipping_package, normalize_zip
+from backend.services.shipping import (
+    build_shipping_package,
+    calculate_shipping_options,
+    normalize_zip,
+)
 from backend.services.storage import upload_r2_object
 from backend.services.validation import (
     clean_text,
@@ -102,6 +108,81 @@ def test_build_shipping_package_stacks_height_and_sums_weight():
     assert package['length_cm'] == money('12')
     assert package['shipping_profile'] == 'caixa-p'
 
+
+def test_melhor_envio_provider_returns_external_options(monkeypatch):
+    package = {
+        'item_count': 1,
+        'weight_grams': 120,
+        'height_cm': money('2'),
+        'width_cm': money('10'),
+        'length_cm': money('15'),
+        'shipping_profile': 'default',
+    }
+    monkeypatch.setattr(
+        shipping_service,
+        'settings',
+        SimpleNamespace(
+            shipping_provider='melhor_envio',
+            melhor_envio_token='token',
+            melhor_envio_from_postal_code='01001000',
+            melhor_envio_api_base='https://example.test',
+            melhor_envio_services='1,2',
+            melhor_envio_timeout_seconds=1,
+        ),
+    )
+
+    def fake_fetch(subtotal, *, destination_zip, package):
+        assert subtotal == money('149.90')
+        assert destination_zip == '01001000'
+        assert package['weight_grams'] == 120
+        return [
+            {
+                'id': 'melhor_envio:1',
+                'provider': 'melhor_envio',
+                'service': 'PAC',
+                'shipping': money('18.50'),
+                'message': 'PAC: R$ 18.50',
+                'estimated_days': '6',
+                'destination_zip': destination_zip,
+                'package': package,
+            }
+        ]
+
+    monkeypatch.setattr(shipping_service, 'fetch_melhor_envio_options', fake_fetch)
+
+    options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
+
+    assert options[0]['provider'] == 'melhor_envio'
+    assert options[0]['service'] == 'PAC'
+    assert options[0]['shipping'] == money('18.50')
+
+
+def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypatch):
+    package = {
+        'item_count': 1,
+        'weight_grams': 120,
+        'height_cm': money('2'),
+        'width_cm': money('10'),
+        'length_cm': money('15'),
+        'shipping_profile': 'default',
+    }
+    monkeypatch.setattr(
+        shipping_service,
+        'settings',
+        SimpleNamespace(
+            shipping_provider='melhor_envio',
+            melhor_envio_token='',
+            melhor_envio_from_postal_code='01001000',
+            melhor_envio_api_base='https://example.test',
+            melhor_envio_services='',
+            melhor_envio_timeout_seconds=1,
+        ),
+    )
+
+    options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
+
+    assert options[0]['provider'] == 'internal'
+    assert options[0]['fallback_reason'] == 'melhor_envio_unavailable'
 
 def test_calculate_order_merges_quantities_and_applies_coupon():
     with SessionLocal() as db:

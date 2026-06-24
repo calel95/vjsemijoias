@@ -11,14 +11,17 @@ from backend.models import Coupon, Newsletter, Order, Product, User, utc_now
 from backend.services.common import get_or_404
 from backend.services.orders import (
     apply_paid_status,
-    configured_shipping,
     create_local_order,
     existing_order_by_idempotency_key,
     money,
     normalize_order_status,
     validate_order_data,
 )
-from backend.services.shipping import build_shipping_package, serialize_shipping_option
+from backend.services.shipping import (
+    build_shipping_package,
+    calculate_shipping_options,
+    serialize_shipping_option,
+)
 from backend.services.admin_security import record_admin_audit
 from backend.services.coupons import (
     normalize_coupon_payload,
@@ -367,26 +370,27 @@ def calculate_shipping(
 ):
     try:
         subtotal, package = shipping_quote_input(data, db)
-        shipping_data = configured_shipping(
+        shipping_options = calculate_shipping_options(
             subtotal,
-            db,
             zip_code=data.get("zip_code", ""),
             package=package,
+            db=db,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    selected_option = serialize_shipping_option(shipping_data)
+    serialized_options = [serialize_shipping_option(option) for option in shipping_options]
+    selected_option = serialized_options[0]
     return {
         "subtotal": float(subtotal),
         "shipping": selected_option["shipping"],
-        "message": shipping_data["message"],
-        "estimated_days": shipping_data["estimated_days"],
-        "provider": shipping_data["provider"],
-        "service": shipping_data["service"],
-        "destination_zip": shipping_data["destination_zip"],
+        "message": selected_option["message"],
+        "estimated_days": selected_option["estimated_days"],
+        "provider": selected_option["provider"],
+        "service": selected_option["service"],
+        "destination_zip": selected_option["destination_zip"],
         "package": selected_option["package"],
         "selected_option": selected_option,
-        "options": [selected_option],
+        "options": serialized_options,
     }
 
 

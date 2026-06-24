@@ -137,6 +137,33 @@ As rotas de importacao de catalogo e geracao de PDF entram no limite
 criacao automatizada de contas. Em PRD com mais de uma instancia, prefira
 reforcar tambem no proxy/edge ou migrar os contadores para Redis.
 
+## Frete externo
+
+Comece em DEV com o provider interno. Ele usa as regras comerciais do admin ou
+do ambiente e serve como fallback quando a API externa falhar:
+
+```dotenv
+SHIPPING_PROVIDER=internal
+SHIPPING_MODE=free
+SHIPPING_FIXED_VALUE=0
+SHIPPING_FREE_MINIMUM=0
+SHIPPING_ESTIMATED_DAYS=5-10
+```
+
+Para testar Melhor Envio, habilite o provider externo e informe o token e o CEP
+de origem. O backend tenta o Melhor Envio somente quando houver CEP de destino e
+pacote calculado pelos itens do carrinho; se a API falhar, volta para o provider
+interno.
+
+```dotenv
+SHIPPING_PROVIDER=melhor_envio
+MELHOR_ENVIO_API_BASE=https://www.melhorenvio.com.br/api/v2
+MELHOR_ENVIO_TOKEN=seu_token
+MELHOR_ENVIO_FROM_POSTAL_CODE=01001000
+# Opcional: restrinja servicos especificos, por exemplo PAC/Sedex conforme sua conta.
+MELHOR_ENVIO_SERVICES=1,2
+MELHOR_ENVIO_TIMEOUT_SECONDS=6
+```
 ## E-mails transacionais
 
 Em DEV, comece com o backend `console`, que registra os e-mails sem enviar para
