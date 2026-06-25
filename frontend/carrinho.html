@@ -126,22 +126,19 @@
             }
 
             const selectedId = Cart.pricing.shippingOption?.id || '';
-            const destination = Cart.getShippingZipCode()
-                ? `<div class="cart-shipping-destination"><span>Entrega para ${cartEscapeText(formatCartCep(Cart.getShippingZipCode()))}</span><button type="button" onclick="clearCartShipping()" aria-label="Alterar CEP">x</button></div>`
-                : '';
             return `
-                ${destination}
                 <div class="cart-shipping-options">
                     ${options.map(option => {
-                        const checked = option.id === selectedId ? 'checked' : '';
+                        const selected = option.id === selectedId;
                         const estimated = option.estimated_days ? `${cartEscapeText(option.estimated_days)} dias uteis` : 'prazo a confirmar';
                         const price = Number(option.shipping || 0) === 0 ? 'Gratis' : formatPrice(Number(option.shipping || 0));
+                        const message = option.message || `${cartShippingOptionLabel(option)}: ${price}`;
                         return `
-                            <label class="cart-shipping-option ${checked ? 'selected' : ''}">
-                                <input type="radio" name="cart_shipping_option" value="${cartEscapeText(option.id)}" ${checked} onchange="selectCartShippingOption(this.value)">
+                            <label class="cart-shipping-option ${selected ? 'selected' : ''}">
+                                <input type="radio" name="cart_shipping_option" value="${cartEscapeText(option.id)}" ${selected ? 'checked' : ''} onchange="selectCartShippingOption(this.value)">
                                 <span>
-                                    <strong>${cartEscapeText(cartShippingOptionLabel(option))}</strong>
-                                    <small>Prazo estimado: ${estimated}</small>
+                                    <strong>${cartEscapeText(cartShippingOptionLabel(option))} - ${estimated}</strong>
+                                    <small>${cartEscapeText(message)}</small>
                                 </span>
                                 <b>${price}</b>
                             </label>
@@ -224,7 +221,7 @@
                         <div class="cart-shipping-box">
                             <div class="cart-shipping-title">
                                 <strong>Calcule o frete</strong>
-                                <span>Digite seu CEP e escolha uma opcao.</span>
+                                <span>Informe seu CEP para ver as opcoes do carrinho.</span>
                             </div>
                             <div class="cart-shipping-form">
                                 <input type="text" id="cart-shipping-cep" data-mask="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" value="${cartEscapeText(savedCep)}" onkeydown="handleCartShippingCepKey(event)">

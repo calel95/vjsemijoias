@@ -343,18 +343,23 @@ def test_frontend_shipping_calculation_sends_cart_items():
     assert 'selectCartShippingOption' in cart_html
     assert 'goToCheckoutFromCart(event)' in cart_html
     assert 'Calcule pelo CEP' in cart_html
-    assert 'Cart.getShippingOptions()' in checkout_html
+    assert 'cart-shipping-option' in cart_html
+    assert 'checkout-shipping-summary' in checkout_html
     assert 'Cart.getShippingZipCode()' in checkout_html
-    assert 'Cart.setShippingQuote(cepDigits, checkoutShippingOptions, checkoutSelectedShippingId)' in checkout_html
+    assert 'shipping_option_id: Cart.pricing.shippingOption?.id || checkoutSelectedShippingId' in checkout_html
 
-def test_checkout_exposes_shipping_option_selection():
+def test_checkout_uses_cart_shipping_without_recalculating_on_cep():
     checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
 
-    assert 'checkoutShippingOptions' in checkout_html
-    assert 'renderShippingOptionsHTML' in checkout_html
-    assert 'selectCheckoutShippingOption' in checkout_html
-    assert 'refreshCheckoutShippingOptions' in checkout_html
-    assert 'shipping_option_id: checkoutSelectedShippingId' in checkout_html
+    assert 'checkout-shipping-options' not in checkout_html
+    assert 'checkoutShippingOptions' not in checkout_html
+    assert 'renderShippingOptionsHTML' not in checkout_html
+    assert 'selectCheckoutShippingOption' not in checkout_html
+    assert 'refreshCheckoutShippingOptions' not in checkout_html
+    assert 'Frete selecionado' in checkout_html
+    assert 'Escolha o frete no carrinho antes de continuar' in checkout_html
+    assert 'O CEP do endereco mudou. Recalcule o frete no carrinho.' in checkout_html
+    assert 'shipping_option_id: Cart.pricing.shippingOption?.id || checkoutSelectedShippingId' in checkout_html
 
 def test_catalog_loads_categories_from_api():
     catalog_html = (FRONTEND_ROOT / 'catalogo.html').read_text(encoding='utf-8')
