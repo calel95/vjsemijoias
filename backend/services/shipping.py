@@ -1,4 +1,6 @@
 import logging
+import re
+import unicodedata
 from decimal import Decimal
 
 import requests
@@ -143,6 +145,73 @@ def allowed_company_ids():
     except ValueError as exc:
         raise ValueError("MELHOR_ENVIO_ALLOWED_COMPANY_IDS deve conter apenas numeros separados por virgula") from exc
 
+def normalize_shipping_name(value) -> str:
+    normalized = unicodedata.normalize("NFKD", str(value or "")).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", " ", normalized.lower()).strip()
+
+
+def shipping_display_service(option: dict) -> str:
+    company = str(option.get("company") or "").strip()
+    service = str(option.get("service") or "").strip()
+    company_key = normalize_shipping_name(company)
+    service_key = normalize_shipping_name(service)
+
+    if company_key == "correios":
+        if "sedex" in service_key:
+            return "SEDEX"
+        if "pac" in service_key:
+            return "PAC"
+        return service or company or "Correios"
+
+    if company:
+        return company
+    return service or "Frete"
+
+
+def shipping_group_key(option: dict) -> tuple[str, str]:
+    company = normalize_shipping_name(option.get("company") or "")
+    service = normalize_shipping_name(option.get("service") or "")
+    carrier = company or service or str(option.get("provider") or "frete")
+
+    if carrier == "correios":
+        if "sedex" in service:
+            return (carrier, "sedex")
+        if "pac" in service:
+            return (carrier, "pac")
+        return (carrier, service or "correios")
+
+    return (carrier, "default")
+
+
+def shipping_delivery_days(option: dict) -> int:
+    match = re.search(r"\d+", str(option.get("estimated_days") or ""))
+    return int(match.group(0)) if match else 9999
+
+
+def professionalize_shipping_options(options: list[dict]) -> list[dict]:
+    grouped: dict[tuple[str, str], dict] = {}
+    for option in options:
+        display_service = shipping_display_service(option)
+        professional = {
+            **option,
+            "service": display_service,
+            "display_service": display_service,
+        }
+        professional["message"] = f"{display_service}: R$ {professional['shipping']:.2f}"
+        key = shipping_group_key(professional)
+        current = grouped.get(key)
+        if current is None or (
+            professional["shipping"],
+            shipping_delivery_days(professional),
+            str(professional.get("id") or ""),
+        ) < (
+            current["shipping"],
+            shipping_delivery_days(current),
+            str(current.get("id") or ""),
+        ):
+            grouped[key] = professional
+    return sorted(grouped.values(), key=lambda option: (option["shipping"], shipping_delivery_days(option)))
+
 
 def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
     if not isinstance(data, list):
@@ -181,7 +250,7 @@ def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
         )
     if not options:
         raise ValueError("Nenhuma opcao valida retornada pelo Melhor Envio")
-    return sorted(options, key=lambda option: option["shipping"])
+    return professionalize_shipping_options(options)
 
 
 def fetch_melhor_envio_options(subtotal, *, destination_zip: str, package: dict):

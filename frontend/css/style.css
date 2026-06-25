@@ -1249,6 +1249,116 @@ input, select, textarea {
     font-size: 1.1rem;
 }
 
+.product-shipping-quote {
+    border: 1px solid var(--gray-light);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+    background: var(--white);
+}
+
+.product-shipping-head {
+    display: grid;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.product-shipping-head strong {
+    color: var(--dark);
+    font-size: 1rem;
+}
+
+.product-shipping-head span {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.product-shipping-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.product-shipping-form input {
+    width: 100%;
+    height: 44px;
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 0 0.9rem;
+    font: inherit;
+    color: var(--dark);
+}
+
+.product-shipping-form input:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
+}
+
+.product-shipping-form .btn {
+    height: 44px;
+    padding: 0 1.2rem;
+    white-space: nowrap;
+}
+
+.product-shipping-result {
+    margin-top: 1rem;
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.product-shipping-result.loading {
+    color: var(--gold-dark);
+    font-weight: 600;
+}
+
+.product-shipping-result.error {
+    color: #856404;
+    background: #fff3cd;
+    border-radius: 8px;
+    padding: 0.85rem;
+}
+
+.product-shipping-options {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.product-shipping-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid var(--gray-pale);
+    border-radius: 8px;
+    padding: 0.85rem;
+    background: var(--cream);
+}
+
+.product-shipping-option div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.product-shipping-option strong {
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.product-shipping-option span {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.product-shipping-option b {
+    color: var(--gold-dark);
+    white-space: nowrap;
+}
+
+.product-shipping-empty {
+    color: var(--gray);
+}
 .quantity-selector {
     display: flex;
     align-items: center;
@@ -1405,6 +1515,159 @@ input, select, textarea {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--gray-light);
+}
+.cart-shipping-box {
+    border: 1px solid var(--gray-light);
+    border-radius: 4px;
+    margin: 1rem 0;
+    background: var(--white);
+    overflow: hidden;
+}
+
+.cart-shipping-title {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.2rem 0.6rem;
+    padding: 0.9rem 0.9rem 0;
+    margin-bottom: 0.75rem;
+}
+
+.cart-shipping-title::before {
+    content: '';
+    width: 16px;
+    height: 12px;
+    border: 2px solid var(--dark);
+    border-radius: 2px;
+    margin-top: 0.1rem;
+    grid-row: span 2;
+}
+
+.cart-shipping-title strong {
+    color: var(--dark);
+    font-size: 0.98rem;
+}
+
+.cart-shipping-title span,
+.cart-shipping-message,
+.cart-shipping-option small,
+.cart-shipping-destination {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.cart-shipping-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 56px;
+    margin: 0 0.65rem 0.75rem;
+    border: 1px solid var(--gray-light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.cart-shipping-form input {
+    min-width: 0;
+    height: 42px;
+    border: 0;
+    padding: 0 0.85rem;
+    font: inherit;
+    background: #f3f5ff;
+}
+
+.cart-shipping-form input:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.cart-shipping-form button {
+    height: 42px;
+    border-radius: 0;
+    background: var(--white);
+    color: var(--dark);
+    font-weight: 700;
+    font-size: 0.78rem;
+    border-left: 1px solid var(--gray-light);
+}
+
+.cart-shipping-form button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.cart-shipping-message {
+    background: var(--cream);
+    margin: 0.65rem;
+    border-radius: 4px;
+    padding: 0.75rem;
+}
+
+.cart-shipping-message.error {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.cart-shipping-destination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0.9rem;
+    border-top: 1px solid var(--gray-light);
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.cart-shipping-destination button {
+    width: 24px;
+    height: 24px;
+    color: var(--gray);
+    font-size: 1rem;
+}
+
+.cart-shipping-options {
+    display: grid;
+}
+
+.cart-shipping-option {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: center;
+    border-bottom: 1px solid var(--gray-light);
+    padding: 0.75rem 0.9rem;
+    background: var(--white);
+    cursor: pointer;
+}
+
+.cart-shipping-option:last-child {
+    border-bottom: 0;
+}
+
+.cart-shipping-option.selected {
+    background: #fffdf6;
+}
+
+.cart-shipping-option span {
+    display: block;
+    min-width: 0;
+}
+
+.cart-shipping-option strong {
+    color: var(--gray-dark);
+    font-size: 0.9rem;
+}
+
+.cart-shipping-option b {
+    color: #3d7d42;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.cart-shipping-selected-message {
+    background: var(--cream);
+    color: var(--gray-dark);
+    padding: 0.8rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    text-align: center;
 }
 
 .summary-row {
@@ -1991,7 +2254,30 @@ input, select, textarea {
         border-top: 1px solid var(--gray-pale);
         padding-top: 1rem;
     }
-    
+        .cart-shipping-form {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-shipping-option {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .cart-shipping-option b {
+        grid-column: 2;
+    }
+
+    .product-shipping-form {
+        grid-template-columns: 1fr;
+    }
+
+    .product-shipping-form .btn {
+        width: 100%;
+    }
+
+    .product-shipping-option {
+        align-items: flex-start;
+        flex-direction: column;
+    }
     .auth-container { padding: 2rem 1.5rem; }
     
     .toast-container {

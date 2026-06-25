@@ -204,6 +204,78 @@ def test_melhor_envio_filters_allowed_company_ids(monkeypatch):
     assert [option['company_id'] for option in options] == [1, 6]
     assert all(option['company_id'] in {1, 2, 14, 15, 12, 6} for option in options)
 
+def test_melhor_envio_options_are_professionalized_and_deduplicated(monkeypatch):
+    package = {
+        'item_count': 1,
+        'weight_grams': 120,
+        'height_cm': money('2'),
+        'width_cm': money('10'),
+        'length_cm': money('15'),
+        'shipping_profile': 'default',
+    }
+    monkeypatch.setattr(
+        shipping_service,
+        'settings',
+        SimpleNamespace(melhor_envio_allowed_company_ids=''),
+    )
+
+    options = shipping_service.parse_melhor_envio_options(
+        [
+            {
+                'id': 1,
+                'name': 'PAC',
+                'price': '19.04',
+                'delivery_time': 8,
+                'company': {'id': 1, 'name': 'Correios'},
+            },
+            {
+                'id': 2,
+                'name': 'SEDEX',
+                'price': '29.49',
+                'delivery_time': 3,
+                'company': {'id': 1, 'name': 'Correios'},
+            },
+            {
+                'id': 3,
+                'name': '.Package',
+                'price': '14.94',
+                'delivery_time': 5,
+                'company': {'id': 2, 'name': 'Jadlog'},
+            },
+            {
+                'id': 4,
+                'name': '.Com',
+                'price': '16.65',
+                'delivery_time': 4,
+                'company': {'id': 2, 'name': 'Jadlog'},
+            },
+            {
+                'id': 5,
+                'name': 'Express',
+                'price': '15.80',
+                'delivery_time': 4,
+                'company': {'id': 3, 'name': 'Loggi'},
+            },
+            {
+                'id': 6,
+                'name': 'Coleta',
+                'price': '28.71',
+                'delivery_time': 7,
+                'company': {'id': 3, 'name': 'Loggi'},
+            },
+        ],
+        destination_zip='92310120',
+        package=package,
+    )
+
+    assert [option['service'] for option in options] == ['Jadlog', 'Loggi', 'PAC', 'SEDEX']
+    assert [option['id'] for option in options] == [
+        'melhor_envio:3',
+        'melhor_envio:5',
+        'melhor_envio:1',
+        'melhor_envio:2',
+    ]
+    assert all('.Package' not in option['service'] for option in options)
 def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypatch):
     package = {
         'item_count': 1,

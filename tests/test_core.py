@@ -324,12 +324,28 @@ def test_frontend_shipping_calculation_sends_cart_items():
     api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
     cart_js = (FRONTEND_ROOT / 'js' / 'cart.js').read_text(encoding='utf-8')
     product_html = (FRONTEND_ROOT / 'produto.html').read_text(encoding='utf-8')
+    cart_html = (FRONTEND_ROOT / 'carrinho.html').read_text(encoding='utf-8')
+    checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
 
     assert 'async calculateShipping(total, zipCode = \'\', items = [])' in api_js
     assert 'payload.items = items.map' in api_js
-    assert 'API.calculateShipping(subtotal, zipCode, this.items)' in cart_js
+    assert 'API.calculateShipping(subtotal, cepDigits, this.items)' in cart_js
+    assert 'CART_PRICING_KEY' in cart_js
+    assert 'setShippingQuote' in cart_js
+    assert 'selectShippingOption' in cart_js
+    assert 'product-shipping-cep' in product_html
+    assert 'calculateProductShipping()' in product_html
+    assert 'setupProductShippingCalculator()' in product_html
     assert 'API.calculateShipping(' in product_html
-    assert '{ id: product.id, quantity: 1 }' in product_html
+    assert '[{ id: product.id, quantity }]' in product_html
+    assert 'cart-shipping-cep' in cart_html
+    assert 'calculateCartShipping()' in cart_html
+    assert 'selectCartShippingOption' in cart_html
+    assert 'goToCheckoutFromCart(event)' in cart_html
+    assert 'Calcule pelo CEP' in cart_html
+    assert 'Cart.getShippingOptions()' in checkout_html
+    assert 'Cart.getShippingZipCode()' in checkout_html
+    assert 'Cart.setShippingQuote(cepDigits, checkoutShippingOptions, checkoutSelectedShippingId)' in checkout_html
 
 def test_checkout_exposes_shipping_option_selection():
     checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')
