@@ -99,8 +99,16 @@ def internal_shipping_option(
         shipping = fixed_value
         service = "Frete fixo"
     elif mode == "threshold":
-        shipping = Decimal("0.00") if subtotal >= free_minimum else fixed_value
-        service = "Frete gratis" if shipping == Decimal("0.00") else "Frete fixo"
+        if subtotal >= free_minimum:
+            shipping = Decimal("0.00")
+            service = "Frete gratis"
+        elif fixed_value > Decimal("0.00"):
+            shipping = fixed_value
+            service = "Frete fixo"
+        else:
+            raise ValueError(
+                "Configure um frete fixo maior que zero para pedidos abaixo do minimo de frete gratis"
+            )
     else:
         raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
 
@@ -115,6 +123,22 @@ def internal_shipping_option(
         "package": package,
     }
 
+
+def store_free_shipping_should_apply(active_settings, subtotal) -> bool:
+    mode = active_settings.shipping.mode
+    if mode == "free":
+        return True
+    if mode != "threshold":
+        return False
+    return money(subtotal) >= money(active_settings.shipping.free_minimum)
+
+
+def threshold_missing_fallback_price(active_settings, subtotal) -> bool:
+    return (
+        active_settings.shipping.mode == "threshold"
+        and money(subtotal) < money(active_settings.shipping.free_minimum)
+        and money(active_settings.shipping.fixed_value) == Decimal("0.00")
+    )
 
 def store_free_shipping_applies(internal_option: dict) -> bool:
     return (
@@ -361,6 +385,43 @@ def calculate_shipping_options(
     subtotal = money(subtotal)
     destination_zip = normalize_zip(zip_code)
     active_settings = effective_store_settings(db)
+    provider = active_settings.shipping.provider
+
+    if provider == MELHOR_ENVIO_PROVIDER and destination_zip and package:
+        try:
+            provider_options = fetch_melhor_envio_options(
+                subtotal,
+                destination_zip=destination_zip,
+                package=package,
+                shipping_settings=active_settings.shipping,
+            )
+            if store_free_shipping_should_apply(active_settings, subtotal):
+                free_option = internal_shipping_option(
+                    subtotal,
+                    zip_code=destination_zip,
+                    package=package,
+                    db=db,
+                    active_settings=active_settings,
+                )
+                return apply_store_free_shipping(provider_options, free_option)
+            return provider_options
+        except (requests.RequestException, ValueError) as exc:
+            if threshold_missing_fallback_price(active_settings, subtotal):
+                logger.warning("Falha ao calcular frete pago no Melhor Envio sem fallback configurado: %s", exc)
+                raise ValueError(
+                    "Nao foi possivel calcular o frete pago. Configure um frete fixo de fallback ou revise a integracao de frete"
+                ) from exc
+            internal_option = internal_shipping_option(
+                subtotal,
+                zip_code=destination_zip,
+                package=package,
+                db=db,
+                active_settings=active_settings,
+            )
+            internal_option["fallback_reason"] = "melhor_envio_unavailable"
+            logger.warning("Falha ao calcular frete no Melhor Envio: %s", exc)
+            return [internal_option]
+
     internal_option = internal_shipping_option(
         subtotal,
         zip_code=destination_zip,
@@ -368,33 +429,14 @@ def calculate_shipping_options(
         db=db,
         active_settings=active_settings,
     )
-
-    provider = active_settings.shipping.provider
     if provider == INTERNAL_PROVIDER:
         return [internal_option]
     if provider != MELHOR_ENVIO_PROVIDER:
         internal_option["fallback_reason"] = "shipping_provider_unknown"
         logger.warning("SHIPPING_PROVIDER desconhecido: %s", provider)
         return [internal_option]
-    if not destination_zip or not package:
-        internal_option["fallback_reason"] = "melhor_envio_requires_zip_and_package"
-        return [internal_option]
-
-    try:
-        provider_options = fetch_melhor_envio_options(
-            subtotal,
-            destination_zip=destination_zip,
-            package=package,
-            shipping_settings=active_settings.shipping,
-        )
-        if store_free_shipping_applies(internal_option):
-            return apply_store_free_shipping(provider_options, internal_option)
-        return provider_options
-    except (requests.RequestException, ValueError) as exc:
-        internal_option["fallback_reason"] = "melhor_envio_unavailable"
-        logger.warning("Falha ao calcular frete no Melhor Envio: %s", exc)
-        return [internal_option]
-
+    internal_option["fallback_reason"] = "melhor_envio_requires_zip_and_package"
+    return [internal_option]
 
 def calculate_shipping(
     subtotal,

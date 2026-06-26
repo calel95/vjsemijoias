@@ -22,18 +22,18 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="/">Ver Loja</a></li>
-                <li><a href="/catalogo">Catálogo</a></li>
+                <li><a href="/catalogo">CatÃ¡logo</a></li>
                 <li><a href="/admin" class="active">Admin</a></li>
             </ul>
             <div class="nav-actions">
-                <a href="/" class="nav-icon" title="Sair"><span>🚪</span></a>
+                <a href="/" class="nav-icon" title="Sair"><span>ðŸšª</span></a>
             </div>
         </div>
     </nav>
 
     <div class="offline-notice" id="offline-notice"></div>
 
-    <!-- LOGIN (aparece se não autenticado) -->
+    <!-- LOGIN (aparece se nÃ£o autenticado) -->
     <div id="login-screen" class="admin-login">
         <div class="admin-login-card">
             <img src="images/logo.png" alt="VJ" style="width: 80px; height: 80px; margin: 0 auto 1rem; display: block;">
@@ -60,33 +60,33 @@
     <div id="admin-panel" style="display: none;">
         <div class="admin-header">
             <div class="container">
-                <h1>📦 Gerenciar Produtos</h1>
-                <p>Adicione, edite ou remova produtos do catálogo</p>
+                <h1>ðŸ“¦ Gerenciar Produtos</h1>
+                <p>Adicione, edite ou remova produtos do catÃ¡logo</p>
             </div>
         </div>
 
         <div class="admin-container">
-            <!-- ESTATÍSTICAS -->
+            <!-- ESTATÃSTICAS -->
             <div class="admin-stats">
                 <div class="stat-card">
-                    <div class="stat-icon">📦</div>
+                    <div class="stat-icon">ðŸ“¦</div>
                     <div class="stat-value" id="stat-total">0</div>
                     <div class="stat-label">Total de Produtos</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">✨</div>
+                    <div class="stat-icon">âœ¨</div>
                     <div class="stat-value" id="stat-custom">0</div>
                     <div class="stat-label">Produtos Customizados</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">🏷️</div>
+                    <div class="stat-icon">ðŸ·ï¸</div>
                     <div class="stat-value" id="stat-categories">0</div>
                     <div class="stat-label">Categorias</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon">ðŸ’°</div>
                     <div class="stat-value" id="stat-avg-price">R$ 0</div>
-                    <div class="stat-label">Preço Médio</div>
+                    <div class="stat-label">PreÃ§o MÃ©dio</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">PED</div>
@@ -131,6 +131,52 @@
                 </div>
             </div>
 
+            <div class="admin-modal-overlay" id="order-modal" aria-hidden="true">
+                <div class="admin-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
+                    <button class="admin-modal-close" type="button" onclick="closeOrderModal()" aria-label="Fechar">x</button>
+                    <div class="orders-header">
+                        <div>
+                            <h2 id="order-modal-title">Gerenciar pedido</h2>
+                            <p id="order-modal-subtitle">Atualize status, rastreio e acompanhe o historico.</p>
+                        </div>
+                    </div>
+                    <form id="order-modal-form" onsubmit="saveOrderModal(event)">
+                        <div class="order-modal-grid">
+                            <section>
+                                <h3>Status e rastreio</h3>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="order-modal-status"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Codigo de rastreio</label>
+                                    <input type="text" id="order-modal-tracking-code" maxlength="100" placeholder="BR123456789">
+                                </div>
+                                <div class="form-group">
+                                    <label>Transportadora</label>
+                                    <input type="text" id="order-modal-tracking-carrier" maxlength="100" placeholder="Correios, Jadlog, Loggi">
+                                </div>
+                            </section>
+                            <section>
+                                <h3>Resumo</h3>
+                                <div id="order-modal-summary" class="order-modal-summary"></div>
+                            </section>
+                        </div>
+                        <section class="order-modal-section">
+                            <h3>Itens do pedido</h3>
+                            <div id="order-modal-items"></div>
+                        </section>
+                        <section class="order-modal-section">
+                            <h3>Historico</h3>
+                            <div id="order-modal-events"></div>
+                        </section>
+                        <div class="order-modal-actions">
+                            <button class="btn btn-outline" type="button" onclick="closeOrderModal()">Cancelar</button>
+                            <button class="btn btn-primary" id="order-modal-submit" type="submit">Salvar pedido</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
             <div class="admin-card store-config-card">
                 <div class="orders-header">
                     <div>
@@ -232,8 +278,9 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Frete fixo (R$)</label>
+                            <label>Frete abaixo do minimo (R$)</label>
                             <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
+                            <small class="field-hint">No modo gratis por valor minimo, este valor e cobrado antes de atingir o minimo.</small>
                         </div>
                         <div class="form-group">
                             <label>Gratis acima de (R$)</label>
@@ -271,6 +318,62 @@
                             <input type="number" min="1" max="30" step="0.5" data-store-config="MELHOR_ENVIO_TIMEOUT_SECONDS">
                         </div>
                     </div>
+                    <h3>E-mails transacionais</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Modo de envio</label>
+                            <select data-store-config="EMAIL_BACKEND">
+                                <option value="console">Console / logs</option>
+                                <option value="smtp">SMTP</option>
+                                <option value="disabled">Desativado</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nome do remetente</label>
+                            <input type="text" data-store-config="EMAIL_FROM_NAME" placeholder="VJ Semijoias">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>E-mail do remetente</label>
+                            <input type="email" data-store-config="EMAIL_FROM_ADDRESS" placeholder="contato@seudominio.com">
+                        </div>
+                        <div class="form-group">
+                            <label>Servidor SMTP</label>
+                            <input type="text" data-store-config="EMAIL_SMTP_HOST" placeholder="smtp.seudominio.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Porta SMTP</label>
+                            <input type="number" min="1" max="65535" step="1" data-store-config="EMAIL_SMTP_PORT">
+                        </div>
+                        <div class="form-group">
+                            <label>Usuario SMTP</label>
+                            <input type="text" data-store-config="EMAIL_SMTP_USERNAME" autocomplete="username">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Senha SMTP</label>
+                            <input type="password" data-store-config="EMAIL_SMTP_PASSWORD" autocomplete="new-password" placeholder="Preencha apenas para trocar">
+                        </div>
+                        <label class="admin-toggle store-config-toggle email-tls-toggle">
+                            <input type="checkbox" data-store-config="EMAIL_SMTP_USE_TLS">
+                            <span></span>
+                            Usar TLS no SMTP
+                        </label>
+                    </div>
+                    <div class="email-test-panel">
+                        <div class="form-group">
+                            <label>E-mail para teste</label>
+                            <input type="email" id="email-test-recipient" placeholder="cliente@exemplo.com">
+                        </div>
+                        <button class="btn btn-outline" id="email-test-submit" type="button" onclick="sendTestEmail()">
+                            Enviar teste
+                        </button>
+                    </div>
+
                     <div class="form-row store-config-actions">
                         <button class="btn btn-primary" id="store-config-submit" type="submit">
                             Salvar configuracoes
@@ -410,9 +513,9 @@
             </div>
 
             <div class="admin-grid">
-                <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
+                <!-- FORMULÃRIO DE ADICIONAR/EDITAR -->
                 <div class="admin-card">
-                    <h2 id="form-title">➕ Adicionar Novo Produto</h2>
+                    <h2 id="form-title">âž• Adicionar Novo Produto</h2>
                     <form id="product-form" onsubmit="handleProductSubmit(event)">
                         <input type="hidden" id="product-id" name="id">
 
@@ -423,14 +526,14 @@
                                 <input type="file" id="image-input" accept="image/*" multiple onchange="handleImageUpload(event)">
                                 <div class="image-upload-preview" id="image-preview">
                                     <div class="upload-placeholder">
-                                        <div style="font-size: 3rem;">📷</div>
+                                        <div style="font-size: 3rem;">ðŸ“·</div>
                                         <p>Clique ou arraste as imagens</p>
                                         <small>PNG, JPG ate 5MB cada</small>
                                     </div>
                                 </div>
                             </div>
                             <small style="color: var(--gray); margin-top: 0.5rem; display: block;">
-                                💡 Ou cole uma URL de imagem abaixo
+                                ðŸ’¡ Ou cole uma URL de imagem abaixo
                             </small>
                         </div>
 
@@ -445,7 +548,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Nome do Produto <span class="required">*</span></label>
-                                <input type="text" id="product-name" name="name" required placeholder="Ex: Brinco Solitário Luxo">
+                                <input type="text" id="product-name" name="name" required placeholder="Ex: Brinco SolitÃ¡rio Luxo">
                             </div>
                             <div class="form-group">
                                 <label>Categoria <span class="required">*</span></label>
@@ -454,7 +557,7 @@
                                     <option value="brincos">Brincos</option>
                                     <option value="colares">Colares</option>
                                     <option value="pulseiras">Pulseiras</option>
-                                    <option value="aneis">Anéis</option>
+                                    <option value="aneis">AnÃ©is</option>
                                     <option value="pingentes">Pingentes</option>
                                     <option value="chaveiros">Chaveiros</option>
                                     <option value="conjuntos">Conjuntos</option>
@@ -464,11 +567,11 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Preço (R$) <span class="required">*</span></label>
+                                <label>PreÃ§o (R$) <span class="required">*</span></label>
                                 <input type="number" id="product-price" name="price" step="0.01" min="0" required placeholder="199.90">
                             </div>
                             <div class="form-group">
-                                <label>Preço Antigo (opcional)</label>
+                                <label>PreÃ§o Antigo (opcional)</label>
                                 <input type="number" id="product-old-price" name="oldPrice" step="0.01" min="0" placeholder="249.90">
                             </div>
                         </div>
@@ -486,8 +589,8 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Ícone Emoji (opcional)</label>
-                                <input type="text" id="product-icon" name="icon" placeholder="💎" maxlength="2">
+                                <label>Ãcone Emoji (opcional)</label>
+                                <input type="text" id="product-icon" name="icon" placeholder="ðŸ’Ž" maxlength="2">
                             </div>
                             <div class="form-group">
                                 <label>Badge</label>
@@ -557,15 +660,15 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Descrição <span class="required">*</span></label>
+                            <label>DescriÃ§Ã£o <span class="required">*</span></label>
                             <textarea id="product-description" name="description" rows="3" required placeholder="Descreva o produto..."></textarea>
                         </div>
 
                         <div class="form-group">
-                            <label>Características (uma por linha)</label>
-                            <textarea id="product-features" name="features" rows="4" placeholder="Banho de Ouro 18k&#10;Zircônia cristal&#10;Fecho de tarraxa&#10;Diâmetro: 2cm"></textarea>
+                            <label>CaracterÃ­sticas (uma por linha)</label>
+                            <textarea id="product-features" name="features" rows="4" placeholder="Banho de Ouro 18k&#10;ZircÃ´nia cristal&#10;Fecho de tarraxa&#10;DiÃ¢metro: 2cm"></textarea>
                             <small style="color: var(--gray); margin-top: 0.3rem; display: block;">
-                                💡 Comece cada item com ✓ (opcional)
+                                ðŸ’¡ Comece cada item com âœ“ (opcional)
                             </small>
                         </div>
 
@@ -578,10 +681,10 @@
 
                         <div style="display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.5rem;">
                             <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;">
-                                💾 Salvar Produto
+                                ðŸ’¾ Salvar Produto
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="resetForm()" style="flex: 1; min-width: 150px;">
-                                🔄 Limpar
+                                ðŸ”„ Limpar
                             </button>
                         </div>
                     </form>
@@ -590,7 +693,7 @@
                 <!-- LISTA DE PRODUTOS -->
                 <div class="admin-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 style="margin: 0;">📋 Produtos do Catálogo</h2>
+                        <h2 style="margin: 0;">ðŸ“‹ Produtos do CatÃ¡logo</h2>
                         <input type="text" id="admin-search" placeholder="Buscar..." style="padding: 0.5rem 1rem; border: 2px solid var(--gray-light); border-radius: 30px; font-size: 0.9rem; max-width: 200px;">
                     </div>
 
@@ -603,7 +706,7 @@
                         <button class="filter-btn" data-filter="brincos">Brincos</button>
                         <button class="filter-btn" data-filter="colares">Colares</button>
                         <button class="filter-btn" data-filter="pulseiras">Pulseiras</button>
-                        <button class="filter-btn" data-filter="aneis">Anéis</button>
+                        <button class="filter-btn" data-filter="aneis">AnÃ©is</button>
                         <button class="filter-btn" data-filter="pingentes">Pingentes</button>
                         <button class="filter-btn" data-filter="chaveiros">Chaveiros</button>
                     </div>
@@ -697,15 +800,15 @@
                 </form>
             </div>
 
-            <!-- BOTÕES DE AÇÃO GLOBAIS -->
+            <!-- BOTÃ•ES DE AÃ‡ÃƒO GLOBAIS -->
             <div class="admin-actions">
-                <h3>🛠️ Ações Globais</h3>
+                <h3>ðŸ› ï¸ AÃ§Ãµes Globais</h3>
                 <div class="admin-action-toolbar">
                     <button class="btn btn-secondary" onclick="exportProducts()">
-                        📥 Exportar Produtos (JSON)
+                        ðŸ“¥ Exportar Produtos (JSON)
                     </button>
                     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
-                        📤 Importar Pasta de Produtos
+                        ðŸ“¤ Importar Pasta de Produtos
                     </button>
                     <input type="file" id="import-file" webkitdirectory directory multiple style="display: none;" onchange="handleImportFolderSelection(event)">
                     <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImportProducts()" disabled>
@@ -715,10 +818,10 @@
                         Limpar Preview
                     </button>
                     <small style="color: var(--gray); align-self: center;">
-                        Selecione a pasta que contém manifest.json e products/
+                        Selecione a pasta que contÃ©m manifest.json e products/
                     </small>
                     <button class="btn btn-outline" onclick="showAdminPanel()">
-                        Atualizar Catálogo
+                        Atualizar CatÃ¡logo
                     </button>
                     <button class="btn btn-danger" onclick="confirmClearCatalog()">
                         Limpar Catalogo
@@ -739,7 +842,7 @@
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÇÃO -->
+    <!-- MODAL DE CONFIRMAÃ‡ÃƒO -->
     <div class="modal-overlay" id="confirm-modal">
         <div class="modal" style="max-width: 400px; text-align: center;">
             <h3 id="confirm-title" style="margin-bottom: 1rem;">Confirmar</h3>

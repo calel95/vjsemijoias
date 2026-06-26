@@ -3,7 +3,7 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v24';
+const CACHE_NAME = 'vj-semijoias-v25';
 const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
@@ -11,6 +11,7 @@ const urlsToCache = [
     '/produto',
     '/carrinho',
     '/checkout',
+    '/pedido',
     '/login',
     '/cadastro',
     '/admin',

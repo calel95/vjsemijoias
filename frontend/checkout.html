@@ -86,6 +86,7 @@
                 <a id="pix-ticket-link" class="btn btn-outline btn-block" target="_blank" rel="noopener"
                     style="margin-top: 0.5rem;">Abrir instruções do Pix</a>
             </div>
+            <a id="order-tracking-link" href="/pedido" class="btn btn-secondary btn-block" style="margin-bottom: 0.6rem;">Acompanhar pedido</a>
             <a href="/" class="btn btn-primary btn-block">Voltar para a Loja</a>
         </div>
     </div>
@@ -537,6 +538,11 @@
             localStorage.removeItem('vj_coupon');
             localStorage.removeItem('vj_coupon_percent');
             document.getElementById('order-id').textContent = order.id;
+            const trackingLink = document.getElementById('order-tracking-link');
+            const trackingToken = order.public_token || '';
+            trackingLink.href = trackingToken
+                ? `/pedido?id=${encodeURIComponent(order.id)}&token=${encodeURIComponent(trackingToken)}`
+                : '/pedido';
 
             const paid = payment.status === 'paid';
             document.getElementById('payment-result-icon').textContent = paid ? '✓' : '⏳';

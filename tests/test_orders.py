@@ -73,6 +73,31 @@ def test_manual_order_is_idempotent_and_has_public_lookup_token():
     assert public_lookup.json()['id'] == order['id']
     assert blocked_lookup.status_code == 404
 
+def test_public_order_lookup_accepts_order_email_and_cpf():
+    response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Consulta',
+        'customer_email': 'consulta@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': 1, 'quantity': 1}],
+    })
+    order = response.json()
+    lookup = client.post('/api/orders/public/lookup', json={
+        'order_id': order['id'],
+        'email': 'consulta@example.com',
+        'cpf': '123.456.789-09',
+    })
+    blocked = client.post('/api/orders/public/lookup', json={
+        'order_id': order['id'],
+        'email': 'outra@example.com',
+        'cpf': '12345678909',
+    })
+
+    assert response.status_code == 201
+    assert lookup.status_code == 200
+    assert lookup.json()['id'] == order['id']
+    assert lookup.json()['public_token'] == order['public_token']
+    assert blocked.status_code == 404
+
 def test_order_rejects_invalid_cpf_and_sanitizes_customer_text():
     invalid = client.post('/api/orders', json={
         'customer_name': 'Cliente Teste',

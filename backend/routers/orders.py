@@ -32,7 +32,7 @@ from backend.services.transactional_emails import (
     send_order_created_email,
     send_order_shipped_email,
 )
-from backend.services.validation import clean_text, normalize_email
+from backend.services.validation import clean_text, digits_only, normalize_email
 from backend.store_config import effective_store_settings, public_store_config
 
 
@@ -122,6 +122,30 @@ def get_public_order(
 ):
     order = get_or_404(db, Order, order_id)
     if not order.public_token or token != order.public_token:
+        raise HTTPException(status_code=404, detail="Pedido nao encontrado")
+    data = order.to_dict()
+    data["payment"] = order.payment.to_dict(include_pix=False) if order.payment else None
+    return data
+
+
+@router.post("/orders/public/lookup")
+def lookup_public_order(
+    data: dict[str, Any] = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    order_id = clean_text(data.get("order_id"), field="order_id", max_length=50)
+    if not order_id:
+        raise HTTPException(status_code=400, detail="Informe o numero do pedido")
+    try:
+        email = normalize_email(data.get("email"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    cpf = digits_only(data.get("cpf"))
+    if len(cpf) != 11:
+        raise HTTPException(status_code=400, detail="CPF deve conter 11 digitos")
+
+    order = get_or_404(db, Order, order_id)
+    if order.customer_email.lower() != email.lower() or digits_only(order.customer_cpf) != cpf:
         raise HTTPException(status_code=404, detail="Pedido nao encontrado")
     data = order.to_dict()
     data["payment"] = order.payment.to_dict(include_pix=False) if order.payment else None

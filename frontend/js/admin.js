@@ -23,9 +23,10 @@ let catalogPdfItems = [];
 let productGalleryImages = [];
 let importFolderFiles = [];
 let importPreviewState = null;
+let activeOrderModalId = null;
 
 // ============================================
-// AUTENTICAÇÃO
+// AUTENTICAÃ‡ÃƒO
 // ============================================
 
 function isAuthenticated() {
@@ -42,7 +43,7 @@ async function handleAdminLogin(event) {
         await showAdminPanel();
         showToast('Bem-vinda ao painel admin!', 'success', 'Login realizado');
     } else {
-        showToast(result.error || 'Não foi possível entrar', 'error', 'Acesso negado');
+        showToast(result.error || 'NÃ£o foi possÃ­vel entrar', 'error', 'Acesso negado');
         document.getElementById('admin-password').value = '';
         document.getElementById(email ? 'admin-password' : 'admin-email').focus();
     }
@@ -185,6 +186,44 @@ async function handleStoreConfigSubmit(event) {
     fillStoreConfigForm(result.data.values || {});
     await applyStoreEnvironmentConfig();
     showToast('Configuracoes da loja atualizadas', 'success');
+}
+
+async function sendTestEmail() {
+    const button = document.getElementById('email-test-submit');
+    const recipientField = document.getElementById('email-test-recipient');
+    const storeEmailField = document.querySelector('[data-store-config="STORE_EMAIL"]');
+    const email = (recipientField?.value || storeEmailField?.value || '').trim();
+    if (!email) {
+        showToast('Informe um e-mail para teste', 'error');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Enviando...';
+    }
+
+    const saveResult = await API.updateAdminStoreConfig(readStoreConfigForm());
+    if (!saveResult.success) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Enviar teste';
+        }
+        showToast(saveResult.error || 'Falha ao salvar configuracoes de e-mail', 'error');
+        return;
+    }
+    fillStoreConfigForm(saveResult.data.values || {});
+    await applyStoreEnvironmentConfig();
+
+    const result = await API.sendAdminEmailTest(email);
+    if (button) {
+        button.disabled = false;
+        button.textContent = 'Enviar teste';
+    }
+    if (!result.success) {
+        showToast(result.error || 'Falha ao enviar e-mail de teste', 'error');
+        return;
+    }
+    showToast(result.data?.message || 'E-mail de teste enviado', 'success');
 }
 
 // ============================================
@@ -599,7 +638,7 @@ function renderProductGalleryPreview() {
     if (productGalleryImages.length === 0) {
         preview.innerHTML = `
             <div class="upload-placeholder">
-                <div style="font-size: 3rem;">📷</div>
+                <div style="font-size: 3rem;">ðŸ“·</div>
                 <p>Clique ou arraste as imagens</p>
                 <small>PNG, JPG ate 5MB cada</small>
             </div>
@@ -633,7 +672,7 @@ function syncImageFromUrl() {
 }
 
 // ============================================
-// FORMULÁRIO
+// FORMULÃRIO
 // ============================================
 
 function escapeHTML(value) {
@@ -643,6 +682,10 @@ function escapeHTML(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function escapeJSString(value) {
+    return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 function badgeLabel(badge) {
@@ -691,7 +734,7 @@ function currentFormProduct() {
         oldPrice: parseFloat(document.getElementById('product-old-price').value) || null,
         sku: document.getElementById('product-sku')?.value.trim() || '',
         image: productGalleryImages[0] || '',
-        icon: document.getElementById('product-icon').value.trim() || '💎',
+        icon: document.getElementById('product-icon').value.trim() || 'ðŸ’Ž',
         badge: document.getElementById('product-badge').value || null,
         is_active: document.getElementById('product-active')?.checked ?? true,
         stock_status: document.getElementById('product-stock-status')?.value || 'available',
@@ -725,7 +768,7 @@ function renderProductFormPreview() {
         : `<span class="preview-status ${product.stock_status}">${stockLabel(product.stock_status)}</span>`;
     const imageHTML = product.image
         ? `<img src="${escapeHTML(product.image)}" alt="${escapeHTML(product.name || 'Produto')}">`
-        : `<div class="placeholder">${escapeHTML(product.icon || '💎')}</div>`;
+        : `<div class="placeholder">${escapeHTML(product.icon || 'ðŸ’Ž')}</div>`;
     const priceHTML = product.price ? formatPrice(product.price) : 'R$ 0,00';
     const oldPriceHTML = product.oldPrice
         ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
@@ -774,26 +817,26 @@ async function handleProductSubmit(event) {
         .split('\n')
         .map(f => f.trim())
         .filter(f => f.length > 0)
-        .map(f => f.startsWith('✓') ? f : `✓ ${f}`);
+        .map(f => f.startsWith('âœ“') ? f : `âœ“ ${f}`);
     
     data.images = [...productGalleryImages];
     data.image = data.images[0] || null;
     
-    // Define ícone padrão se não informado
+    // Define Ã­cone padrÃ£o se nÃ£o informado
     if (!data.icon) {
         const iconMap = {
-            'brincos': '✨',
-            'colares': '📿',
-            'pulseiras': '⚜️',
-            'aneis': '💍',
-            'pingentes': '🔮',
-            'chaveiros': '🔑',
-            'conjuntos': '🎁'
+            'brincos': 'âœ¨',
+            'colares': 'ðŸ“¿',
+            'pulseiras': 'âšœï¸',
+            'aneis': 'ðŸ’',
+            'pingentes': 'ðŸ”®',
+            'chaveiros': 'ðŸ”‘',
+            'conjuntos': 'ðŸŽ'
         };
-        data.icon = iconMap[data.category] || '💎';
+        data.icon = iconMap[data.category] || 'ðŸ’Ž';
     }
     
-    // Converte preços
+    // Converte preÃ§os
     data.price = parseFloat(data.price) || 0;
     data.oldPrice = data.oldPrice ? parseFloat(data.oldPrice) : null;
     data.sku = data.sku || null;
@@ -815,16 +858,16 @@ async function handleProductSubmit(event) {
         'brincos': 'Brincos',
         'colares': 'Colares',
         'pulseiras': 'Pulseiras',
-        'aneis': 'Anéis',
+        'aneis': 'AnÃ©is',
         'pingentes': 'Pingentes',
         'chaveiros': 'Chaveiros',
         'conjuntos': 'Conjuntos'
     };
     data.categoryName = categoryMap[data.category] || data.category;
     
-    // Validações
+    // ValidaÃ§Ãµes
     if (!data.name || !data.category || !data.price || !data.description) {
-        showToast('Preencha todos os campos obrigatórios', 'error', 'Campos vazios');
+        showToast('Preencha todos os campos obrigatÃ³rios', 'error', 'Campos vazios');
         return;
     }
     
@@ -861,7 +904,7 @@ function resetForm() {
     document.getElementById('product-length-cm').value = '15.00';
     document.getElementById('product-shipping-profile').value = 'default';
     setProductGalleryImages([]);
-    document.getElementById('form-title').textContent = '➕ Adicionar Novo Produto';
+    document.getElementById('form-title').textContent = 'âž• Adicionar Novo Produto';
     editingId = null;
     renderProductFormPreview();
 }
@@ -871,7 +914,7 @@ function editProduct(id) {
     if (!product) return;
     
     editingId = id;
-    document.getElementById('form-title').textContent = '✏️ Editar Produto';
+    document.getElementById('form-title').textContent = 'âœï¸ Editar Produto';
     
     document.getElementById('product-id').value = id;
     document.getElementById('product-name').value = product.name;
@@ -891,7 +934,7 @@ function editProduct(id) {
     document.getElementById('product-length-cm').value = product.length_cm ?? 15;
     document.getElementById('product-shipping-profile').value = product.shipping_profile || 'default';
     document.getElementById('product-description').value = product.description;
-    document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^✓\s*/, '')).join('\n');
+    document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^âœ“\s*/, '')).join('\n');
     setProductGalleryImages(
         Array.isArray(product.images) && product.images.length
             ? product.images
@@ -906,7 +949,7 @@ function editProduct(id) {
 function deleteProduct(id) {
     showConfirmModal(
         'Excluir Produto',
-        'Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.',
+        'Tem certeza que deseja excluir este produto? Esta aÃ§Ã£o nÃ£o pode ser desfeita.',
         async () => {
             const result = await API.deleteProduct(id);
             if (!result.success) {
@@ -914,7 +957,7 @@ function deleteProduct(id) {
                 return;
             }
             await showAdminPanel();
-            showToast('Produto excluído', 'info', 'Removido');
+            showToast('Produto excluÃ­do', 'info', 'Removido');
         }
     );
 }
@@ -979,7 +1022,7 @@ function renderAdminProducts() {
     if (products.length === 0) {
         container.innerHTML = `
             <div class="empty-admin-list">
-                <div class="icon">📦</div>
+                <div class="icon">ðŸ“¦</div>
                 <p>Nenhum produto encontrado</p>
             </div>
         `;
@@ -988,12 +1031,12 @@ function renderAdminProducts() {
     
     container.innerHTML = products.map(p => {
         const thumbHTML = p.image ? 
-            `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${p.icon || '💎'}';">` :
-            (p.icon || '💎');
+            `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${p.icon || 'ðŸ’Ž'}';">` :
+            (p.icon || 'ðŸ’Ž');
         
         const badgeHTML = p.custom
             ? '<span class="badge-mini custom">NOVO</span>'
-            : '<span class="badge-mini fixed">CATÁLOGO</span>';
+            : '<span class="badge-mini fixed">CATÃLOGO</span>';
         
         const storefrontBadgeLabel = badgeLabel(p.badge);
         const storefrontBadge = storefrontBadgeLabel
@@ -1052,6 +1095,12 @@ async function updateStats() {
 // PEDIDOS
 // ============================================
 
+function orderStatusOptions(selectedStatus = '') {
+    const statuses = ['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'];
+    return statuses.map(status => `
+        <option value="${status}" ${status === selectedStatus ? 'selected' : ''}>${orderStatusLabel(status)}</option>
+    `).join('');
+}
 function orderStatusLabel(status) {
     return {
         pending: 'Pendente',
@@ -1168,43 +1217,91 @@ function renderAdminOrders() {
             ${orderEventsTimeline(order)}
             <div class="order-footer">
                 <strong>${formatPrice(order.total || 0)}</strong>
-                <select onchange="changeOrderStatus('${escapeHTML(order.id)}', this.value)">
-                    ${['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'].map(status => `
-                        <option value="${status}" ${order.status === status ? 'selected' : ''}>${orderStatusLabel(status)}</option>
-                    `).join('')}
-                </select>
+                <button class="btn btn-outline order-manage-btn" type="button" onclick="openOrderModal('${escapeJSString(order.id)}')">Gerenciar</button>
             </div>
         </article>
     `).join('');
 }
 
-async function changeOrderStatus(orderId, status) {
-    const payload = {};
-    if (status === 'shipped') {
-        const order = adminOrders.find(item => item.id === orderId) || {};
-        const trackingCode = window.prompt('Codigo de rastreio:', order.tracking_code || '');
-        if (trackingCode === null) {
-            renderAdminOrders();
-            return;
-        }
-        const trackingCarrier = window.prompt('Transportadora:', order.tracking_carrier || '');
-        if (trackingCarrier === null) {
-            renderAdminOrders();
-            return;
-        }
-        payload.tracking_code = trackingCode.trim();
-        payload.tracking_carrier = trackingCarrier.trim();
-    }
+function orderModalItemsHTML(order) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.length) return '<p class="empty-admin-list">Nenhum item registrado.</p>';
+    return items.map(item => `
+        <div class="order-modal-row">
+            <span>${escapeHTML(item.quantity || 1)}x ${escapeHTML(item.name || `Produto ${item.id || ''}`)}</span>
+            <strong>${formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
+        </div>
+    `).join('');
+}
+
+function orderModalEventsHTML(order) {
+    const events = Array.isArray(order.events) ? [...order.events].reverse() : [];
+    if (!events.length) return '<p class="empty-admin-list">Nenhum historico registrado.</p>';
+    return events.map(event => `
+        <div class="order-modal-event">
+            <span>${escapeHTML(event.message || orderStatusLabel(event.status))}</span>
+            <small>${formatOrderDate(event.created_at)}</small>
+        </div>
+    `).join('');
+}
+
+function openOrderModal(orderId) {
+    const order = adminOrders.find(item => item.id === orderId);
+    if (!order) return;
+    activeOrderModalId = orderId;
+    document.getElementById('order-modal-title').textContent = `Pedido ${order.id}`;
+    document.getElementById('order-modal-subtitle').textContent = `${order.customer_name || 'Cliente'} - ${formatOrderDate(order.created_at)}`;
+    document.getElementById('order-modal-status').innerHTML = orderStatusOptions(order.status);
+    document.getElementById('order-modal-tracking-code').value = order.tracking_code || '';
+    document.getElementById('order-modal-tracking-carrier').value = order.tracking_carrier || '';
+    document.getElementById('order-modal-summary').innerHTML = `
+        <div><span>Cliente</span><strong>${escapeHTML(order.customer_name || '-')}</strong></div>
+        <div><span>E-mail</span><strong>${escapeHTML(order.customer_email || '-')}</strong></div>
+        <div><span>Total</span><strong>${formatPrice(order.total || 0)}</strong></div>
+        <div><span>Frete</span><strong>${escapeHTML(order.shipping_company || order.shipping_service || order.shipping_provider || 'Frete')}</strong></div>
+        <div><span>Destino</span><strong>${escapeHTML([order.address_city, order.address_state].filter(Boolean).join('/') || '-')}</strong></div>
+    `;
+    document.getElementById('order-modal-items').innerHTML = orderModalItemsHTML(order);
+    document.getElementById('order-modal-events').innerHTML = orderModalEventsHTML(order);
+    document.getElementById('order-modal').classList.add('active');
+    document.getElementById('order-modal').setAttribute('aria-hidden', 'false');
+}
+
+function closeOrderModal() {
+    activeOrderModalId = null;
+    document.getElementById('order-modal')?.classList.remove('active');
+    document.getElementById('order-modal')?.setAttribute('aria-hidden', 'true');
+}
+
+async function changeOrderStatus(orderId, status, payload = {}) {
     const result = await API.updateOrderStatus(orderId, status, payload);
     if (!result.success) {
         showToast(result.error || 'Erro ao atualizar pedido', 'error');
-        return;
+        return false;
     }
     const index = adminOrders.findIndex(order => order.id === orderId);
     if (index >= 0) adminOrders[index] = result.data;
     renderAdminOrders();
     updateStats();
     showToast('Status do pedido atualizado', 'success');
+    return true;
+}
+
+async function saveOrderModal(event) {
+    event.preventDefault();
+    if (!activeOrderModalId) return;
+    const submit = document.getElementById('order-modal-submit');
+    const status = document.getElementById('order-modal-status').value;
+    const payload = {
+        tracking_code: document.getElementById('order-modal-tracking-code').value.trim(),
+        tracking_carrier: document.getElementById('order-modal-tracking-carrier').value.trim(),
+    };
+    submit.disabled = true;
+    submit.textContent = 'Salvando...';
+    const success = await changeOrderStatus(activeOrderModalId, status, payload);
+    submit.disabled = false;
+    submit.textContent = 'Salvar pedido';
+    if (success) closeOrderModal();
 }
 
 // ============================================
@@ -1281,7 +1378,7 @@ function exportProducts() {
     link.download = `vj-produtos-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    showToast('Produtos exportados!', 'success', '📥 Download');
+    showToast('Produtos exportados!', 'success', 'ðŸ“¥ Download');
 }
 
 function importFilePath(file) {
@@ -1587,9 +1684,9 @@ async function legacyImportProducts(event) {
     });
     if (!hasManifest) {
         showToast(
-            'Selecione a pasta completa que contém manifest.json',
+            'Selecione a pasta completa que contÃ©m manifest.json',
             'error',
-            'Pasta inválida'
+            'Pasta invÃ¡lida'
         );
         event.target.value = '';
         return;
@@ -1598,13 +1695,13 @@ async function legacyImportProducts(event) {
     showToast(
         `Enviando ${files.length} arquivos...`,
         'info',
-        'Importando catálogo'
+        'Importando catÃ¡logo'
     );
     const result = await API.importProductFolder(files);
     event.target.value = '';
 
     if (!result.success) {
-        showToast(result.error, 'error', 'Erro na importação');
+        showToast(result.error, 'error', 'Erro na importaÃ§Ã£o');
         return;
     }
 
@@ -1612,12 +1709,12 @@ async function legacyImportProducts(event) {
     showToast(
         `${result.data.products} produtos processados, ${result.data.images} imagens.`,
         'success',
-        'Catálogo importado'
+        'CatÃ¡logo importado'
     );
 }
 
 // ============================================
-// MODAL DE CONFIRMAÇÃO
+// MODAL DE CONFIRMAÃ‡ÃƒO
 // ============================================
 
 // ============================================
@@ -1760,9 +1857,9 @@ function renderCatalogPdfItems() {
                 </div>
             </div>
             <div class="catalog-product-controls">
-                <button type="button" onclick="moveCatalogPdfItem(${index}, -1)" title="Subir">↑</button>
-                <button type="button" onclick="moveCatalogPdfItem(${index}, 1)" title="Descer">↓</button>
-                <button type="button" class="danger" onclick="removeCatalogPdfItem(${index})" title="Remover">×</button>
+                <button type="button" onclick="moveCatalogPdfItem(${index}, -1)" title="Subir">â†‘</button>
+                <button type="button" onclick="moveCatalogPdfItem(${index}, 1)" title="Descer">â†“</button>
+                <button type="button" class="danger" onclick="removeCatalogPdfItem(${index})" title="Remover">Ã—</button>
             </div>
         </div>
     `).join('');

@@ -275,6 +275,7 @@ def test_frontend_files_are_served():
     legacy_catalog_response = client.get('/catalogo.html')
     manifest_response = client.get('/manifest.json')
     service_worker_response = client.get('/service-worker.js')
+    order_tracking_response = client.get('/pedido')
 
     assert index_response.status_code == 200
     assert b'VJ Semijoias' in index_response.content
@@ -284,6 +285,8 @@ def test_frontend_files_are_served():
     assert legacy_catalog_response.status_code == 200
     assert manifest_response.status_code == 200
     assert service_worker_response.status_code == 200
+    assert order_tracking_response.status_code == 200
+    assert b'Acompanhe seu pedido' in order_tracking_response.content
 
 def test_public_catalog_uses_api_cache_instead_of_hardcoded_products():
     products_js = (FRONTEND_ROOT / 'js' / 'products.js').read_text(encoding='utf-8')
@@ -347,6 +350,28 @@ def test_frontend_shipping_calculation_sends_cart_items():
     assert 'checkout-shipping-summary' in checkout_html
     assert 'Cart.getShippingZipCode()' in checkout_html
     assert 'shipping_option_id: Cart.pricing.shippingOption?.id || checkoutSelectedShippingId' in checkout_html
+
+def test_order_tracking_page_and_admin_modal_are_wired():
+    pedido_html = (FRONTEND_ROOT / 'pedido.html').read_text(encoding='utf-8')
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    api_js = (FRONTEND_ROOT / 'js' / 'api.js').read_text(encoding='utf-8')
+    service_worker = (FRONTEND_ROOT / 'service-worker.js').read_text(encoding='utf-8')
+
+    assert 'order-tracking-form' in pedido_html
+    assert 'API.getPublicOrder(orderId, token)' in pedido_html
+    assert 'API.lookupPublicOrder' in pedido_html
+    assert "'/pedido'" in service_worker
+    assert 'lookupPublicOrder(orderData)' in api_js
+    assert 'order-modal' in admin_html
+    assert 'openOrderModal' in admin_js
+    assert 'saveOrderModal' in admin_js
+    assert 'EMAIL_BACKEND' in admin_html
+    assert 'email-test-recipient' in admin_html
+    assert 'sendTestEmail' in admin_js
+    assert 'sendAdminEmailTest(email)' in api_js
+    assert "window.prompt('Codigo de rastreio:'" not in admin_js
+    assert "window.prompt('Transportadora:'" not in admin_js
 
 def test_checkout_uses_cart_shipping_without_recalculating_on_cep():
     checkout_html = (FRONTEND_ROOT / 'checkout.html').read_text(encoding='utf-8')

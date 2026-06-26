@@ -66,6 +66,23 @@ def test_configured_shipping_threshold_mode():
         object.__setattr__(store_settings.shipping, 'free_minimum', original_minimum)
 
 
+def test_threshold_shipping_requires_paid_fallback_below_minimum():
+    original_mode = store_settings.shipping.mode
+    original_value = store_settings.shipping.fixed_value
+    original_minimum = store_settings.shipping.free_minimum
+    try:
+        object.__setattr__(store_settings.shipping, 'mode', 'threshold')
+        object.__setattr__(store_settings.shipping, 'fixed_value', '0')
+        object.__setattr__(store_settings.shipping, 'free_minimum', '300')
+
+        with pytest.raises(ValueError, match='frete fixo maior que zero'):
+            configured_shipping('99.90')
+    finally:
+        object.__setattr__(store_settings.shipping, 'mode', original_mode)
+        object.__setattr__(store_settings.shipping, 'fixed_value', original_value)
+        object.__setattr__(store_settings.shipping, 'free_minimum', original_minimum)
+
+
 def test_configured_shipping_returns_provider_option_details():
     shipping = configured_shipping('149.90', zip_code='01001-000')
 

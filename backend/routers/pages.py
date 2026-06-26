@@ -17,6 +17,7 @@ FRIENDLY_PAGES = {
     "login": "login.html",
     "produto": "produto.html",
     "pdf-visualizar": "pdf-visualizar.html",
+    "pedido": "pedido.html",
 }
 
 
@@ -40,6 +41,7 @@ def ready():
 @router.get("/login", include_in_schema=False)
 @router.get("/produto", include_in_schema=False)
 @router.get("/pdf-visualizar", include_in_schema=False)
+@router.get("/pedido", include_in_schema=False)
 def friendly_page(request: Request):
     page_name = request.url.path.strip("/")
     filename = FRIENDLY_PAGES[page_name]

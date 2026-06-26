@@ -1,7 +1,8 @@
 from backend.database import SessionLocal
 from backend.models import AdminAuditLog
 from backend.store_config import store_settings
-from tests.helpers import admin_login, clear_store_setting_overrides, client
+from backend.services.email import SENT_EMAILS, current_email_config
+from tests.helpers import admin_headers, admin_login, clear_store_setting_overrides, client
 
 
 def test_store_config_exposes_shipping_and_coupon_settings():
@@ -65,6 +66,7 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
                     'COUPON_CODE': 'ADM15',
                     'COUPON_DISCOUNT_PERCENT': '15',
                     'COUPON_USAGE_LIMIT': '3',
+                    'EMAIL_FROM_NAME': 'VJ Admin Email',
                 }
             },
         )
@@ -110,8 +112,110 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
             assert 'SHIPPING_MODE' in metadata['sensitive_keys']
             assert 'SHIPPING_PROVIDER' in metadata['sensitive_keys']
             assert 'COUPON_CODE' in metadata['sensitive_keys']
+            assert 'EMAIL_FROM_NAME' in metadata['sensitive_keys']
     finally:
         clear_store_setting_overrides()
+
+def test_admin_can_update_email_config_and_send_test_email():
+    clear_store_setting_overrides()
+    login = admin_login()
+    headers = {'Authorization': f"Bearer {login.json()['token']}"}
+    try:
+        update_response = client.put(
+            '/api/admin/store-config',
+            headers=headers,
+            json={
+                'values': {
+                    'EMAIL_FROM_NAME': 'VJ Admin Email',
+                    'EMAIL_FROM_NAME': 'VJ Atendimento',
+                    'EMAIL_FROM_ADDRESS': 'atendimento@example.com',
+                    'EMAIL_SMTP_HOST': 'smtp.example.com',
+                    'EMAIL_SMTP_PORT': '2525',
+                    'EMAIL_SMTP_USERNAME': 'smtp-user',
+                    'EMAIL_SMTP_PASSWORD': 'smtp-secret',
+                    'EMAIL_SMTP_USE_TLS': False,
+                }
+            },
+        )
+        config = current_email_config()
+        test_response = client.post(
+            '/api/admin/store-config/email-test',
+            headers=headers,
+            json={'email': 'teste-email@example.com'},
+        )
+
+        assert update_response.status_code == 200
+        values = update_response.json()['values']
+        assert values['EMAIL_BACKEND'] == 'console'
+        assert values['EMAIL_FROM_ADDRESS'] == 'atendimento@example.com'
+        assert values['EMAIL_SMTP_PASSWORD'] == ''
+        assert config.from_address == 'atendimento@example.com'
+        assert config.smtp_password == 'smtp-secret'
+        assert test_response.status_code == 200
+        assert SENT_EMAILS[-1]['to'] == 'teste-email@example.com'
+        assert SENT_EMAILS[-1]['backend'] == 'console'
+        assert 'VJ Atendimento' in SENT_EMAILS[-1]['from']
+    finally:
+        clear_store_setting_overrides()
+
+
+def test_admin_store_config_keeps_existing_smtp_password_when_blank():
+    clear_store_setting_overrides()
+    login = admin_login()
+    headers = {'Authorization': f"Bearer {login.json()['token']}"}
+    try:
+        first = client.put(
+            '/api/admin/store-config',
+            headers=headers,
+            json={'values': {'EMAIL_SMTP_PASSWORD': 'senha-inicial'}},
+        )
+        second = client.put(
+            '/api/admin/store-config',
+            headers=headers,
+            json={'values': {'EMAIL_FROM_NAME': 'Novo Nome', 'EMAIL_SMTP_PASSWORD': ''}},
+        )
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert current_email_config().smtp_password == 'senha-inicial'
+        assert second.json()['values']['EMAIL_SMTP_PASSWORD'] == ''
+    finally:
+        clear_store_setting_overrides()
+
+
+def test_admin_threshold_shipping_charges_below_minimum_and_free_above():
+    clear_store_setting_overrides()
+    headers = admin_headers()
+    try:
+        update = client.put(
+            '/api/admin/store-config',
+            headers=headers,
+            json={'values': {
+                'SHIPPING_MODE': 'threshold',
+                'SHIPPING_FIXED_VALUE': '19.90',
+                'SHIPPING_FREE_MINIMUM': '300',
+                'SHIPPING_PROVIDER': 'internal',
+            }},
+        )
+        below = client.post('/api/shipping/calculate', json={
+            'total': 99.90,
+            'zip_code': '01001000',
+        })
+        above = client.post('/api/shipping/calculate', json={
+            'total': 300.00,
+            'zip_code': '01001000',
+        })
+
+        assert update.status_code == 200
+        assert below.status_code == 200
+        assert below.json()['shipping'] == 19.9
+        assert below.json()['selected_option']['service'] == 'Frete fixo'
+        assert above.status_code == 200
+        assert above.json()['shipping'] == 0
+        assert above.json()['selected_option']['service'] == 'Frete gratis'
+    finally:
+        clear_store_setting_overrides()
+
 
 def test_admin_store_config_rejects_invalid_values():
     login = admin_login()
@@ -131,6 +235,26 @@ def test_admin_store_config_rejects_invalid_values():
         headers={'Authorization': f'Bearer {token}'},
         json={'values': {'SHIPPING_PROVIDER': 'transportadora-magica'}},
     )
+    invalid_email_backend = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'EMAIL_BACKEND': 'fax'}},
+    )
+    invalid_smtp_port = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'EMAIL_SMTP_PORT': '99999'}},
+    )
+    invalid_threshold_zero_shipping = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {
+            'SHIPPING_MODE': 'threshold',
+            'SHIPPING_FIXED_VALUE': '0',
+            'SHIPPING_FREE_MINIMUM': '300',
+            'SHIPPING_PROVIDER': 'internal',
+        }},
+    )
     invalid_origin_zip = client.put(
         '/api/admin/store-config',
         headers={'Authorization': f'Bearer {token}'},
@@ -140,4 +264,7 @@ def test_admin_store_config_rejects_invalid_values():
     assert invalid_shipping.status_code == 400
     assert invalid_email.status_code == 400
     assert invalid_provider.status_code == 400
+    assert invalid_email_backend.status_code == 400
+    assert invalid_smtp_port.status_code == 400
+    assert invalid_threshold_zero_shipping.status_code == 400
     assert invalid_origin_zip.status_code == 400

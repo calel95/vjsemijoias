@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.config import FRONTEND_ROOT, env_bool
+from backend.config import FRONTEND_ROOT, env_bool, settings
 from backend.models import Coupon, StoreSetting
 from backend.services.validation import clean_text, digits_only, normalize_email, normalize_phone
 
@@ -179,6 +179,14 @@ STORE_SETTING_KEYS = (
     "COUPON_CODE",
     "COUPON_DISCOUNT_PERCENT",
     "COUPON_USAGE_LIMIT",
+    "EMAIL_BACKEND",
+    "EMAIL_FROM_NAME",
+    "EMAIL_FROM_ADDRESS",
+    "EMAIL_SMTP_HOST",
+    "EMAIL_SMTP_PORT",
+    "EMAIL_SMTP_USERNAME",
+    "EMAIL_SMTP_PASSWORD",
+    "EMAIL_SMTP_USE_TLS",
 )
 
 
@@ -212,6 +220,14 @@ def default_store_values(settings_obj: StoreSettings = store_settings):
         "COUPON_CODE": settings_obj.coupon.code,
         "COUPON_DISCOUNT_PERCENT": settings_obj.coupon.discount_percent,
         "COUPON_USAGE_LIMIT": str(settings_obj.coupon.usage_limit),
+        "EMAIL_BACKEND": settings.email_backend,
+        "EMAIL_FROM_NAME": settings.email_from_name,
+        "EMAIL_FROM_ADDRESS": settings.email_from_address,
+        "EMAIL_SMTP_HOST": settings.email_smtp_host,
+        "EMAIL_SMTP_PORT": str(settings.email_smtp_port),
+        "EMAIL_SMTP_USERNAME": settings.email_smtp_username,
+        "EMAIL_SMTP_PASSWORD": settings.email_smtp_password,
+        "EMAIL_SMTP_USE_TLS": bool_text(settings.email_smtp_use_tls),
     }
 
 
@@ -254,6 +270,11 @@ def validate_store_values(values):
         if cleaned["SHIPPING_MODE"] not in {"free", "fixed", "threshold"}:
             raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
 
+    if "EMAIL_BACKEND" in cleaned:
+        cleaned["EMAIL_BACKEND"] = cleaned["EMAIL_BACKEND"].lower()
+        if cleaned["EMAIL_BACKEND"] not in {"console", "smtp", "disabled"}:
+            raise ValueError("EMAIL_BACKEND deve ser console, smtp ou disabled")
+
     if "SHIPPING_PROVIDER" in cleaned:
         cleaned["SHIPPING_PROVIDER"] = cleaned["SHIPPING_PROVIDER"].lower()
         if cleaned["SHIPPING_PROVIDER"] not in {"internal", "melhor_envio"}:
@@ -272,9 +293,27 @@ def validate_store_values(values):
     if "MELHOR_ENVIO_TIMEOUT_SECONDS" in cleaned:
         cleaned["MELHOR_ENVIO_TIMEOUT_SECONDS"] = normalize_timeout_seconds(cleaned["MELHOR_ENVIO_TIMEOUT_SECONDS"])
 
+    if "EMAIL_SMTP_PORT" in cleaned:
+        try:
+            smtp_port = int(cleaned["EMAIL_SMTP_PORT"] or "587")
+        except ValueError as exc:
+            raise ValueError("EMAIL_SMTP_PORT deve ser um numero inteiro") from exc
+        if smtp_port < 1 or smtp_port > 65535:
+            raise ValueError("EMAIL_SMTP_PORT deve ficar entre 1 e 65535")
+        cleaned["EMAIL_SMTP_PORT"] = str(smtp_port)
+
     for key in ("SHIPPING_FIXED_VALUE", "SHIPPING_FREE_MINIMUM", "COUPON_DISCOUNT_PERCENT"):
         if key in cleaned:
             cleaned[key] = str(money_value(cleaned[key]))
+
+    shipping_mode = cleaned.get("SHIPPING_MODE", defaults["SHIPPING_MODE"])
+    shipping_provider = cleaned.get("SHIPPING_PROVIDER", defaults["SHIPPING_PROVIDER"])
+    shipping_fixed_value = money_value(cleaned.get("SHIPPING_FIXED_VALUE", defaults["SHIPPING_FIXED_VALUE"]))
+    shipping_free_minimum = money_value(cleaned.get("SHIPPING_FREE_MINIMUM", defaults["SHIPPING_FREE_MINIMUM"]))
+    if shipping_mode == "threshold" and shipping_free_minimum <= 0:
+        raise ValueError("SHIPPING_FREE_MINIMUM deve ser maior que zero no modo threshold")
+    if shipping_mode == "threshold" and shipping_provider == "internal" and shipping_fixed_value <= 0:
+        raise ValueError("SHIPPING_FIXED_VALUE deve ser maior que zero para frete gratis acima de um valor")
 
     if "COUPON_DISCOUNT_PERCENT" in cleaned:
         percent = money_value(cleaned["COUPON_DISCOUNT_PERCENT"])
@@ -289,6 +328,9 @@ def validate_store_values(values):
         if usage_limit < 0:
             raise ValueError("COUPON_USAGE_LIMIT nao pode ser negativo")
         cleaned["COUPON_USAGE_LIMIT"] = str(usage_limit)
+
+    if "EMAIL_SMTP_USE_TLS" in cleaned:
+        cleaned["EMAIL_SMTP_USE_TLS"] = bool_text(parse_bool(cleaned["EMAIL_SMTP_USE_TLS"]))
 
     if "COUPONS_ENABLED" in cleaned:
         cleaned["COUPONS_ENABLED"] = bool_text(parse_bool(cleaned["COUPONS_ENABLED"]))
@@ -316,11 +358,18 @@ def validate_store_values(values):
         "MELHOR_ENVIO_ALLOWED_COMPANY_IDS": 100,
         "MELHOR_ENVIO_TIMEOUT_SECONDS": 10,
         "COUPON_CODE": 30,
+        "EMAIL_BACKEND": 30,
+        "EMAIL_FROM_NAME": 120,
+        "EMAIL_SMTP_HOST": 200,
+        "EMAIL_SMTP_USERNAME": 200,
+        "EMAIL_SMTP_PASSWORD": 300,
     }
     for key, max_length in text_limits.items():
         if key in cleaned:
             cleaned[key] = clean_text(cleaned[key], field=key, max_length=max_length)
 
+    if "EMAIL_FROM_ADDRESS" in cleaned and cleaned["EMAIL_FROM_ADDRESS"]:
+        cleaned["EMAIL_FROM_ADDRESS"] = normalize_email(cleaned["EMAIL_FROM_ADDRESS"])
     if "STORE_EMAIL" in cleaned and cleaned["STORE_EMAIL"]:
         cleaned["STORE_EMAIL"] = normalize_email(cleaned["STORE_EMAIL"])
     if "STORE_PHONE" in cleaned and cleaned["STORE_PHONE"]:
@@ -396,11 +445,17 @@ def public_store_config(db: Session | None = None):
     return data
 
 
+def mask_sensitive_admin_values(values):
+    masked = dict(values)
+    masked["EMAIL_SMTP_PASSWORD"] = ""
+    return masked
+
+
 def admin_store_config(db: Session):
     values = {**default_store_values(), **load_store_overrides(db)}
     return {
-        "values": values,
-        "defaults": default_store_values(),
+        "values": mask_sensitive_admin_values(values),
+        "defaults": mask_sensitive_admin_values(default_store_values()),
         "public": public_store_config(db),
     }
 
@@ -421,7 +476,10 @@ def sync_coupon_record(db: Session, active_settings: StoreSettings):
 
 def update_store_settings(db: Session, values):
     current_values = {**default_store_values(), **load_store_overrides(db)}
-    cleaned = validate_store_values({**current_values, **(values or {})})
+    incoming_values = dict(values or {})
+    if not str(incoming_values.get("EMAIL_SMTP_PASSWORD", "")).strip():
+        incoming_values.pop("EMAIL_SMTP_PASSWORD", None)
+    cleaned = validate_store_values({**current_values, **incoming_values})
     for key, value in cleaned.items():
         row = db.get(StoreSetting, key)
         if row:

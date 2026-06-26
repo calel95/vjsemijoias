@@ -311,6 +311,10 @@ const API = {
         return this.request('PUT', '/admin/store-config', { values });
     },
 
+    async sendAdminEmailTest(email) {
+        return this.request('POST', '/admin/store-config/email-test', { email });
+    },
+
     async createInfinitePayCheckout(orderData) {
         return this.request('POST', '/payments/infinitepay/checkout', orderData);
     },
@@ -339,6 +343,10 @@ const API = {
             'GET',
             `/orders/${encodeURIComponent(orderId)}/public?token=${encodeURIComponent(token)}`
         );
+    },
+
+    async lookupPublicOrder(orderData) {
+        return this.request('POST', '/orders/public/lookup', orderData);
     },
 
     async updateOrderStatus(orderId, status, data = {}) {

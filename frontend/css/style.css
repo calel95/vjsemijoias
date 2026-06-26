@@ -2285,3 +2285,228 @@ input, select, textarea {
     .categories-grid { grid-template-columns: 1fr 1fr; }
     .btn { padding: 0.8rem 1.5rem; font-size: 0.85rem; }
 }
+
+/* ========== ORDER TRACKING ========== */
+.order-tracking-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: 65vh;
+    padding: 3rem 2rem;
+}
+
+.order-tracking-hero {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.order-tracking-hero h1 {
+    font-size: 2.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.order-tracking-hero p,
+.order-tracking-hint,
+.muted {
+    color: var(--gray);
+}
+
+.order-tracking-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.4fr);
+    align-items: start;
+}
+
+.order-tracking-form,
+.tracking-card,
+.order-empty-state {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+}
+
+.order-tracking-form h2 {
+    margin-bottom: 1rem;
+}
+
+.order-tracking-hint {
+    font-size: 0.85rem;
+    margin: 0.8rem 0 0;
+}
+
+.order-empty-state {
+    display: grid;
+    gap: 0.35rem;
+    min-height: 180px;
+    place-content: center;
+    text-align: center;
+}
+
+.order-empty-state.error {
+    background: #fff8f2;
+    border-color: #f1c4a8;
+}
+
+.tracking-card {
+    display: grid;
+    gap: 1rem;
+}
+
+.tracking-card-head {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.tracking-card-head span {
+    color: var(--gray);
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.tracking-card-head strong {
+    font-size: 1.25rem;
+}
+
+.tracking-status {
+    background: var(--gold-dark);
+    border-radius: 999px;
+    color: var(--white);
+    font-size: 0.76rem;
+    padding: 0.35rem 0.75rem;
+    text-transform: uppercase;
+}
+
+.tracking-status.paid,
+.tracking-status.processing,
+.tracking-status.shipped,
+.tracking-status.delivered {
+    background: var(--success);
+}
+
+.tracking-status.canceled,
+.tracking-status.failed {
+    background: var(--error);
+}
+
+.tracking-progress {
+    display: grid;
+    gap: 0.45rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.tracking-step {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.tracking-step span {
+    background: var(--gray-light);
+    border-radius: 999px;
+    height: 6px;
+}
+
+.tracking-step.done span {
+    background: var(--gold-primary);
+}
+
+.tracking-step.current small {
+    color: var(--dark);
+    font-weight: 700;
+}
+
+.tracking-step small {
+    color: var(--gray);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.tracking-panels {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tracking-panels section,
+.tracking-section {
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.tracking-panels h3,
+.tracking-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.tracking-panels p {
+    color: var(--gray-dark);
+    margin: 0 0 0.35rem;
+}
+
+.tracking-code-box {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+}
+
+.tracking-code-box small,
+.tracking-code-box span {
+    color: var(--gray);
+}
+
+.tracking-code-box strong {
+    color: var(--gold-dark);
+}
+
+.tracking-total-row,
+.tracking-item,
+.tracking-event {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+}
+
+.tracking-total-row.total {
+    border-top: 1px solid var(--gray-light);
+    color: var(--gold-dark);
+    font-size: 1.05rem;
+    margin-top: 0.35rem;
+    padding-top: 0.75rem;
+}
+
+.tracking-event {
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.tracking-event:last-child {
+    border-bottom: 0;
+}
+
+.tracking-event small {
+    color: var(--gray);
+    white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+    .order-tracking-grid,
+    .tracking-panels {
+        grid-template-columns: 1fr;
+    }
+
+    .tracking-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
