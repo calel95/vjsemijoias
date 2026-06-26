@@ -25,6 +25,68 @@ let importFolderFiles = [];
 let importPreviewState = null;
 let activeOrderModalId = null;
 
+const ADMIN_PAGES = {
+    overview: {
+        title: 'Resumo do painel',
+        subtitle: 'Acompanhe indicadores gerais e escolha uma area para operar.',
+    },
+    orders: {
+        title: 'Pedidos',
+        subtitle: 'Acompanhe pagamentos, status, rastreio e entregas.',
+    },
+    settings: {
+        title: 'Configuracoes da loja',
+        subtitle: 'Ajuste identidade, contato, frete e e-mails transacionais.',
+    },
+    coupons: {
+        title: 'Cupons promocionais',
+        subtitle: 'Crie e acompanhe regras de desconto sem redeploy.',
+    },
+    security: {
+        title: 'Acessos e auditoria',
+        subtitle: 'Gerencie administradores e revise eventos sensiveis.',
+    },
+    products: {
+        title: 'Produtos',
+        subtitle: 'Cadastre, edite estoque e organize o catalogo da loja.',
+    },
+    catalog: {
+        title: 'Catalogo PDF',
+        subtitle: 'Monte materiais visuais para compartilhar com clientes.',
+    },
+    import: {
+        title: 'Importacao e acoes globais',
+        subtitle: 'Importe pastas, exporte dados e execute operacoes de catalogo.',
+    },
+};
+
+let activeAdminPage = 'overview';
+
+function adminPageFromHash() {
+    const page = String(window.location.hash || '').replace('#', '').trim();
+    return ADMIN_PAGES[page] ? page : 'overview';
+}
+
+function switchAdminPage(page, { updateHash = true } = {}) {
+    const nextPage = ADMIN_PAGES[page] ? page : 'overview';
+    activeAdminPage = nextPage;
+    document.querySelectorAll('[data-admin-page]').forEach(section => {
+        section.classList.toggle('active', section.dataset.adminPage === nextPage);
+    });
+    document.querySelectorAll('[data-admin-page-target]').forEach(button => {
+        const active = button.dataset.adminPageTarget === nextPage;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+    const header = ADMIN_PAGES[nextPage];
+    const title = document.getElementById('admin-page-title');
+    const subtitle = document.getElementById('admin-page-subtitle');
+    if (title) title.textContent = header.title;
+    if (subtitle) subtitle.textContent = header.subtitle;
+    if (updateHash && window.location.hash !== `#${nextPage}`) {
+        window.history.replaceState(null, '', `#${nextPage}`);
+    }
+}
 // ============================================
 // AUTENTICAÃ‡ÃƒO
 // ============================================
@@ -58,6 +120,7 @@ function logout() {
 async function showAdminPanel() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
+    switchAdminPage(adminPageFromHash(), { updateHash: false });
     const result = await API.getAdminProducts();
     if (!result.success) {
         showToast(result.error || 'Falha ao carregar produtos', 'error');
@@ -1321,6 +1384,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('login-screen').style.display = 'flex';
     }
     
+    window.addEventListener('hashchange', () => {
+        if (document.getElementById('admin-panel')?.style.display !== 'none') {
+            switchAdminPage(adminPageFromHash(), { updateHash: false });
+        }
+    });
+
     // Filtros
     document.querySelectorAll('.admin-filters .filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {

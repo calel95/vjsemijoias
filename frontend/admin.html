@@ -22,18 +22,18 @@
             </a>
             <ul class="nav-menu">
                 <li><a href="/">Ver Loja</a></li>
-                <li><a href="/catalogo">CatÃ¡logo</a></li>
+                <li><a href="/catalogo">Catálogo</a></li>
                 <li><a href="/admin" class="active">Admin</a></li>
             </ul>
             <div class="nav-actions">
-                <a href="/" class="nav-icon" title="Sair"><span>ðŸšª</span></a>
+                <a href="/" class="nav-icon" title="Sair"><span>🚪</span></a>
             </div>
         </div>
     </nav>
 
     <div class="offline-notice" id="offline-notice"></div>
 
-    <!-- LOGIN (aparece se nÃ£o autenticado) -->
+    <!-- LOGIN (aparece se não autenticado) -->
     <div id="login-screen" class="admin-login">
         <div class="admin-login-card">
             <img src="images/logo.png" alt="VJ" style="width: 80px; height: 80px; margin: 0 auto 1rem; display: block;">
@@ -60,33 +60,71 @@
     <div id="admin-panel" style="display: none;">
         <div class="admin-header">
             <div class="container">
-                <h1>ðŸ“¦ Gerenciar Produtos</h1>
-                <p>Adicione, edite ou remova produtos do catÃ¡logo</p>
+                <h1 id="admin-page-title">Resumo do painel</h1>
+                <p id="admin-page-subtitle">Acompanhe indicadores gerais e escolha uma area para operar.</p>
             </div>
         </div>
 
         <div class="admin-container">
-            <!-- ESTATÃSTICAS -->
+            <div class="admin-layout">
+                <aside class="admin-page-nav" aria-label="Navegacao do painel administrativo">
+                    <button type="button" class="admin-page-link active" data-admin-page-target="overview" onclick="switchAdminPage('overview')">
+                        <span>Resumo</span>
+                        <small>Indicadores principais</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="orders" onclick="switchAdminPage('orders')">
+                        <span>Pedidos</span>
+                        <small>Status e entregas</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="settings" onclick="switchAdminPage('settings')">
+                        <span>Configuracoes</span>
+                        <small>Loja, frete e e-mails</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="coupons" onclick="switchAdminPage('coupons')">
+                        <span>Cupons</span>
+                        <small>Promocoes</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="security" onclick="switchAdminPage('security')">
+                        <span>Acessos</span>
+                        <small>Admins e auditoria</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="products" onclick="switchAdminPage('products')">
+                        <span>Produtos</span>
+                        <small>Cadastro e estoque</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="catalog" onclick="switchAdminPage('catalog')">
+                        <span>Catalogo PDF</span>
+                        <small>Geracao visual</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="import" onclick="switchAdminPage('import')">
+                        <span>Importacao</span>
+                        <small>Acoes globais</small>
+                    </button>
+                </aside>
+
+                <div class="admin-pages">
+                    <section class="admin-page active" id="admin-page-overview" data-admin-page="overview">
+            <!-- ESTATÍSTICAS -->
             <div class="admin-stats">
                 <div class="stat-card">
-                    <div class="stat-icon">ðŸ“¦</div>
+                    <div class="stat-icon">📦</div>
                     <div class="stat-value" id="stat-total">0</div>
                     <div class="stat-label">Total de Produtos</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">âœ¨</div>
+                    <div class="stat-icon">✨</div>
                     <div class="stat-value" id="stat-custom">0</div>
                     <div class="stat-label">Produtos Customizados</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">ðŸ·ï¸</div>
+                    <div class="stat-icon">🏷️</div>
                     <div class="stat-value" id="stat-categories">0</div>
                     <div class="stat-label">Categorias</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">ðŸ’°</div>
+                    <div class="stat-icon">💰</div>
                     <div class="stat-value" id="stat-avg-price">R$ 0</div>
-                    <div class="stat-label">PreÃ§o MÃ©dio</div>
+                    <div class="stat-label">Preço Médio</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-icon">PED</div>
@@ -100,6 +138,9 @@
                 </div>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-orders" data-admin-page="orders">
             <div class="admin-card orders-card">
                 <div class="orders-header">
                     <div>
@@ -177,6 +218,9 @@
                     </form>
                 </div>
             </div>
+                    </section>
+
+                    <section class="admin-page" id="admin-page-settings" data-admin-page="settings">
             <div class="admin-card store-config-card">
                 <div class="orders-header">
                     <div>
@@ -382,6 +426,9 @@
                 </form>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-coupons" data-admin-page="coupons">
             <div class="admin-card coupon-admin-card">
                 <div class="orders-header">
                     <div>
@@ -461,6 +508,9 @@
                 </div>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-security" data-admin-page="security">
             <div class="admin-card admin-security-card">
                 <div class="orders-header">
                     <div>
@@ -512,10 +562,13 @@
                 </div>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-products" data-admin-page="products">
             <div class="admin-grid">
-                <!-- FORMULÃRIO DE ADICIONAR/EDITAR -->
+                <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
                 <div class="admin-card">
-                    <h2 id="form-title">âž• Adicionar Novo Produto</h2>
+                    <h2 id="form-title">➕ Adicionar Novo Produto</h2>
                     <form id="product-form" onsubmit="handleProductSubmit(event)">
                         <input type="hidden" id="product-id" name="id">
 
@@ -526,14 +579,14 @@
                                 <input type="file" id="image-input" accept="image/*" multiple onchange="handleImageUpload(event)">
                                 <div class="image-upload-preview" id="image-preview">
                                     <div class="upload-placeholder">
-                                        <div style="font-size: 3rem;">ðŸ“·</div>
+                                        <div style="font-size: 3rem;">📷</div>
                                         <p>Clique ou arraste as imagens</p>
                                         <small>PNG, JPG ate 5MB cada</small>
                                     </div>
                                 </div>
                             </div>
                             <small style="color: var(--gray); margin-top: 0.5rem; display: block;">
-                                ðŸ’¡ Ou cole uma URL de imagem abaixo
+                                💡 Ou cole uma URL de imagem abaixo
                             </small>
                         </div>
 
@@ -548,7 +601,7 @@
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Nome do Produto <span class="required">*</span></label>
-                                <input type="text" id="product-name" name="name" required placeholder="Ex: Brinco SolitÃ¡rio Luxo">
+                                <input type="text" id="product-name" name="name" required placeholder="Ex: Brinco Solitário Luxo">
                             </div>
                             <div class="form-group">
                                 <label>Categoria <span class="required">*</span></label>
@@ -557,7 +610,7 @@
                                     <option value="brincos">Brincos</option>
                                     <option value="colares">Colares</option>
                                     <option value="pulseiras">Pulseiras</option>
-                                    <option value="aneis">AnÃ©is</option>
+                                    <option value="aneis">Anéis</option>
                                     <option value="pingentes">Pingentes</option>
                                     <option value="chaveiros">Chaveiros</option>
                                     <option value="conjuntos">Conjuntos</option>
@@ -567,11 +620,11 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>PreÃ§o (R$) <span class="required">*</span></label>
+                                <label>Preço (R$) <span class="required">*</span></label>
                                 <input type="number" id="product-price" name="price" step="0.01" min="0" required placeholder="199.90">
                             </div>
                             <div class="form-group">
-                                <label>PreÃ§o Antigo (opcional)</label>
+                                <label>Preço Antigo (opcional)</label>
                                 <input type="number" id="product-old-price" name="oldPrice" step="0.01" min="0" placeholder="249.90">
                             </div>
                         </div>
@@ -589,8 +642,8 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Ãcone Emoji (opcional)</label>
-                                <input type="text" id="product-icon" name="icon" placeholder="ðŸ’Ž" maxlength="2">
+                                <label>Ícone Emoji (opcional)</label>
+                                <input type="text" id="product-icon" name="icon" placeholder="💎" maxlength="2">
                             </div>
                             <div class="form-group">
                                 <label>Badge</label>
@@ -660,15 +713,15 @@
                         </div>
 
                         <div class="form-group">
-                            <label>DescriÃ§Ã£o <span class="required">*</span></label>
+                            <label>Descrição <span class="required">*</span></label>
                             <textarea id="product-description" name="description" rows="3" required placeholder="Descreva o produto..."></textarea>
                         </div>
 
                         <div class="form-group">
-                            <label>CaracterÃ­sticas (uma por linha)</label>
-                            <textarea id="product-features" name="features" rows="4" placeholder="Banho de Ouro 18k&#10;ZircÃ´nia cristal&#10;Fecho de tarraxa&#10;DiÃ¢metro: 2cm"></textarea>
+                            <label>Características (uma por linha)</label>
+                            <textarea id="product-features" name="features" rows="4" placeholder="Banho de Ouro 18k&#10;Zircônia cristal&#10;Fecho de tarraxa&#10;Diâmetro: 2cm"></textarea>
                             <small style="color: var(--gray); margin-top: 0.3rem; display: block;">
-                                ðŸ’¡ Comece cada item com âœ“ (opcional)
+                                💡 Comece cada item com ✓ (opcional)
                             </small>
                         </div>
 
@@ -681,10 +734,10 @@
 
                         <div style="display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.5rem;">
                             <button type="submit" class="btn btn-primary" style="flex: 1; min-width: 150px;">
-                                ðŸ’¾ Salvar Produto
+                                💾 Salvar Produto
                             </button>
                             <button type="button" class="btn btn-secondary" onclick="resetForm()" style="flex: 1; min-width: 150px;">
-                                ðŸ”„ Limpar
+                                🔄 Limpar
                             </button>
                         </div>
                     </form>
@@ -693,7 +746,7 @@
                 <!-- LISTA DE PRODUTOS -->
                 <div class="admin-card">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                        <h2 style="margin: 0;">ðŸ“‹ Produtos do CatÃ¡logo</h2>
+                        <h2 style="margin: 0;">📋 Produtos do Catálogo</h2>
                         <input type="text" id="admin-search" placeholder="Buscar..." style="padding: 0.5rem 1rem; border: 2px solid var(--gray-light); border-radius: 30px; font-size: 0.9rem; max-width: 200px;">
                     </div>
 
@@ -706,7 +759,7 @@
                         <button class="filter-btn" data-filter="brincos">Brincos</button>
                         <button class="filter-btn" data-filter="colares">Colares</button>
                         <button class="filter-btn" data-filter="pulseiras">Pulseiras</button>
-                        <button class="filter-btn" data-filter="aneis">AnÃ©is</button>
+                        <button class="filter-btn" data-filter="aneis">Anéis</button>
                         <button class="filter-btn" data-filter="pingentes">Pingentes</button>
                         <button class="filter-btn" data-filter="chaveiros">Chaveiros</button>
                     </div>
@@ -718,6 +771,9 @@
             </div>
 
             <!-- GERADOR DE CATALOGO PDF -->
+                    </section>
+
+                    <section class="admin-page" id="admin-page-catalog" data-admin-page="catalog">
             <div class="admin-card catalog-pdf-card">
                 <div class="catalog-pdf-header">
                     <div>
@@ -800,15 +856,18 @@
                 </form>
             </div>
 
-            <!-- BOTÃ•ES DE AÃ‡ÃƒO GLOBAIS -->
+            <!-- BOTÕES DE AÇÃO GLOBAIS -->
+                    </section>
+
+                    <section class="admin-page" id="admin-page-import" data-admin-page="import">
             <div class="admin-actions">
-                <h3>ðŸ› ï¸ AÃ§Ãµes Globais</h3>
+                <h3>🛠️ Ações Globais</h3>
                 <div class="admin-action-toolbar">
                     <button class="btn btn-secondary" onclick="exportProducts()">
-                        ðŸ“¥ Exportar Produtos (JSON)
+                        📥 Exportar Produtos (JSON)
                     </button>
                     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
-                        ðŸ“¤ Importar Pasta de Produtos
+                        📤 Importar Pasta de Produtos
                     </button>
                     <input type="file" id="import-file" webkitdirectory directory multiple style="display: none;" onchange="handleImportFolderSelection(event)">
                     <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImportProducts()" disabled>
@@ -818,10 +877,10 @@
                         Limpar Preview
                     </button>
                     <small style="color: var(--gray); align-self: center;">
-                        Selecione a pasta que contÃ©m manifest.json e products/
+                        Selecione a pasta que contém manifest.json e products/
                     </small>
                     <button class="btn btn-outline" onclick="showAdminPanel()">
-                        Atualizar CatÃ¡logo
+                        Atualizar Catálogo
                     </button>
                     <button class="btn btn-danger" onclick="confirmClearCatalog()">
                         Limpar Catalogo
@@ -839,10 +898,13 @@
                     </div>
                 </div>
             </div>
+                    </section>
+                </div><!-- /.admin-pages -->
+            </div><!-- /.admin-layout -->
         </div>
     </div>
 
-    <!-- MODAL DE CONFIRMAÃ‡ÃƒO -->
+    <!-- MODAL DE CONFIRMAÇÃO -->
     <div class="modal-overlay" id="confirm-modal">
         <div class="modal" style="max-width: 400px; text-align: center;">
             <h3 id="confirm-title" style="margin-bottom: 1rem;">Confirmar</h3>

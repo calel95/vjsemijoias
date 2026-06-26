@@ -311,6 +311,19 @@ def test_home_uses_paginated_featured_products():
     assert 'per_page=${encodeURIComponent(options.perPage)}' in api_js
     assert 'Array.isArray(data.items)' in products_js
 
+def test_admin_panel_is_split_into_pages():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    admin_css = (FRONTEND_ROOT / 'css' / 'admin.css').read_text(encoding='utf-8')
+
+    for page in ['overview', 'orders', 'settings', 'coupons', 'security', 'products', 'catalog', 'import']:
+        assert f'data-admin-page="{page}"' in admin_html
+        assert f'data-admin-page-target="{page}"' in admin_html
+    assert 'admin-page-nav' in admin_html
+    assert 'admin-pages' in admin_html
+    assert 'switchAdminPage' in admin_js
+    assert 'ADMIN_PAGES' in admin_js
+    assert '.admin-page.active' in admin_css
 def test_admin_product_form_exposes_shipping_dimensions():
     admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
     admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
