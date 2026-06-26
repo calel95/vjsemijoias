@@ -446,6 +446,11 @@ def test_admin_frontend_has_coupon_management_panel():
     assert 'data-store-config="COUPON_CODE"' not in admin_html
     assert 'data-store-config="COUPON_DISCOUNT_PERCENT"' not in admin_html
     assert 'data-store-config="COUPON_USAGE_LIMIT"' not in admin_html
+    assert 'data-store-config="SHIPPING_PROVIDER"' in admin_html
+    assert 'data-store-config="MELHOR_ENVIO_FROM_POSTAL_CODE"' in admin_html
+    assert 'data-store-config="MELHOR_ENVIO_SERVICES"' in admin_html
+    assert 'data-store-config="MELHOR_ENVIO_ALLOWED_COMPANY_IDS"' in admin_html
+    assert 'data-store-config="MELHOR_ENVIO_TIMEOUT_SECONDS"' in admin_html
     assert 'loadAdminCoupons()' in admin_js
     assert 'createAdminCoupon' in api_js
     assert 'updateAdminCoupon' in api_js

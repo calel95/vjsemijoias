@@ -312,15 +312,20 @@ STORE_CATALOG_FILENAME=catalogo-vj-semijoias.pdf
 O endpoint `GET /api/store/config` expõe a configuracao publica da loja para o
 frontend: marca, contato, catalogo, frete e cupom.
 
-## Frete e desconto por ambiente
+## Frete e desconto
 
-Configure no `.env` local ou nas variaveis de ambiente do deploy:
+As variaveis abaixo definem os valores iniciais/fallback. Depois do sistema rodando, os campos de frete podem ser ajustados no painel admin, em Configuracoes da loja, sem novo deploy.
 
 ```env
 SHIPPING_MODE=free
 SHIPPING_FIXED_VALUE=0
 SHIPPING_FREE_MINIMUM=0
 SHIPPING_ESTIMATED_DAYS=5-10
+SHIPPING_PROVIDER=internal
+MELHOR_ENVIO_FROM_POSTAL_CODE=01001000
+MELHOR_ENVIO_SERVICES=1,2
+MELHOR_ENVIO_ALLOWED_COMPANY_IDS=1,2,14,15,12,6
+MELHOR_ENVIO_TIMEOUT_SECONDS=6
 
 COUPONS_ENABLED=true
 COUPON_CODE=VJ10
@@ -333,6 +338,8 @@ Modos de frete:
 - `free`: frete gratis.
 - `fixed`: usa sempre `SHIPPING_FIXED_VALUE`.
 - `threshold`: usa `SHIPPING_FIXED_VALUE`, mas zera o frete quando o subtotal for maior ou igual a `SHIPPING_FREE_MINIMUM`.
+
+O admin tambem permite escolher `SHIPPING_PROVIDER` (`internal` ou `melhor_envio`), CEP de origem, servicos, transportadoras permitidas e timeout do Melhor Envio. O token e a URL base do Melhor Envio continuam nas variaveis de ambiente por seguranca.
 
 Exemplo para producao sem desconto e com frete fixo:
 

@@ -77,10 +77,17 @@ def build_shipping_package(product_quantities):
     }
 
 
-def internal_shipping_option(subtotal, *, zip_code: str, package: dict | None, db: Session | None):
+def internal_shipping_option(
+    subtotal,
+    *,
+    zip_code: str,
+    package: dict | None,
+    db: Session | None,
+    active_settings=None,
+):
     subtotal = money(subtotal)
     destination_zip = normalize_zip(zip_code)
-    active_settings = effective_store_settings(db)
+    active_settings = active_settings or effective_store_settings(db)
     mode = active_settings.shipping.mode
     fixed_value = money(active_settings.shipping.fixed_value)
     free_minimum = money(active_settings.shipping.free_minimum)
@@ -109,8 +116,35 @@ def internal_shipping_option(subtotal, *, zip_code: str, package: dict | None, d
     }
 
 
-def melhor_envio_payload(subtotal, destination_zip: str, package: dict):
-    from_zip = normalize_zip(settings.melhor_envio_from_postal_code)
+def store_free_shipping_applies(internal_option: dict) -> bool:
+    return (
+        internal_option.get("shipping") == Decimal("0.00")
+        and str(internal_option.get("service") or "").lower() == "frete gratis"
+    )
+
+
+def apply_store_free_shipping(options: list[dict], free_option: dict) -> list[dict]:
+    free_options = []
+    for option in options:
+        free_options.append(
+            {
+                **option,
+                "shipping": Decimal("0.00"),
+                "message": free_option["message"],
+                "free_shipping_applied": True,
+            }
+        )
+    return free_options
+
+def melhor_envio_payload(
+    subtotal,
+    destination_zip: str,
+    package: dict,
+    *,
+    from_postal_code: str = "",
+    services: str | None = None,
+):
+    from_zip = normalize_zip(from_postal_code or settings.melhor_envio_from_postal_code)
     weight_kg = max(Decimal(package["weight_grams"]) / Decimal("1000"), Decimal("0.01"))
     product = {
         "id": package.get("shipping_profile") or "default",
@@ -131,13 +165,14 @@ def melhor_envio_payload(subtotal, destination_zip: str, package: dict):
             "collect": False,
         },
     }
-    if settings.melhor_envio_services:
-        payload["services"] = settings.melhor_envio_services
+    service_filter = str(settings.melhor_envio_services if services is None else services).strip()
+    if service_filter:
+        payload["services"] = service_filter
     return payload
 
 
-def allowed_company_ids():
-    raw_ids = settings.melhor_envio_allowed_company_ids
+def allowed_company_ids(raw_ids: str | None = None):
+    raw_ids = settings.melhor_envio_allowed_company_ids if raw_ids is None else raw_ids
     if not raw_ids:
         return set()
     try:
@@ -213,11 +248,17 @@ def professionalize_shipping_options(options: list[dict]) -> list[dict]:
     return sorted(grouped.values(), key=lambda option: (option["shipping"], shipping_delivery_days(option)))
 
 
-def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
+def parse_melhor_envio_options(
+    data,
+    *,
+    destination_zip: str,
+    package: dict,
+    allowed_company_ids_raw: str | None = None,
+):
     if not isinstance(data, list):
         raise ValueError("Resposta invalida do Melhor Envio")
 
-    allowed_companies = allowed_company_ids()
+    allowed_companies = allowed_company_ids(allowed_company_ids_raw)
     options = []
     for item in data:
         if not isinstance(item, dict) or item.get("error"):
@@ -253,30 +294,60 @@ def parse_melhor_envio_options(data, *, destination_zip: str, package: dict):
     return professionalize_shipping_options(options)
 
 
-def fetch_melhor_envio_options(subtotal, *, destination_zip: str, package: dict):
+def melhor_envio_timeout(value) -> float:
+    try:
+        return float(value or settings.melhor_envio_timeout_seconds)
+    except (TypeError, ValueError):
+        return settings.melhor_envio_timeout_seconds
+
+
+def fetch_melhor_envio_options(subtotal, *, destination_zip: str, package: dict, shipping_settings=None):
+    from_postal_code = (
+        getattr(shipping_settings, "melhor_envio_from_postal_code", "")
+        or settings.melhor_envio_from_postal_code
+    )
+    services = getattr(shipping_settings, "melhor_envio_services", "") if shipping_settings else ""
+    allowed_companies = (
+        getattr(shipping_settings, "melhor_envio_allowed_company_ids", "")
+        if shipping_settings
+        else None
+    )
+    timeout_seconds = melhor_envio_timeout(
+        getattr(shipping_settings, "melhor_envio_timeout_seconds", "")
+        if shipping_settings
+        else None
+    )
+
     if not settings.melhor_envio_token:
         raise ValueError("MELHOR_ENVIO_TOKEN nao configurado")
-    if not settings.melhor_envio_from_postal_code:
+    if not from_postal_code:
         raise ValueError("MELHOR_ENVIO_FROM_POSTAL_CODE nao configurado")
 
     session = requests.Session()
     session.trust_env = False
     response = session.post(
         f"{settings.melhor_envio_api_base}/me/shipment/calculate",
-        json=melhor_envio_payload(subtotal, destination_zip, package),
+        json=melhor_envio_payload(
+            subtotal,
+            destination_zip,
+            package,
+            from_postal_code=from_postal_code,
+            services=services,
+        ),
         headers={
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Authorization": f"Bearer {settings.melhor_envio_token}",
             "User-Agent": "vjsemijoias/1.0",
         },
-        timeout=settings.melhor_envio_timeout_seconds,
+        timeout=timeout_seconds,
     )
     response.raise_for_status()
     return parse_melhor_envio_options(
         response.json(),
         destination_zip=destination_zip,
         package=package,
+        allowed_company_ids_raw=allowed_companies,
     )
 
 
@@ -289,14 +360,16 @@ def calculate_shipping_options(
 ):
     subtotal = money(subtotal)
     destination_zip = normalize_zip(zip_code)
+    active_settings = effective_store_settings(db)
     internal_option = internal_shipping_option(
         subtotal,
         zip_code=destination_zip,
         package=package,
         db=db,
+        active_settings=active_settings,
     )
 
-    provider = settings.shipping_provider
+    provider = active_settings.shipping.provider
     if provider == INTERNAL_PROVIDER:
         return [internal_option]
     if provider != MELHOR_ENVIO_PROVIDER:
@@ -308,7 +381,15 @@ def calculate_shipping_options(
         return [internal_option]
 
     try:
-        return fetch_melhor_envio_options(subtotal, destination_zip=destination_zip, package=package)
+        provider_options = fetch_melhor_envio_options(
+            subtotal,
+            destination_zip=destination_zip,
+            package=package,
+            shipping_settings=active_settings.shipping,
+        )
+        if store_free_shipping_applies(internal_option):
+            return apply_store_free_shipping(provider_options, internal_option)
+        return provider_options
     except (requests.RequestException, ValueError) as exc:
         internal_option["fallback_reason"] = "melhor_envio_unavailable"
         logger.warning("Falha ao calcular frete no Melhor Envio: %s", exc)

@@ -110,6 +110,10 @@ def test_build_shipping_package_stacks_height_and_sums_weight():
 
 
 def test_melhor_envio_provider_returns_external_options(monkeypatch):
+    original_mode = store_settings.shipping.mode
+    original_provider = store_settings.shipping.provider
+    original_from_postal_code = store_settings.shipping.melhor_envio_from_postal_code
+    original_services = store_settings.shipping.melhor_envio_services
     package = {
         'item_count': 1,
         'weight_grams': 120,
@@ -132,10 +136,13 @@ def test_melhor_envio_provider_returns_external_options(monkeypatch):
         ),
     )
 
-    def fake_fetch(subtotal, *, destination_zip, package):
+    def fake_fetch(subtotal, *, destination_zip, package, shipping_settings=None):
         assert subtotal == money('149.90')
         assert destination_zip == '01001000'
         assert package['weight_grams'] == 120
+        assert shipping_settings.provider == 'melhor_envio'
+        assert shipping_settings.melhor_envio_from_postal_code == '01001000'
+        assert shipping_settings.melhor_envio_services == '1,2'
         return [
             {
                 'id': 'melhor_envio:1',
@@ -149,13 +156,23 @@ def test_melhor_envio_provider_returns_external_options(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr(shipping_service, 'fetch_melhor_envio_options', fake_fetch)
+    try:
+        object.__setattr__(store_settings.shipping, 'mode', 'fixed')
+        object.__setattr__(store_settings.shipping, 'provider', 'melhor_envio')
+        object.__setattr__(store_settings.shipping, 'melhor_envio_from_postal_code', '01001000')
+        object.__setattr__(store_settings.shipping, 'melhor_envio_services', '1,2')
+        monkeypatch.setattr(shipping_service, 'fetch_melhor_envio_options', fake_fetch)
 
-    options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
+        options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
 
-    assert options[0]['provider'] == 'melhor_envio'
-    assert options[0]['service'] == 'PAC'
-    assert options[0]['shipping'] == money('18.50')
+        assert options[0]['provider'] == 'melhor_envio'
+        assert options[0]['service'] == 'PAC'
+        assert options[0]['shipping'] == money('18.50')
+    finally:
+        object.__setattr__(store_settings.shipping, 'mode', original_mode)
+        object.__setattr__(store_settings.shipping, 'provider', original_provider)
+        object.__setattr__(store_settings.shipping, 'melhor_envio_from_postal_code', original_from_postal_code)
+        object.__setattr__(store_settings.shipping, 'melhor_envio_services', original_services)
 
 
 def test_melhor_envio_filters_allowed_company_ids(monkeypatch):
@@ -276,7 +293,83 @@ def test_melhor_envio_options_are_professionalized_and_deduplicated(monkeypatch)
         'melhor_envio:2',
     ]
     assert all('.Package' not in option['service'] for option in options)
+
+def test_threshold_free_shipping_zeroes_provider_option_and_order_total(monkeypatch):
+    original_mode = store_settings.shipping.mode
+    original_fixed_value = store_settings.shipping.fixed_value
+    original_free_minimum = store_settings.shipping.free_minimum
+    original_provider = store_settings.shipping.provider
+    package = {
+        'item_count': 1,
+        'weight_grams': 120,
+        'height_cm': money('2'),
+        'width_cm': money('10'),
+        'length_cm': money('15'),
+        'shipping_profile': 'default',
+    }
+
+    def fake_fetch(subtotal, *, destination_zip: str, package: dict, shipping_settings=None):
+        return [
+            {
+                'id': 'melhor_envio:jadlog',
+                'provider': 'melhor_envio',
+                'service': 'Jadlog',
+                'shipping': money('18.50'),
+                'message': 'Jadlog: R$ 18.50',
+                'estimated_days': '5',
+                'destination_zip': destination_zip,
+                'package': package,
+                'company_id': 2,
+                'company': 'Jadlog',
+            }
+        ]
+
+    try:
+        object.__setattr__(store_settings.shipping, 'mode', 'threshold')
+        object.__setattr__(store_settings.shipping, 'fixed_value', '19.90')
+        object.__setattr__(store_settings.shipping, 'free_minimum', '100.00')
+        object.__setattr__(store_settings.shipping, 'provider', 'melhor_envio')
+        monkeypatch.setattr(
+            shipping_service,
+            'settings',
+            SimpleNamespace(
+                shipping_provider='melhor_envio',
+                melhor_envio_token='token',
+                melhor_envio_from_postal_code='01001000',
+                melhor_envio_api_base='https://example.test',
+                melhor_envio_services='',
+                melhor_envio_allowed_company_ids='',
+                melhor_envio_timeout_seconds=1,
+            ),
+        )
+        monkeypatch.setattr(shipping_service, 'fetch_melhor_envio_options', fake_fetch)
+
+        options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
+        with SessionLocal() as db:
+            totals = calculate_order(
+                db,
+                [{'id': 1, 'quantity': 1}],
+                zip_code='01001-000',
+                selected_shipping_option_id='melhor_envio:jadlog',
+            )
+
+        assert options[0]['provider'] == 'melhor_envio'
+        assert options[0]['shipping'] == money('0')
+        assert options[0]['message'] == 'Frete gratis acima de R$ 100.00'
+        assert options[0]['free_shipping_applied'] is True
+        assert totals['subtotal'] == money('149.90')
+        assert totals['shipping'] == money('0')
+        assert totals['total'] == money('149.90')
+        assert totals['shipping_option_id'] == 'melhor_envio:jadlog'
+    finally:
+        object.__setattr__(store_settings.shipping, 'mode', original_mode)
+        object.__setattr__(store_settings.shipping, 'fixed_value', original_fixed_value)
+        object.__setattr__(store_settings.shipping, 'free_minimum', original_free_minimum)
+        object.__setattr__(store_settings.shipping, 'provider', original_provider)
+
+
 def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypatch):
+    original_provider = store_settings.shipping.provider
     package = {
         'item_count': 1,
         'weight_grams': 120,
@@ -299,10 +392,14 @@ def test_melhor_envio_provider_falls_back_to_internal_when_unavailable(monkeypat
         ),
     )
 
-    options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
+    try:
+        object.__setattr__(store_settings.shipping, 'provider', 'melhor_envio')
+        options = calculate_shipping_options('149.90', zip_code='01001-000', package=package)
 
-    assert options[0]['provider'] == 'internal'
-    assert options[0]['fallback_reason'] == 'melhor_envio_unavailable'
+        assert options[0]['provider'] == 'internal'
+        assert options[0]['fallback_reason'] == 'melhor_envio_unavailable'
+    finally:
+        object.__setattr__(store_settings.shipping, 'provider', original_provider)
 
 def test_calculate_order_merges_quantities_and_applies_coupon():
     with SessionLocal() as db:

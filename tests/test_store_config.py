@@ -13,6 +13,8 @@ def test_store_config_exposes_shipping_and_coupon_settings():
     assert data['contact']['instagram'] == 'vj_semijoias'
     assert data['catalog']['filename'] == 'catalogo-vj-semijoias.pdf'
     assert data['shipping']['mode'] == 'free'
+    assert 'provider' not in data['shipping']
+    assert 'melhor_envio_from_postal_code' not in data['shipping']
     assert data['coupon']['enabled'] is True
     assert data['coupon']['code'] == 'VJ10'
 
@@ -54,6 +56,11 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
                     'STORE_CATALOG_FILENAME': 'catalogo-admin.pdf',
                     'SHIPPING_MODE': 'fixed',
                     'SHIPPING_FIXED_VALUE': '19.90',
+                    'SHIPPING_PROVIDER': 'melhor_envio',
+                    'MELHOR_ENVIO_FROM_POSTAL_CODE': '92310-120',
+                    'MELHOR_ENVIO_SERVICES': '1, 2',
+                    'MELHOR_ENVIO_ALLOWED_COMPANY_IDS': '1, 2, 14',
+                    'MELHOR_ENVIO_TIMEOUT_SECONDS': '8.5',
                     'COUPONS_ENABLED': True,
                     'COUPON_CODE': 'ADM15',
                     'COUPON_DISCOUNT_PERCENT': '15',
@@ -79,6 +86,12 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
         assert public_config.json()['brand']['name'] == 'VJ Teste Admin'
         assert public_config.json()['catalog']['filename'] == 'catalogo-admin.pdf'
         assert public_config.json()['shipping']['fixed_value'] == 19.9
+        assert 'provider' not in public_config.json()['shipping']
+        assert update_response.json()['values']['SHIPPING_PROVIDER'] == 'melhor_envio'
+        assert update_response.json()['values']['MELHOR_ENVIO_FROM_POSTAL_CODE'] == '92310120'
+        assert update_response.json()['values']['MELHOR_ENVIO_SERVICES'] == '1,2'
+        assert update_response.json()['values']['MELHOR_ENVIO_ALLOWED_COMPANY_IDS'] == '1,2,14'
+        assert update_response.json()['values']['MELHOR_ENVIO_TIMEOUT_SECONDS'] == '8.5'
         assert shipping.json()['shipping'] == 19.9
         assert payment_config.json()['store']['name'] == 'VJ Teste Admin'
         assert coupon.status_code == 200
@@ -95,6 +108,7 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
             assert audit is not None
             metadata = audit.to_dict()['metadata']
             assert 'SHIPPING_MODE' in metadata['sensitive_keys']
+            assert 'SHIPPING_PROVIDER' in metadata['sensitive_keys']
             assert 'COUPON_CODE' in metadata['sensitive_keys']
     finally:
         clear_store_setting_overrides()
@@ -112,6 +126,18 @@ def test_admin_store_config_rejects_invalid_values():
         headers={'Authorization': f'Bearer {token}'},
         json={'values': {'STORE_EMAIL': 'email-invalido'}},
     )
+    invalid_provider = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'SHIPPING_PROVIDER': 'transportadora-magica'}},
+    )
+    invalid_origin_zip = client.put(
+        '/api/admin/store-config',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'values': {'MELHOR_ENVIO_FROM_POSTAL_CODE': '123'}},
+    )
 
     assert invalid_shipping.status_code == 400
     assert invalid_email.status_code == 400
+    assert invalid_provider.status_code == 400
+    assert invalid_origin_zip.status_code == 400
