@@ -78,7 +78,11 @@
                     </button>
                     <button type="button" class="admin-page-link" data-admin-page-target="settings" onclick="switchAdminPage('settings')">
                         <span>Configuracoes</span>
-                        <small>Loja, frete e e-mails</small>
+                        <small>Frete e e-mails</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="contacts" onclick="switchAdminPage('contacts')">
+                        <span>Contatos</span>
+                        <small>Rodape do site</small>
                     </button>
                     <button type="button" class="admin-page-link" data-admin-page-target="coupons" onclick="switchAdminPage('coupons')">
                         <span>Cupons</span>
@@ -221,209 +225,222 @@
                     </section>
 
                     <section class="admin-page" id="admin-page-settings" data-admin-page="settings">
-            <div class="admin-card store-config-card">
+            <div class="admin-card store-config-card shipping-config-card">
                 <div class="orders-header">
                     <div>
-                        <h2>Configuracoes da loja</h2>
-                        <p>Atualize identidade, contato, catalogo e frete sem alterar o deploy.</p>
+                        <h2>Frete e e-mails</h2>
+                        <p>Configure regras de entrega, Melhor Envio e e-mails transacionais.</p>
                     </div>
                     <button class="btn btn-outline" type="button" onclick="loadAdminStoreConfig()">Recarregar</button>
                 </div>
 
-                <form id="store-config-form">
-                    <h3>Marca</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Nome da loja</label>
-                            <input type="text" data-store-config="STORE_NAME">
+                <div class="coupon-admin-grid settings-admin-grid">
+                    <form id="store-config-form" class="admin-coupon-form store-config-form" data-store-config-form>
+                        <h3>Configurar frete</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Modo de frete</label>
+                                <select data-store-config="SHIPPING_MODE">
+                                    <option value="free">Gratis</option>
+                                    <option value="fixed">Fixo</option>
+                                    <option value="threshold">Gratis por valor minimo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Prazo estimado</label>
+                                <input type="text" data-store-config="SHIPPING_ESTIMATED_DAYS">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Nome curto</label>
-                            <input type="text" data-store-config="STORE_SHORT_NAME">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Frete abaixo do minimo (R$)</label>
+                                <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
+                                <small class="field-hint">No modo gratis por valor minimo, este valor e cobrado antes de atingir o minimo.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Gratis acima de (R$)</label>
+                                <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FREE_MINIMUM">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Tagline</label>
-                            <input type="text" data-store-config="STORE_TAGLINE">
-                        </div>
-                        <div class="form-group">
-                            <label>Slogan</label>
-                            <input type="text" data-store-config="STORE_SLOGAN">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Descricao</label>
-                        <textarea rows="2" data-store-config="STORE_DESCRIPTION"></textarea>
-                    </div>
 
-                    <h3>Contato</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>E-mail</label>
-                            <input type="email" data-store-config="STORE_EMAIL">
+                        <h3>Integracao de frete</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Provedor</label>
+                                <select data-store-config="SHIPPING_PROVIDER">
+                                    <option value="internal">Interno</option>
+                                    <option value="melhor_envio">Melhor Envio</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>CEP de origem</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_FROM_POSTAL_CODE" maxlength="9" placeholder="01001000">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Telefone</label>
-                            <input type="text" data-store-config="STORE_PHONE">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Servicos Melhor Envio</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_SERVICES" placeholder="1,2">
+                            </div>
+                            <div class="form-group">
+                                <label>Transportadoras permitidas</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_ALLOWED_COMPANY_IDS" placeholder="1,2,14,15,12,6">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>WhatsApp</label>
-                            <input type="text" data-store-config="STORE_WHATSAPP">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Timeout Melhor Envio (s)</label>
+                                <input type="number" min="1" max="30" step="0.5" data-store-config="MELHOR_ENVIO_TIMEOUT_SECONDS">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Instagram</label>
-                            <input type="text" data-store-config="STORE_INSTAGRAM">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Site</label>
-                            <input type="text" data-store-config="STORE_WEBSITE">
-                        </div>
-                        <div class="form-group">
-                            <label>CNPJ</label>
-                            <input type="text" data-store-config="STORE_CNPJ">
-                        </div>
-                    </div>
 
-                    <h3>Catalogo e PDF</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Titulo do catalogo</label>
-                            <input type="text" data-store-config="STORE_CATALOG_TITLE">
+                        <h3>E-mails transacionais</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Modo de envio</label>
+                                <select data-store-config="EMAIL_BACKEND">
+                                    <option value="console">Console / logs</option>
+                                    <option value="smtp">SMTP</option>
+                                    <option value="disabled">Desativado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do remetente</label>
+                                <input type="text" data-store-config="EMAIL_FROM_NAME" placeholder="VJ Semijoias">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Colecao</label>
-                            <input type="text" data-store-config="STORE_CATALOG_COLLECTION">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>E-mail do remetente</label>
+                                <input type="email" data-store-config="EMAIL_FROM_ADDRESS" placeholder="contato@seudominio.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Servidor SMTP</label>
+                                <input type="text" data-store-config="EMAIL_SMTP_HOST" placeholder="smtp.seudominio.com">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Nome do arquivo PDF</label>
-                        <input type="text" data-store-config="STORE_CATALOG_FILENAME">
-                    </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Porta SMTP</label>
+                                <input type="number" min="1" max="65535" step="1" data-store-config="EMAIL_SMTP_PORT">
+                            </div>
+                            <div class="form-group">
+                                <label>Usuario SMTP</label>
+                                <input type="text" data-store-config="EMAIL_SMTP_USERNAME" autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Senha SMTP</label>
+                                <input type="password" data-store-config="EMAIL_SMTP_PASSWORD" autocomplete="new-password" placeholder="Preencha apenas para trocar">
+                            </div>
+                            <label class="admin-toggle store-config-toggle email-tls-toggle">
+                                <input type="checkbox" data-store-config="EMAIL_SMTP_USE_TLS">
+                                <span></span>
+                                Usar TLS no SMTP
+                            </label>
+                        </div>
+                        <div class="email-test-panel">
+                            <div class="form-group">
+                                <label>E-mail para teste</label>
+                                <input type="email" id="email-test-recipient" placeholder="cliente@exemplo.com">
+                            </div>
+                            <button class="btn btn-outline" id="email-test-submit" type="button" onclick="sendTestEmail()">
+                                Enviar teste
+                            </button>
+                        </div>
 
-                    <h3>Frete</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Modo de frete</label>
-                            <select data-store-config="SHIPPING_MODE">
-                                <option value="free">Gratis</option>
-                                <option value="fixed">Fixo</option>
-                                <option value="threshold">Gratis por valor minimo</option>
-                            </select>
+                        <div class="coupon-actions store-config-actions">
+                            <button class="btn btn-primary" id="store-config-submit" data-store-config-submit type="submit">
+                                Salvar configuracoes
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label>Prazo estimado</label>
-                            <input type="text" data-store-config="SHIPPING_ESTIMATED_DAYS">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Frete abaixo do minimo (R$)</label>
-                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
-                            <small class="field-hint">No modo gratis por valor minimo, este valor e cobrado antes de atingir o minimo.</small>
-                        </div>
-                        <div class="form-group">
-                            <label>Gratis acima de (R$)</label>
-                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FREE_MINIMUM">
-                        </div>
-                    </div>
+                    </form>
 
-                    <h3>Integracao de frete</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Provedor</label>
-                            <select data-store-config="SHIPPING_PROVIDER">
-                                <option value="internal">Interno</option>
-                                <option value="melhor_envio">Melhor Envio</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>CEP de origem</label>
-                            <input type="text" data-store-config="MELHOR_ENVIO_FROM_POSTAL_CODE" maxlength="9" placeholder="01001000">
+                    <div>
+                        <h3>Resumo atual</h3>
+                        <div id="store-config-summary" class="admin-coupons-list store-config-summary">
+                            <div class="empty-admin-list">
+                                <div class="icon">CFG</div>
+                                <p>Nenhuma configuracao carregada ainda.</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Servicos Melhor Envio</label>
-                            <input type="text" data-store-config="MELHOR_ENVIO_SERVICES" placeholder="1,2">
-                        </div>
-                        <div class="form-group">
-                            <label>Transportadoras permitidas</label>
-                            <input type="text" data-store-config="MELHOR_ENVIO_ALLOWED_COMPANY_IDS" placeholder="1,2,14,15,12,6">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Timeout Melhor Envio (s)</label>
-                            <input type="number" min="1" max="30" step="0.5" data-store-config="MELHOR_ENVIO_TIMEOUT_SECONDS">
-                        </div>
-                    </div>
-                    <h3>E-mails transacionais</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Modo de envio</label>
-                            <select data-store-config="EMAIL_BACKEND">
-                                <option value="console">Console / logs</option>
-                                <option value="smtp">SMTP</option>
-                                <option value="disabled">Desativado</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Nome do remetente</label>
-                            <input type="text" data-store-config="EMAIL_FROM_NAME" placeholder="VJ Semijoias">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>E-mail do remetente</label>
-                            <input type="email" data-store-config="EMAIL_FROM_ADDRESS" placeholder="contato@seudominio.com">
-                        </div>
-                        <div class="form-group">
-                            <label>Servidor SMTP</label>
-                            <input type="text" data-store-config="EMAIL_SMTP_HOST" placeholder="smtp.seudominio.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Porta SMTP</label>
-                            <input type="number" min="1" max="65535" step="1" data-store-config="EMAIL_SMTP_PORT">
-                        </div>
-                        <div class="form-group">
-                            <label>Usuario SMTP</label>
-                            <input type="text" data-store-config="EMAIL_SMTP_USERNAME" autocomplete="username">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Senha SMTP</label>
-                            <input type="password" data-store-config="EMAIL_SMTP_PASSWORD" autocomplete="new-password" placeholder="Preencha apenas para trocar">
-                        </div>
-                        <label class="admin-toggle store-config-toggle email-tls-toggle">
-                            <input type="checkbox" data-store-config="EMAIL_SMTP_USE_TLS">
-                            <span></span>
-                            Usar TLS no SMTP
-                        </label>
-                    </div>
-                    <div class="email-test-panel">
-                        <div class="form-group">
-                            <label>E-mail para teste</label>
-                            <input type="email" id="email-test-recipient" placeholder="cliente@exemplo.com">
-                        </div>
-                        <button class="btn btn-outline" id="email-test-submit" type="button" onclick="sendTestEmail()">
-                            Enviar teste
-                        </button>
-                    </div>
+                </div>
+            </div>
 
-                    <div class="form-row store-config-actions">
-                        <button class="btn btn-primary" id="store-config-submit" type="submit">
-                            Salvar configuracoes
-                        </button>
+                    </section>
+
+                    <section class="admin-page" id="admin-page-contacts" data-admin-page="contacts">
+            <div class="admin-card store-config-card contacts-config-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Contatos do site</h2>
+                        <p>Atualize os dados exibidos no rodape da loja.</p>
                     </div>
-                </form>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminStoreConfig()">Recarregar</button>
+                </div>
+
+                <div class="coupon-admin-grid contacts-admin-grid">
+                    <form id="contact-config-form" class="admin-coupon-form store-config-form" data-store-config-form>
+                        <h3>Dados de contato</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>E-mail</label>
+                                <input type="email" data-store-config="STORE_EMAIL">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" data-store-config="STORE_PHONE">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>WhatsApp</label>
+                                <input type="text" data-store-config="STORE_WHATSAPP">
+                            </div>
+                            <div class="form-group">
+                                <label>Instagram</label>
+                                <input type="text" data-store-config="STORE_INSTAGRAM">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Localizacao</label>
+                                <input type="text" data-store-config="STORE_LOCATION" placeholder="Canoas - RS">
+                            </div>
+                            <div class="form-group">
+                                <label>Horario de atendimento</label>
+                                <input type="text" data-store-config="STORE_BUSINESS_HOURS" placeholder="Seg-Sex: 9h as 18h">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Site</label>
+                                <input type="text" data-store-config="STORE_WEBSITE">
+                            </div>
+                            <div class="form-group">
+                                <label>CNPJ</label>
+                                <input type="text" data-store-config="STORE_CNPJ">
+                            </div>
+                        </div>
+                        <div class="coupon-actions store-config-actions">
+                            <button class="btn btn-primary" id="contact-config-submit" data-store-config-submit type="submit">
+                                Salvar contatos
+                            </button>
+                        </div>
+                    </form>
+
+                    <div>
+                        <h3>Preview do rodape</h3>
+                        <div id="contact-config-preview" class="admin-coupons-list contact-config-preview">
+                            <div class="empty-admin-list">
+                                <div class="icon">CTT</div>
+                                <p>Nenhum contato carregado ainda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
                     </section>

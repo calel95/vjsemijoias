@@ -35,8 +35,12 @@ const ADMIN_PAGES = {
         subtitle: 'Acompanhe pagamentos, status, rastreio e entregas.',
     },
     settings: {
-        title: 'Configuracoes da loja',
-        subtitle: 'Ajuste identidade, contato, frete e e-mails transacionais.',
+        title: 'Frete e e-mails',
+        subtitle: 'Configure entrega, Melhor Envio e e-mails transacionais.',
+    },
+    contacts: {
+        title: 'Contatos do site',
+        subtitle: 'Controle os dados exibidos no rodape da loja.',
     },
     coupons: {
         title: 'Cupons promocionais',
@@ -188,14 +192,23 @@ async function applyStoreEnvironmentConfig() {
 }
 
 function setupStoreConfigForm() {
-    const form = document.getElementById('store-config-form');
-    if (!form) return;
-    form.addEventListener('submit', handleStoreConfigSubmit);
+    document.querySelectorAll('[data-store-config-form]').forEach(form => {
+        form.addEventListener('submit', handleStoreConfigSubmit);
+    });
+    document.querySelectorAll('[data-store-config]').forEach(field => {
+        field.addEventListener('input', () => {
+            renderStoreConfigSummary(readStoreConfigForm());
+            renderContactConfigPreview(readStoreConfigForm());
+        });
+        field.addEventListener('change', () => {
+            renderStoreConfigSummary(readStoreConfigForm());
+            renderContactConfigPreview(readStoreConfigForm());
+        });
+    });
 }
 
 async function loadAdminStoreConfig() {
-    const form = document.getElementById('store-config-form');
-    if (!form) return;
+    if (!document.querySelector('[data-store-config-form]')) return;
 
     const result = await API.getAdminStoreConfig();
     if (!result.success) {
@@ -204,6 +217,8 @@ async function loadAdminStoreConfig() {
     }
 
     fillStoreConfigForm(result.data.values || {});
+    renderStoreConfigSummary(result.data.values || {});
+    renderContactConfigPreview(result.data.values || {});
 }
 
 function fillStoreConfigForm(values) {
@@ -218,6 +233,70 @@ function fillStoreConfigForm(values) {
     });
 }
 
+function storeValue(values, key) {
+    return values?.[key] ?? document.querySelector(`[data-store-config="${key}"]`)?.value ?? '';
+}
+
+function shippingModeLabel(mode) {
+    return {
+        free: 'Gratis',
+        fixed: 'Fixo',
+        threshold: 'Gratis por valor minimo',
+    }[mode] || mode || '-';
+}
+
+function emailBackendLabel(backend) {
+    return {
+        console: 'Console / logs',
+        smtp: 'SMTP',
+        disabled: 'Desativado',
+    }[backend] || backend || '-';
+}
+
+function renderStoreConfigSummary(values = readStoreConfigForm()) {
+    const container = document.getElementById('store-config-summary');
+    if (!container) return;
+    const mode = storeValue(values, 'SHIPPING_MODE');
+    const fixed = storeValue(values, 'SHIPPING_FIXED_VALUE') || '0';
+    const minimum = storeValue(values, 'SHIPPING_FREE_MINIMUM') || '0';
+    const provider = storeValue(values, 'SHIPPING_PROVIDER') || 'internal';
+    const emailBackend = storeValue(values, 'EMAIL_BACKEND') || 'console';
+    const originZip = storeValue(values, 'MELHOR_ENVIO_FROM_POSTAL_CODE') || '-';
+    container.innerHTML = `
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Frete</strong><span>${escapeHTML(shippingModeLabel(mode))}</span></div><span class="coupon-status">${escapeHTML(storeValue(values, 'SHIPPING_ESTIMATED_DAYS') || '-')}</span></div>
+            <div class="admin-coupon-meta"><small>Valor: ${formatPrice(Number(fixed || 0))}</small><small>Gratis acima: ${formatPrice(Number(minimum || 0))}</small></div>
+        </div>
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Integracao</strong><span>${escapeHTML(provider)}</span></div><span class="coupon-status">${escapeHTML(originZip)}</span></div>
+            <div class="admin-coupon-meta"><small>Servicos: ${escapeHTML(storeValue(values, 'MELHOR_ENVIO_SERVICES') || '-')}</small><small>Timeout: ${escapeHTML(storeValue(values, 'MELHOR_ENVIO_TIMEOUT_SECONDS') || '-')}s</small></div>
+        </div>
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>E-mail</strong><span>${escapeHTML(emailBackendLabel(emailBackend))}</span></div><span class="coupon-status">${escapeHTML(storeValue(values, 'EMAIL_FROM_NAME') || '-')}</span></div>
+            <div class="admin-coupon-meta"><small>Remetente: ${escapeHTML(storeValue(values, 'EMAIL_FROM_ADDRESS') || '-')}</small><small>SMTP: ${escapeHTML(storeValue(values, 'EMAIL_SMTP_HOST') || '-')}</small></div>
+        </div>
+    `;
+}
+
+function renderContactConfigPreview(values = readStoreConfigForm()) {
+    const container = document.getElementById('contact-config-preview');
+    if (!container) return;
+    const instagram = String(storeValue(values, 'STORE_INSTAGRAM') || '').replace(/^@/, '');
+    container.innerHTML = `
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Contato</strong><span>${escapeHTML(storeValue(values, 'STORE_EMAIL') || '-')}</span></div><span class="coupon-status">Rodape</span></div>
+            <div class="admin-coupon-meta">
+                <small>Telefone: ${escapeHTML(storeValue(values, 'STORE_PHONE') || '-')}</small>
+                <small>WhatsApp: ${escapeHTML(storeValue(values, 'STORE_WHATSAPP') || '-')}</small>
+                <small>Instagram: ${instagram ? '@' + escapeHTML(instagram) : '-'}</small>
+                <small>Local: ${escapeHTML(storeValue(values, 'STORE_LOCATION') || '-')}</small>
+                <small>Horario: ${escapeHTML(storeValue(values, 'STORE_BUSINESS_HOURS') || '-')}</small>
+                <small>CNPJ: ${escapeHTML(storeValue(values, 'STORE_CNPJ') || '-')}</small>
+            </div>
+        </div>
+    `;
+}
+
 function readStoreConfigForm() {
     const values = {};
     document.querySelectorAll('[data-store-config]').forEach(field => {
@@ -229,7 +308,8 @@ function readStoreConfigForm() {
 
 async function handleStoreConfigSubmit(event) {
     event.preventDefault();
-    const submit = document.getElementById('store-config-submit');
+    const form = event.target;
+    const submit = form.querySelector('[data-store-config-submit]') || document.getElementById('store-config-submit');
     if (submit) {
         submit.disabled = true;
         submit.textContent = 'Salvando...';
@@ -238,7 +318,7 @@ async function handleStoreConfigSubmit(event) {
     const result = await API.updateAdminStoreConfig(readStoreConfigForm());
     if (submit) {
         submit.disabled = false;
-        submit.textContent = 'Salvar configuracoes';
+        submit.textContent = form.id === 'contact-config-form' ? 'Salvar contatos' : 'Salvar configuracoes';
     }
 
     if (!result.success) {
@@ -247,8 +327,10 @@ async function handleStoreConfigSubmit(event) {
     }
 
     fillStoreConfigForm(result.data.values || {});
+    renderStoreConfigSummary(result.data.values || {});
+    renderContactConfigPreview(result.data.values || {});
     await applyStoreEnvironmentConfig();
-    showToast('Configuracoes da loja atualizadas', 'success');
+    showToast(form.id === 'contact-config-form' ? 'Contatos atualizados' : 'Configuracoes atualizadas', 'success');
 }
 
 async function sendTestEmail() {
@@ -275,6 +357,8 @@ async function sendTestEmail() {
         return;
     }
     fillStoreConfigForm(saveResult.data.values || {});
+    renderStoreConfigSummary(saveResult.data.values || {});
+    renderContactConfigPreview(saveResult.data.values || {});
     await applyStoreEnvironmentConfig();
 
     const result = await API.sendAdminEmailTest(email);

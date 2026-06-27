@@ -1,0 +1,7 @@
+Checking for existing servers on port 5000...
+Using DATABASE_URL from -DatabaseUrl argument.
+Applying migrations...
+Effective database URL:
+sqlite:///C:/Users/Calel/Veronica/vjsemijoias/instance/dev-admin-settings.db
+Starting server at http://127.0.0.1:5000
+INFO:     127.0.0.1:65024 - "GET /api/health HTTP/1.1" 200 OK

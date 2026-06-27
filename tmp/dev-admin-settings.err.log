@@ -1,0 +1,20 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 20260617_0001, initial schema
+INFO  [alembic.runtime.migration] Running upgrade 20260617_0001 -> 20260617_0002, add product status fields
+INFO  [alembic.runtime.migration] Running upgrade 20260617_0002 -> 20260617_0003, add store settings
+INFO  [alembic.runtime.migration] Running upgrade 20260617_0003 -> 20260619_0004, add admin audit logs
+INFO  [alembic.runtime.migration] Running upgrade 20260619_0004 -> 20260622_0005, store money values as numeric decimals
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0005 -> 20260622_0006, add product stock management
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0006 -> 20260622_0007, add order events history
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0007 -> 20260622_0008, add coupon rules and redemption report
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0008 -> 20260622_0009, harden order checkout flow
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0009 -> 20260622_0010, add password reset fields
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0010 -> 20260622_0011, add order shipping details
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0011 -> 20260622_0012, add product shipping dimensions
+INFO  [alembic.runtime.migration] Running upgrade 20260622_0012 -> 20260624_0013, add selected shipping option to orders
+INFO  [alembic.runtime.migration] Running upgrade 20260624_0013 -> 20260626_0014, add product reference
+INFO:     Started server process [35180]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5000 (Press CTRL+C to quit)

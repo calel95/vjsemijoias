@@ -51,6 +51,8 @@ function applyStoreConfig(config) {
     setText('[data-store-phone]', contact.phone ? `📱 ${contact.phone}` : '');
     setText('[data-store-whatsapp]', contact.whatsapp ? `💬 ${contact.whatsapp}` : '');
     setText('[data-store-instagram]', contact.instagram ? `📷 @${String(contact.instagram).replace(/^@/, '')}` : '');
+    setText('[data-store-location]', contact.location ? `📍 ${contact.location}` : '');
+    setText('[data-store-hours]', contact.business_hours ? `🕐 ${contact.business_hours}` : '');
     setText(
         '[data-store-copyright]',
         `© 2026 ${brand.name || 'Loja'}. Todos os direitos reservados.${contact.cnpj ? ` CNPJ: ${contact.cnpj}` : ''}`

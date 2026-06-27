@@ -317,7 +317,7 @@ def test_admin_panel_is_split_into_pages():
     admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
     admin_css = (FRONTEND_ROOT / 'css' / 'admin.css').read_text(encoding='utf-8')
 
-    for page in ['overview', 'orders', 'settings', 'coupons', 'security', 'products', 'catalog', 'import']:
+    for page in ['overview', 'orders', 'settings', 'contacts', 'coupons', 'security', 'products', 'catalog', 'import']:
         assert f'data-admin-page="{page}"' in admin_html
         assert f'data-admin-page-target="{page}"' in admin_html
     assert 'admin-page-nav' in admin_html
@@ -476,6 +476,31 @@ def test_admin_frontend_has_admin_security_panel():
     assert 'admin-audit-list' in admin_html
     assert 'loadAdminSecurity()' in admin_js
     assert 'getAdminUsers()' in api_js
+
+def test_admin_settings_and_contacts_pages_are_split():
+    admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
+    admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
+    store_config_js = (FRONTEND_ROOT / 'js' / 'store-config.js').read_text(encoding='utf-8')
+    index_html = (FRONTEND_ROOT / 'index.html').read_text(encoding='utf-8')
+
+    settings_section = admin_html.split('id="admin-page-settings"', 1)[1].split('id="admin-page-contacts"', 1)[0]
+    contacts_section = admin_html.split('id="admin-page-contacts"', 1)[1].split('id="admin-page-coupons"', 1)[0]
+
+    assert 'STORE_CATALOG_TITLE' not in admin_html
+    assert 'STORE_CATALOG_COLLECTION' not in admin_html
+    assert 'STORE_CATALOG_FILENAME' not in admin_html
+    assert 'STORE_NAME' not in admin_html
+    assert 'STORE_DESCRIPTION' not in admin_html
+    assert 'STORE_EMAIL' not in settings_section
+    assert 'STORE_EMAIL' in contacts_section
+    assert 'STORE_LOCATION' in contacts_section
+    assert 'STORE_BUSINESS_HOURS' in contacts_section
+    assert 'settings-admin-grid' in admin_html
+    assert 'renderContactConfigPreview' in admin_js
+    assert 'data-store-location' in store_config_js
+    assert 'data-store-hours' in store_config_js
+    assert 'data-store-location' in index_html
+    assert 'data-store-hours' in index_html
 
 def test_admin_frontend_has_coupon_management_panel():
     admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')

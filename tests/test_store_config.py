@@ -12,6 +12,8 @@ def test_store_config_exposes_shipping_and_coupon_settings():
     data = response.json()
     assert data['brand']['name'] == 'VJ Semijoias'
     assert data['contact']['instagram'] == 'vj_semijoias'
+    assert data['contact']['location'] == 'Canoas - RS'
+    assert data['contact']['business_hours'] == 'Seg-Sex: 9h as 18h'
     assert data['catalog']['filename'] == 'catalogo-vj-semijoias.pdf'
     assert data['shipping']['mode'] == 'free'
     assert 'provider' not in data['shipping']
@@ -55,6 +57,8 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
                 'values': {
                     'STORE_NAME': 'VJ Teste Admin',
                     'STORE_CATALOG_FILENAME': 'catalogo-admin.pdf',
+                    'STORE_LOCATION': 'Porto Alegre - RS',
+                    'STORE_BUSINESS_HOURS': 'Seg-Sab: 10h as 19h',
                     'SHIPPING_MODE': 'fixed',
                     'SHIPPING_FIXED_VALUE': '19.90',
                     'SHIPPING_PROVIDER': 'melhor_envio',
@@ -87,6 +91,8 @@ def test_admin_can_update_store_config_and_runtime_uses_overrides():
         assert update_response.json()['values']['STORE_NAME'] == 'VJ Teste Admin'
         assert public_config.json()['brand']['name'] == 'VJ Teste Admin'
         assert public_config.json()['catalog']['filename'] == 'catalogo-admin.pdf'
+        assert public_config.json()['contact']['location'] == 'Porto Alegre - RS'
+        assert public_config.json()['contact']['business_hours'] == 'Seg-Sab: 10h as 19h'
         assert public_config.json()['shipping']['fixed_value'] == 19.9
         assert 'provider' not in public_config.json()['shipping']
         assert update_response.json()['values']['SHIPPING_PROVIDER'] == 'melhor_envio'

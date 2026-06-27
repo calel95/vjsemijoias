@@ -59,6 +59,8 @@ class ContactSettings:
     instagram: str = env_value("STORE_INSTAGRAM", "vj_semijoias")
     website: str = env_value("STORE_WEBSITE", "www.vjsemijoias.com")
     cnpj: str = env_value("STORE_CNPJ", "")
+    location: str = env_value("STORE_LOCATION", "Canoas - RS")
+    business_hours: str = env_value("STORE_BUSINESS_HOURS", "Seg-Sex: 9h as 18h")
 
 
 @dataclass(frozen=True)
@@ -163,6 +165,8 @@ STORE_SETTING_KEYS = (
     "STORE_INSTAGRAM",
     "STORE_WEBSITE",
     "STORE_CNPJ",
+    "STORE_LOCATION",
+    "STORE_BUSINESS_HOURS",
     "STORE_CATALOG_TITLE",
     "STORE_CATALOG_COLLECTION",
     "STORE_CATALOG_FILENAME",
@@ -204,6 +208,8 @@ def default_store_values(settings_obj: StoreSettings = store_settings):
         "STORE_INSTAGRAM": settings_obj.contact.instagram,
         "STORE_WEBSITE": settings_obj.contact.website,
         "STORE_CNPJ": settings_obj.contact.cnpj,
+        "STORE_LOCATION": settings_obj.contact.location,
+        "STORE_BUSINESS_HOURS": settings_obj.contact.business_hours,
         "STORE_CATALOG_TITLE": settings_obj.catalog.title,
         "STORE_CATALOG_COLLECTION": settings_obj.catalog.collection,
         "STORE_CATALOG_FILENAME": settings_obj.catalog.filename,
@@ -348,6 +354,8 @@ def validate_store_values(values):
         "STORE_INSTAGRAM": 80,
         "STORE_WEBSITE": 200,
         "STORE_CNPJ": 30,
+        "STORE_LOCATION": 120,
+        "STORE_BUSINESS_HOURS": 120,
         "STORE_CATALOG_TITLE": 120,
         "STORE_CATALOG_COLLECTION": 120,
         "STORE_CATALOG_FILENAME": 120,
@@ -398,6 +406,8 @@ def settings_from_values(values):
             instagram=data["STORE_INSTAGRAM"],
             website=data["STORE_WEBSITE"],
             cnpj=data["STORE_CNPJ"],
+            location=data["STORE_LOCATION"],
+            business_hours=data["STORE_BUSINESS_HOURS"],
         ),
         catalog=CatalogSettings(
             title=data["STORE_CATALOG_TITLE"],
