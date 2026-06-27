@@ -32,6 +32,7 @@ class Product(Base):
     price: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     oldPrice: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
     sku: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
+    reference: Mapped[str | None] = mapped_column(String(80), index=True, nullable=True)
     image: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
     badge: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -78,6 +79,7 @@ class Product(Base):
             "price": decimal_to_float(self.price),
             "oldPrice": decimal_to_float(self.oldPrice),
             "sku": self.sku,
+            "reference": self.reference,
             "image": self.image,
             "images": images,
             "icon": self.icon or "💎",

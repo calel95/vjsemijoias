@@ -631,12 +631,12 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label>SKU / Codigo interno</label>
-                                <input type="text" id="product-sku" name="sku" maxlength="80" placeholder="VJ-BRINCO-001">
+                                <label>Referencia da peca</label>
+                                <input type="text" id="product-reference" name="reference" maxlength="80" placeholder="Ex: REF-1234">
                             </div>
                             <div class="form-group">
-                                <label>Quantidade em estoque</label>
-                                <input type="number" id="product-stock-quantity" name="stock_quantity" min="0" step="1" value="1">
+                                <label>SKU / Codigo interno</label>
+                                <input type="text" id="product-sku" name="sku" maxlength="80" placeholder="VJ-BRINCO-001">
                             </div>
                         </div>
 
@@ -657,6 +657,10 @@
                         </div>
 
                         <div class="form-row">
+                            <div class="form-group">
+                                <label>Quantidade em estoque</label>
+                                <input type="number" id="product-stock-quantity" name="stock_quantity" min="0" step="1" value="1">
+                            </div>
                             <div class="form-group">
                                 <label>Disponibilidade</label>
                                 <select id="product-stock-status" name="stock_status">

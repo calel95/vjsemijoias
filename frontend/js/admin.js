@@ -796,6 +796,7 @@ function currentFormProduct() {
         price: parseFloat(document.getElementById('product-price').value) || 0,
         oldPrice: parseFloat(document.getElementById('product-old-price').value) || null,
         sku: document.getElementById('product-sku')?.value.trim() || '',
+        reference: document.getElementById('product-reference')?.value.trim() || '',
         image: productGalleryImages[0] || '',
         icon: document.getElementById('product-icon').value.trim() || 'ðŸ’Ž',
         badge: document.getElementById('product-badge').value || null,
@@ -836,6 +837,7 @@ function renderProductFormPreview() {
     const oldPriceHTML = product.oldPrice
         ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
         : '';
+    const referenceHTML = product.reference ? `<small>Referencia: ${escapeHTML(product.reference)}</small>` : '';
     const stockHTML = `<small>SKU: ${escapeHTML(product.sku || 'sem SKU')} | Estoque: ${product.stock_quantity}</small>`;
     const shippingHTML = `<small>Frete: ${product.weight_grams}g | ${product.length_cm} x ${product.width_cm} x ${product.height_cm} cm</small>`;
 
@@ -853,6 +855,7 @@ function renderProductFormPreview() {
                 </div>
                 <strong>${escapeHTML(product.name || 'Nome do produto')}</strong>
                 <p>${escapeHTML(product.description || 'Descricao curta do produto.')}</p>
+                ${referenceHTML}
                 ${stockHTML}
                 ${shippingHTML}
                 <div class="preview-price">${oldPriceHTML}${priceHTML}</div>
@@ -903,6 +906,7 @@ async function handleProductSubmit(event) {
     data.price = parseFloat(data.price) || 0;
     data.oldPrice = data.oldPrice ? parseFloat(data.oldPrice) : null;
     data.sku = data.sku || null;
+    data.reference = data.reference || null;
     data.stock_quantity = parseInt(data.stock_quantity || '0', 10);
     data.low_stock_alert = parseInt(data.low_stock_alert || '0', 10);
     data.weight_grams = parseInt(data.weight_grams || '100', 10);
@@ -985,6 +989,7 @@ function editProduct(id) {
     document.getElementById('product-price').value = product.price;
     document.getElementById('product-old-price').value = product.oldPrice || '';
     document.getElementById('product-sku').value = product.sku || '';
+    document.getElementById('product-reference').value = product.reference || '';
     document.getElementById('product-icon').value = product.icon || '';
     document.getElementById('product-badge').value = product.badge || '';
     document.getElementById('product-active').checked = product.is_active !== false;
@@ -1078,7 +1083,9 @@ function renderAdminProducts() {
         const search = currentSearch.toLowerCase();
         products = products.filter(p => 
             p.name.toLowerCase().includes(search) ||
-            p.description.toLowerCase().includes(search)
+            p.description.toLowerCase().includes(search) ||
+            String(p.sku || '').toLowerCase().includes(search) ||
+            String(p.reference || '').toLowerCase().includes(search)
         );
     }
     
@@ -1110,7 +1117,8 @@ function renderAdminProducts() {
             : '<span class="badge-mini active">ATIVO</span>';
         const stockBadge = `<span class="badge-mini stock ${p.stock_status || 'available'}">${stockLabel(p.stock_status)}</span>`;
         const lowStockBadge = p.stock_is_low ? '<span class="badge-mini stock low">BAIXO</span>' : '';
-        const stockMeta = `SKU ${escapeHTML(p.sku || '-')} | Estoque ${p.stock_quantity ?? 0}`;
+        const referenceMeta = p.reference ? `Referencia ${escapeHTML(p.reference)} | ` : '';
+        const stockMeta = `${referenceMeta}SKU ${escapeHTML(p.sku || '-')} | Estoque ${p.stock_quantity ?? 0}`;
         const shippingMeta = `${p.weight_grams ?? 100}g | ${p.length_cm ?? 15} x ${p.width_cm ?? 10} x ${p.height_cm ?? 2} cm`;
         
         return `

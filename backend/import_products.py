@@ -23,7 +23,12 @@ from backend.services.stock import (
     sync_stock_status,
 )
 from backend.services.storage import r2_enabled, store_public_file
-from backend.services.validation import clean_text, clean_text_list, validate_image_bytes
+from backend.services.validation import (
+    clean_text,
+    clean_text_list,
+    normalize_product_reference,
+    validate_image_bytes,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -156,6 +161,12 @@ def product_low_stock_alert(item):
         if key in item and str(item[key]).strip():
             return normalize_low_stock_alert(item[key])
     return 1
+
+
+def product_reference(item):
+    return normalize_product_reference(
+        first_present(item, "reference", "referencia", "ref", "codigo")
+    )
 
 
 def first_present(item, *keys):
@@ -344,7 +355,10 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
             product.categoryName = category_name
             product.price = parse_price(product_price(item))
             product.oldPrice = product_old_price(item)
-            product.sku = normalize_sku(item.get("sku") or item.get("codigo") or item.get("referencia"))
+            product.reference = product_reference(item)
+            product.sku = normalize_sku(
+                item.get("sku") or item.get("codigo") or item.get("referencia")
+            )
             product.stock_quantity = product_stock_quantity(item)
             product.low_stock_alert = product_low_stock_alert(item)
             product.weight_grams = normalize_weight_grams(

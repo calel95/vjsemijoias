@@ -33,7 +33,12 @@ from backend.services.stock import (
     normalize_stock_quantity,
     sync_stock_status,
 )
-from backend.services.validation import clean_text, clean_text_list, normalize_money_decimal
+from backend.services.validation import (
+    clean_text,
+    clean_text_list,
+    normalize_money_decimal,
+    normalize_product_reference,
+)
 
 
 router = APIRouter(prefix="/api")
@@ -83,6 +88,8 @@ def normalize_product_payload(data: dict[str, Any], *, partial=False):
         )
     if "sku" in data:
         cleaned["sku"] = normalize_sku(data.get("sku"))
+    if "reference" in data:
+        cleaned["reference"] = normalize_product_reference(data.get("reference"))
     if "stock_quantity" in data:
         cleaned["stock_quantity"] = normalize_stock_quantity(data.get("stock_quantity"))
     elif not partial:
@@ -127,6 +134,8 @@ def get_products(
             or_(
                 func.lower(Product.name).like(search_pattern),
                 func.lower(Product.description).like(search_pattern),
+                func.lower(Product.sku).like(search_pattern),
+                func.lower(Product.reference).like(search_pattern),
             )
         )
 
@@ -199,6 +208,7 @@ def create_product(
         price=cleaned["price"],
         oldPrice=cleaned.get("oldPrice"),
         sku=cleaned.get("sku"),
+        reference=cleaned.get("reference"),
         icon=data.get("icon", "💎"),
         badge=cleaned.get("badge"),
         is_active=normalize_bool(data.get("is_active"), True),
@@ -253,6 +263,8 @@ def update_product(
         product.stock_status = normalize_stock_status(data["stock_status"])
     if "sku" in data:
         product.sku = cleaned.get("sku")
+    if "reference" in data:
+        product.reference = cleaned.get("reference")
     if "stock_quantity" in cleaned:
         product.stock_quantity = cleaned["stock_quantity"]
     if "low_stock_alert" in cleaned:

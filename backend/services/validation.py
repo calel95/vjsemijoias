@@ -122,6 +122,11 @@ def clean_text_list(values, *, field="campo", max_items=20, max_item_length=120)
     ]
 
 
+def normalize_product_reference(value) -> str | None:
+    reference = clean_text(value, field="reference", max_length=80, required=False)
+    return reference.upper() or None
+
+
 def normalize_money_decimal(value, *, field="valor", required=True, minimum=Decimal("0.00")):
     if value in (None, ""):
         if required:

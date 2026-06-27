@@ -152,6 +152,35 @@ def test_admin_can_manage_product_stock_fields():
     assert updated.status_code == 200
     assert updated.json()['stock_status'] == 'out_of_stock'
 
+def test_admin_can_manage_product_reference_field():
+    token = admin_login().json()['token']
+
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Referencia Teste',
+            'category': 'brincos',
+            'price': 69.9,
+            'description': 'Produto com referencia de fornecedor.',
+            'reference': ' ref-ab-123 ',
+            'stock_quantity': 3,
+        },
+    )
+    updated = client.put(
+        f"/api/products/{created.json()['id']}",
+        headers={'Authorization': f'Bearer {token}'},
+        json={'reference': 'ref-cd-456'},
+    )
+    searched = client.get('/api/products?search=ref-cd-456')
+
+    assert created.status_code == 201
+    assert created.json()['reference'] == 'REF-AB-123'
+    assert updated.status_code == 200
+    assert updated.json()['reference'] == 'REF-CD-456'
+    assert searched.status_code == 200
+    assert any(item['id'] == created.json()['id'] for item in searched.json())
+
 def test_admin_can_manage_product_shipping_fields():
     token = admin_login().json()['token']
 

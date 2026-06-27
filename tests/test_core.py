@@ -237,6 +237,7 @@ def test_alembic_migrations_create_current_schema():
         }.issubset(coupon_columns_by_name)
         assert {
             'sku',
+            'reference',
             'stock_quantity',
             'low_stock_alert',
             'weight_grams',
@@ -452,9 +453,11 @@ def test_admin_frontend_has_stock_management_fields():
     admin_html = (FRONTEND_ROOT / 'admin.html').read_text(encoding='utf-8')
     admin_js = (FRONTEND_ROOT / 'js' / 'admin.js').read_text(encoding='utf-8')
 
+    assert 'product-reference' in admin_html
     assert 'product-sku' in admin_html
     assert 'product-stock-quantity' in admin_html
     assert 'product-low-stock-alert' in admin_html
+    assert 'reference' in admin_js
     assert 'stock_is_low' in admin_js
 
 def test_admin_frontend_renders_order_event_timeline():
