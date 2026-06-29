@@ -1,4 +1,4 @@
-import json
+﻿import json
 import secrets
 import shutil
 from pathlib import PurePosixPath
@@ -124,7 +124,11 @@ def get_products(
     per_page: int | None = Query(default=None, ge=1, le=60),
     db: Session = Depends(get_db),
 ):
-    filters = [Product.is_active.is_(True)]
+    filters = [
+        Product.is_active.is_(True),
+        Product.publicado.is_(True),
+        Product.status.in_(["publicado", "ativo"]),
+    ]
     if category and category != "all":
         filters.append(Product.category == category)
     search = search.strip()
@@ -136,6 +140,7 @@ def get_products(
                 func.lower(Product.description).like(search_pattern),
                 func.lower(Product.sku).like(search_pattern),
                 func.lower(Product.reference).like(search_pattern),
+                func.lower(Product.codigo).like(search_pattern),
             )
         )
 
@@ -179,7 +184,11 @@ def get_storage_status(_claims=Depends(admin_claims)):
 @router.get("/products/{product_id}")
 def get_product(product_id: int, db: Session = Depends(get_db)):
     product = get_or_404(db, Product, product_id)
-    if not product.is_active:
+    if (
+        not product.is_active
+        or not product.publicado
+        or product.status not in {"publicado", "ativo"}
+    ):
         raise HTTPException(status_code=404, detail="Produto nao encontrado")
     return product.to_dict()
 
@@ -193,7 +202,7 @@ def create_product(
     if any(not data.get(field) for field in ["name", "category", "price", "description"]):
         raise HTTPException(
             status_code=400,
-            detail="Campos obrigatórios: name, category, price, description",
+            detail="Campos obrigatÃ³rios: name, category, price, description",
         )
     try:
         cleaned = normalize_product_payload(data)
@@ -201,17 +210,21 @@ def create_product(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if cleaned.get("sku") and db.scalar(select(Product.id).where(Product.sku == cleaned["sku"])):
         raise HTTPException(status_code=409, detail="SKU ja cadastrado")
+    is_active = normalize_bool(data.get("is_active"), True)
     product = Product(
         name=cleaned["name"],
         category=cleaned["category"],
         categoryName=cleaned.get("categoryName", cleaned["category"].capitalize()),
         price=cleaned["price"],
         oldPrice=cleaned.get("oldPrice"),
+        codigo=cleaned.get("sku"),
         sku=cleaned.get("sku"),
         reference=cleaned.get("reference"),
-        icon=data.get("icon", "💎"),
+        icon=data.get("icon", "ðŸ’Ž"),
         badge=cleaned.get("badge"),
-        is_active=normalize_bool(data.get("is_active"), True),
+        status="publicado" if is_active else "rascunho",
+        publicado=is_active,
+        is_active=is_active,
         stock_status=normalize_stock_status(data.get("stock_status")),
         stock_quantity=cleaned["stock_quantity"],
         low_stock_alert=cleaned["low_stock_alert"],
@@ -259,10 +272,13 @@ def update_product(
             setattr(product, field, cleaned[field])
     if "is_active" in data:
         product.is_active = normalize_bool(data["is_active"], True)
+        product.publicado = product.is_active
+        product.status = "publicado" if product.is_active else "rascunho"
     if "stock_status" in data:
         product.stock_status = normalize_stock_status(data["stock_status"])
     if "sku" in data:
         product.sku = cleaned.get("sku")
+        product.codigo = cleaned.get("sku") or product.codigo
     if "reference" in data:
         product.reference = cleaned.get("reference")
     if "stock_quantity" in cleaned:
@@ -347,7 +363,7 @@ def import_product_folder(
         if not raw_name or relative_path.is_absolute() or ".." in relative_path.parts:
             raise HTTPException(
                 status_code=400,
-                detail=f"Caminho de arquivo inválido: {raw_name}",
+                detail=f"Caminho de arquivo invÃ¡lido: {raw_name}",
             )
         normalized_files.append((uploaded, relative_path))
 
@@ -405,7 +421,7 @@ def import_product_folder(
             ValueError,
             json.JSONDecodeError,
         ) as exc:
-            raise HTTPException(status_code=400, detail=f"Catálogo inválido: {exc}") from exc
+            raise HTTPException(status_code=400, detail=f"CatÃ¡logo invÃ¡lido: {exc}") from exc
     finally:
         shutil.rmtree(temp_root, ignore_errors=True)
     actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
@@ -418,7 +434,7 @@ def import_product_folder(
         metadata=summary,
     )
     db.commit()
-    return {"message": "Catálogo importado com sucesso", **summary}
+    return {"message": "CatÃ¡logo importado com sucesso", **summary}
 
 
 @router.get("/categories")
@@ -428,7 +444,11 @@ def get_categories(db: Session = Depends(get_db)):
             Product.category.label("id"),
             func.min(Product.categoryName).label("name"),
         )
-        .where(Product.is_active.is_(True))
+        .where(
+            Product.is_active.is_(True),
+            Product.publicado.is_(True),
+            Product.status.in_(["publicado", "ativo"]),
+        )
         .group_by(Product.category)
         .order_by(func.min(Product.categoryName), Product.category)
     ).all()
@@ -441,3 +461,7 @@ def get_categories(db: Session = Depends(get_db)):
         for row in rows
         if row.id
     ]
+
+
+
+

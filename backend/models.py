@@ -10,6 +10,7 @@ from backend.database import Base
 
 MONEY_COLUMN = Numeric(12, 2)
 PERCENT_COLUMN = Numeric(5, 2)
+RATIO_COLUMN = Numeric(8, 4)
 
 
 def utc_now():
@@ -22,6 +23,34 @@ def decimal_to_float(value):
     return float(value)
 
 
+class Supplier(Base):
+    __tablename__ = "suppliers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    nome: Mapped[str] = mapped_column(String(200))
+    whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    instagram: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    site: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    products: Mapped[list["Product"]] = relationship(back_populates="supplier")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "whatsapp": self.whatsapp,
+            "instagram": self.instagram,
+            "site": self.site,
+            "observacoes": self.observacoes,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class Product(Base):
     __tablename__ = "products"
 
@@ -31,11 +60,38 @@ class Product(Base):
     categoryName: Mapped[str] = mapped_column(String(50))
     price: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
     oldPrice: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    codigo: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
     sku: Mapped[str | None] = mapped_column(String(80), unique=True, nullable=True)
     reference: Mapped[str | None] = mapped_column(String(80), index=True, nullable=True)
+    fornecedor_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"), nullable=True)
+    material: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    banho: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    cor: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    custo_peca: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    custo_embalagem: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("9.34"))
+    custo_total: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("9.34"))
+    markup: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=Decimal("2.00"))
+    preco_pix: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_debito: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_vista: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_2x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_3x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_4x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_5x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_6x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_7x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_8x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_9x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_10x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_11x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    preco_credito_12x: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
+    margem_pix: Mapped[Decimal | None] = mapped_column(RATIO_COLUMN, nullable=True)
+    lucro_pix: Mapped[Decimal | None] = mapped_column(MONEY_COLUMN, nullable=True)
     image: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
     badge: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="rascunho")
+    publicado: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     stock_status: Mapped[str] = mapped_column(String(30), default="available")
     stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
@@ -48,6 +104,8 @@ class Product(Base):
     description: Mapped[str] = mapped_column(Text)
     features: Mapped[str | None] = mapped_column(Text, nullable=True)
     custom: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
@@ -57,6 +115,14 @@ class Product(Base):
         cascade="all, delete-orphan",
         order_by="ProductImage.position",
     )
+    stock_movements: Mapped[list["StockMovement"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by="StockMovement.created_at.desc()",
+    )
+    supplier: Mapped[Supplier | None] = relationship(back_populates="products")
+    created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_id])
+    updated_by: Mapped["User | None"] = relationship("User", foreign_keys=[updated_by_id])
     import_record: Mapped["ProductImport | None"] = relationship(
         back_populates="product",
         uselist=False,
@@ -74,17 +140,50 @@ class Product(Base):
         return {
             "id": self.id,
             "name": self.name,
+            "nome": self.name,
             "category": self.category,
+            "categoria": self.category,
             "categoryName": self.categoryName,
             "price": decimal_to_float(self.price),
             "oldPrice": decimal_to_float(self.oldPrice),
+            "codigo": self.codigo,
             "sku": self.sku,
             "reference": self.reference,
+            "fornecedor_id": self.fornecedor_id,
+            "fornecedor": self.supplier.to_dict() if self.supplier else None,
+            "material": self.material,
+            "banho": self.banho,
+            "cor": self.cor,
+            "custo_peca": decimal_to_float(self.custo_peca),
+            "custo_embalagem": decimal_to_float(self.custo_embalagem),
+            "custo_total": decimal_to_float(self.custo_total),
+            "markup": decimal_to_float(self.markup),
+            "preco_pix": decimal_to_float(self.preco_pix),
+            "preco_debito": decimal_to_float(self.preco_debito),
+            "preco_credito_vista": decimal_to_float(self.preco_credito_vista),
+            "preco_credito_2x": decimal_to_float(self.preco_credito_2x),
+            "preco_credito_3x": decimal_to_float(self.preco_credito_3x),
+            "preco_credito_4x": decimal_to_float(self.preco_credito_4x),
+            "preco_credito_5x": decimal_to_float(self.preco_credito_5x),
+            "preco_credito_6x": decimal_to_float(self.preco_credito_6x),
+            "preco_credito_7x": decimal_to_float(self.preco_credito_7x),
+            "preco_credito_8x": decimal_to_float(self.preco_credito_8x),
+            "preco_credito_9x": decimal_to_float(self.preco_credito_9x),
+            "preco_credito_10x": decimal_to_float(self.preco_credito_10x),
+            "preco_credito_11x": decimal_to_float(self.preco_credito_11x),
+            "preco_credito_12x": decimal_to_float(self.preco_credito_12x),
+            "margem_pix": decimal_to_float(self.margem_pix),
+            "lucro_pix": decimal_to_float(self.lucro_pix),
             "image": self.image,
+            "imagem_url": self.image,
             "images": images,
-            "icon": self.icon or "💎",
+            "icon": self.icon or "\U0001F48E",
             "badge": self.badge,
+            "status": self.status,
+            "publicado": self.publicado,
             "is_active": self.is_active,
+            "estoque": self.stock_quantity or 0,
+            "saldo_estoque": self.stock_quantity or 0,
             "stock_status": self.stock_status or "available",
             "stock_quantity": self.stock_quantity or 0,
             "low_stock_alert": self.low_stock_alert or 0,
@@ -98,10 +197,16 @@ class Product(Base):
                 and (self.stock_status or "available") != "out_of_stock"
             ),
             "description": self.description,
+            "descricao": self.description,
             "features": features,
             "custom": self.custom,
+            "created_by_id": self.created_by_id,
+            "updated_by_id": self.updated_by_id,
+            "created_by": self.created_by.to_dict() if self.created_by else None,
+            "updated_by": self.updated_by.to_dict() if self.updated_by else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
-
 
 class ProductImage(Base):
     __tablename__ = "product_images"
@@ -112,6 +217,131 @@ class ProductImage(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     product: Mapped[Product] = relationship(back_populates="gallery_images")
 
+
+class StockMovement(Base):
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    produto_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    tipo: Mapped[str] = mapped_column(String(20), index=True)
+    quantidade: Mapped[int] = mapped_column(Integer)
+    saldo_anterior: Mapped[int] = mapped_column(Integer)
+    saldo_atual: Mapped[int] = mapped_column(Integer)
+    motivo: Mapped[str] = mapped_column(String(200))
+    observacoes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    product: Mapped[Product] = relationship(back_populates="stock_movements")
+    created_by: Mapped["User | None"] = relationship("User")
+
+    def to_dict(self):
+        delta = self.saldo_atual - self.saldo_anterior
+        return {
+            "id": self.id,
+            "produto_id": self.produto_id,
+            "tipo": self.tipo,
+            "quantidade": self.quantidade,
+            "delta": delta,
+            "saldo_anterior": self.saldo_anterior,
+            "saldo_atual": self.saldo_atual,
+            "motivo": self.motivo,
+            "observacoes": self.observacoes,
+            "created_by_id": self.created_by_id,
+            "created_by": self.created_by.to_dict() if self.created_by else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class VJAdminOrder(Base):
+    __tablename__ = "vj_admin_pedidos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    cliente_nome: Mapped[str] = mapped_column(String(200))
+    cliente_whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    forma_pagamento: Mapped[str] = mapped_column(String(30), default="pix")
+    parcelas: Mapped[int] = mapped_column(Integer, default=1)
+    desconto_total: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    subtotal: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    taxa_pagamento: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    total: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    lucro_estimado: Mapped[Decimal] = mapped_column(MONEY_COLUMN, default=Decimal("0.00"))
+    margem_estimada: Mapped[Decimal] = mapped_column(RATIO_COLUMN, default=Decimal("0.0000"))
+    status: Mapped[str] = mapped_column(String(30), default="rascunho", index=True)
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    items: Mapped[list["VJAdminOrderItem"]] = relationship(
+        back_populates="pedido",
+        cascade="all, delete-orphan",
+        order_by="VJAdminOrderItem.id",
+    )
+    created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_id])
+    updated_by: Mapped["User | None"] = relationship("User", foreign_keys=[updated_by_id])
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "cliente_nome": self.cliente_nome,
+            "cliente_whatsapp": self.cliente_whatsapp,
+            "forma_pagamento": self.forma_pagamento,
+            "parcelas": self.parcelas,
+            "desconto_total": decimal_to_float(self.desconto_total),
+            "subtotal": decimal_to_float(self.subtotal),
+            "taxa_pagamento": decimal_to_float(self.taxa_pagamento),
+            "total": decimal_to_float(self.total),
+            "lucro_estimado": decimal_to_float(self.lucro_estimado),
+            "margem_estimada": decimal_to_float(self.margem_estimada),
+            "status": self.status,
+            "created_by_id": self.created_by_id,
+            "updated_by_id": self.updated_by_id,
+            "created_by": self.created_by.to_dict() if self.created_by else None,
+            "updated_by": self.updated_by.to_dict() if self.updated_by else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "items": [item.to_dict() for item in self.items],
+        }
+
+
+class VJAdminOrderItem(Base):
+    __tablename__ = "vj_admin_pedido_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pedido_id: Mapped[int] = mapped_column(ForeignKey("vj_admin_pedidos.id"), index=True)
+    produto_id: Mapped[int] = mapped_column(ForeignKey("products.id"), index=True)
+    quantidade: Mapped[int] = mapped_column(Integer)
+    preco_unitario: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    custo_unitario: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    taxa_percentual: Mapped[Decimal] = mapped_column(PERCENT_COLUMN, default=Decimal("0.00"))
+    lucro_unitario: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    total_item: Mapped[Decimal] = mapped_column(MONEY_COLUMN)
+    pedido: Mapped[VJAdminOrder] = relationship(back_populates="items")
+    produto: Mapped[Product] = relationship("Product")
+
+    def to_dict(self):
+        product_data = None
+        if self.produto:
+            product_data = {
+                "id": self.produto.id,
+                "codigo": self.produto.codigo,
+                "nome": self.produto.name,
+                "categoria": self.produto.category,
+                "saldo_estoque": self.produto.stock_quantity or 0,
+            }
+        return {
+            "id": self.id,
+            "pedido_id": self.pedido_id,
+            "produto_id": self.produto_id,
+            "produto": product_data,
+            "quantidade": self.quantidade,
+            "preco_unitario": decimal_to_float(self.preco_unitario),
+            "custo_unitario": decimal_to_float(self.custo_unitario),
+            "taxa_percentual": decimal_to_float(self.taxa_percentual),
+            "lucro_unitario": decimal_to_float(self.lucro_unitario),
+            "total_item": decimal_to_float(self.total_item),
+        }
 
 class ProductImport(Base):
     __tablename__ = "product_imports"
@@ -455,3 +685,9 @@ class StoreSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
+
+
+
+
+
+

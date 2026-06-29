@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import secrets
 
 import uvicorn
@@ -19,6 +19,7 @@ from backend.routers import (
     payments,
     products,
     store_settings,
+    vj_admin,
 )
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
 from backend.services.csrf import csrf_middleware
@@ -48,7 +49,7 @@ def create_app():
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_request, exc):
         errors = exc.errors()
-        message = errors[0].get("msg", "Dados inválidos") if errors else "Dados inválidos"
+        message = errors[0].get("msg", "Dados invÃ¡lidos") if errors else "Dados invÃ¡lidos"
         return JSONResponse(status_code=422, content={"error": message})
 
     @app.exception_handler(Exception)
@@ -76,6 +77,7 @@ def create_app():
     app.include_router(orders.router)
     app.include_router(catalog_pdf.router)
     app.include_router(store_settings.router)
+    app.include_router(vj_admin.router)
     app.mount("/", StaticFiles(directory=FRONTEND_ROOT, html=True), name="frontend")
     return app
 
@@ -91,3 +93,5 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.debug,
     )
+
+

@@ -3,8 +3,11 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Order, Product
+from backend.models import Order, Product, StockMovement
 from backend.services.validation import clean_text
+
+
+STOCK_MOVEMENT_TYPES = {"entrada", "saida", "ajuste"}
 
 
 def normalize_sku(value) -> str | None:
@@ -28,6 +31,13 @@ def normalize_low_stock_alert(value, *, default=1) -> int:
     return normalize_stock_quantity(value, field="low_stock_alert", default=default)
 
 
+def normalize_stock_movement_type(value) -> str:
+    movement_type = clean_text(value, field="tipo", max_length=20, required=True).lower()
+    if movement_type not in STOCK_MOVEMENT_TYPES:
+        raise ValueError("tipo deve ser entrada, saida ou ajuste")
+    return movement_type
+
+
 def sync_stock_status(product: Product) -> None:
     if product.stock_status == "preorder":
         return
@@ -45,6 +55,66 @@ def has_stock_for(product: Product, quantity: int) -> bool:
 def ensure_orderable_stock(product: Product, quantity: int) -> None:
     if not has_stock_for(product, quantity):
         raise ValueError(f"Produto sem estoque suficiente: {product.name}")
+
+
+def product_is_inactive_for_stock(product: Product) -> bool:
+    return (product.status or "").lower() == "inativo"
+
+
+def create_stock_movement(
+    db: Session,
+    product: Product,
+    *,
+    tipo,
+    quantidade,
+    motivo,
+    observacoes=None,
+    created_by_id=None,
+    allow_inactive=False,
+) -> StockMovement:
+    movement_type = normalize_stock_movement_type(tipo)
+    quantity = normalize_stock_quantity(quantidade, field="quantidade")
+    if movement_type in {"entrada", "saida"} and quantity <= 0:
+        raise ValueError("quantidade deve ser maior que zero")
+    if product_is_inactive_for_stock(product) and movement_type != "ajuste" and not allow_inactive:
+        raise ValueError("Produto inativo permite apenas ajuste administrativo de estoque")
+
+    reason = clean_text(motivo, field="motivo", max_length=200, required=True)
+    notes = clean_text(
+        observacoes,
+        field="observacoes",
+        max_length=2000,
+        required=False,
+        allow_newlines=True,
+    ) or None
+    previous_balance = product.stock_quantity or 0
+
+    if movement_type == "entrada":
+        current_balance = previous_balance + quantity
+    elif movement_type == "saida":
+        if quantity > previous_balance:
+            raise ValueError("Saida maior que o estoque disponivel")
+        current_balance = previous_balance - quantity
+    else:
+        current_balance = quantity
+
+    if current_balance < 0:
+        raise ValueError("Estoque nao pode ficar negativo")
+
+    product.stock_quantity = current_balance
+    sync_stock_status(product)
+    movement = StockMovement(
+        product=product,
+        tipo=movement_type,
+        quantidade=quantity,
+        saldo_anterior=previous_balance,
+        saldo_atual=current_balance,
+        motivo=reason,
+        observacoes=notes,
+        created_by_id=created_by_id,
+    )
+    db.add(movement)
+    return movement
 
 
 def deduct_stock_for_order(db: Session, order: Order) -> bool:
@@ -73,3 +143,4 @@ def deduct_stock_for_order(db: Session, order: Order) -> bool:
 
     order.stock_deducted = True
     return True
+

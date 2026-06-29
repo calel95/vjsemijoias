@@ -1,0 +1,7 @@
+Checking for existing servers on port 5010...
+Cleared inherited DATABASE_URL so backend/.env is authoritative.
+Applying migrations...
+Effective database URL:
+sqlite:///C:/Users/Calel/Veronica/vjsemijoias/instance/vjsemijoias.db
+Starting server at http://127.0.0.1:5010
+INFO:     127.0.0.1:62921 - "GET /api/health HTTP/1.1" 200 OK
