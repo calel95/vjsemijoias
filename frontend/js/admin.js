@@ -10,17 +10,89 @@ let currentOrderSearch = '';
 let editingId = null;
 let adminProducts = [];
 let adminOrders = [];
+let adminUsers = [];
+let adminAuditLogs = [];
+let adminCoupons = [];
 let imageUploadInitialized = false;
 let productPreviewInitialized = false;
 let catalogPdfInitialized = false;
 let storeConfigInitialized = false;
+let adminSecurityInitialized = false;
+let couponAdminInitialized = false;
 let catalogPdfItems = [];
 let productGalleryImages = [];
 let importFolderFiles = [];
 let importPreviewState = null;
+let activeOrderModalId = null;
 
+const ADMIN_PAGES = {
+    overview: {
+        title: 'Resumo do painel',
+        subtitle: 'Acompanhe indicadores gerais e escolha uma area para operar.',
+    },
+    orders: {
+        title: 'Pedidos',
+        subtitle: 'Acompanhe pagamentos, status, rastreio e entregas.',
+    },
+    settings: {
+        title: 'Frete e e-mails',
+        subtitle: 'Configure entrega, Melhor Envio e e-mails transacionais.',
+    },
+    contacts: {
+        title: 'Contatos do site',
+        subtitle: 'Controle os dados exibidos no rodape da loja.',
+    },
+    coupons: {
+        title: 'Cupons promocionais',
+        subtitle: 'Crie e acompanhe regras de desconto sem redeploy.',
+    },
+    security: {
+        title: 'Acessos e auditoria',
+        subtitle: 'Gerencie administradores e revise eventos sensiveis.',
+    },
+    products: {
+        title: 'Produtos',
+        subtitle: 'Cadastre, edite estoque e organize o catalogo da loja.',
+    },
+    catalog: {
+        title: 'Catalogo PDF',
+        subtitle: 'Monte materiais visuais para compartilhar com clientes.',
+    },
+    import: {
+        title: 'Importacao e acoes globais',
+        subtitle: 'Importe pastas, exporte dados e execute operacoes de catalogo.',
+    },
+};
+
+let activeAdminPage = 'overview';
+
+function adminPageFromHash() {
+    const page = String(window.location.hash || '').replace('#', '').trim();
+    return ADMIN_PAGES[page] ? page : 'overview';
+}
+
+function switchAdminPage(page, { updateHash = true } = {}) {
+    const nextPage = ADMIN_PAGES[page] ? page : 'overview';
+    activeAdminPage = nextPage;
+    document.querySelectorAll('[data-admin-page]').forEach(section => {
+        section.classList.toggle('active', section.dataset.adminPage === nextPage);
+    });
+    document.querySelectorAll('[data-admin-page-target]').forEach(button => {
+        const active = button.dataset.adminPageTarget === nextPage;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+    const header = ADMIN_PAGES[nextPage];
+    const title = document.getElementById('admin-page-title');
+    const subtitle = document.getElementById('admin-page-subtitle');
+    if (title) title.textContent = header.title;
+    if (subtitle) subtitle.textContent = header.subtitle;
+    if (updateHash && window.location.hash !== `#${nextPage}`) {
+        window.history.replaceState(null, '', `#${nextPage}`);
+    }
+}
 // ============================================
-// AUTENTICAÇÃO
+// AUTENTICAÃ‡ÃƒO
 // ============================================
 
 function isAuthenticated() {
@@ -29,16 +101,17 @@ function isAuthenticated() {
 
 async function handleAdminLogin(event) {
     event.preventDefault();
+    const email = document.getElementById('admin-email').value.trim();
     const password = document.getElementById('admin-password').value;
 
-    const result = await API.adminLogin(password);
+    const result = await API.adminLogin(email, password);
     if (result.success) {
         await showAdminPanel();
         showToast('Bem-vinda ao painel admin!', 'success', 'Login realizado');
     } else {
-        showToast(result.error || 'Não foi possível entrar', 'error', 'Acesso negado');
+        showToast(result.error || 'NÃ£o foi possÃ­vel entrar', 'error', 'Acesso negado');
         document.getElementById('admin-password').value = '';
-        document.getElementById('admin-password').focus();
+        document.getElementById(email ? 'admin-password' : 'admin-email').focus();
     }
 }
 
@@ -51,6 +124,7 @@ function logout() {
 async function showAdminPanel() {
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
+    switchAdminPage(adminPageFromHash(), { updateHash: false });
     const result = await API.getAdminProducts();
     if (!result.success) {
         showToast(result.error || 'Falha ao carregar produtos', 'error');
@@ -62,6 +136,8 @@ async function showAdminPanel() {
     apiLoaded = true;
     await applyStoreEnvironmentConfig();
     await loadAdminStoreConfig();
+    await loadAdminCoupons();
+    await loadAdminSecurity();
     renderAdminProducts();
     await loadAdminOrders();
     await updateStats();
@@ -80,6 +156,14 @@ async function showAdminPanel() {
     if (!storeConfigInitialized) {
         setupStoreConfigForm();
         storeConfigInitialized = true;
+    }
+    if (!couponAdminInitialized) {
+        setupCouponAdminForm();
+        couponAdminInitialized = true;
+    }
+    if (!adminSecurityInitialized) {
+        setupAdminSecurityForm();
+        adminSecurityInitialized = true;
     }
 }
 
@@ -108,14 +192,23 @@ async function applyStoreEnvironmentConfig() {
 }
 
 function setupStoreConfigForm() {
-    const form = document.getElementById('store-config-form');
-    if (!form) return;
-    form.addEventListener('submit', handleStoreConfigSubmit);
+    document.querySelectorAll('[data-store-config-form]').forEach(form => {
+        form.addEventListener('submit', handleStoreConfigSubmit);
+    });
+    document.querySelectorAll('[data-store-config]').forEach(field => {
+        field.addEventListener('input', () => {
+            renderStoreConfigSummary(readStoreConfigForm());
+            renderContactConfigPreview(readStoreConfigForm());
+        });
+        field.addEventListener('change', () => {
+            renderStoreConfigSummary(readStoreConfigForm());
+            renderContactConfigPreview(readStoreConfigForm());
+        });
+    });
 }
 
 async function loadAdminStoreConfig() {
-    const form = document.getElementById('store-config-form');
-    if (!form) return;
+    if (!document.querySelector('[data-store-config-form]')) return;
 
     const result = await API.getAdminStoreConfig();
     if (!result.success) {
@@ -124,6 +217,8 @@ async function loadAdminStoreConfig() {
     }
 
     fillStoreConfigForm(result.data.values || {});
+    renderStoreConfigSummary(result.data.values || {});
+    renderContactConfigPreview(result.data.values || {});
 }
 
 function fillStoreConfigForm(values) {
@@ -138,6 +233,70 @@ function fillStoreConfigForm(values) {
     });
 }
 
+function storeValue(values, key) {
+    return values?.[key] ?? document.querySelector(`[data-store-config="${key}"]`)?.value ?? '';
+}
+
+function shippingModeLabel(mode) {
+    return {
+        free: 'Gratis',
+        fixed: 'Fixo',
+        threshold: 'Gratis por valor minimo',
+    }[mode] || mode || '-';
+}
+
+function emailBackendLabel(backend) {
+    return {
+        console: 'Console / logs',
+        smtp: 'SMTP',
+        disabled: 'Desativado',
+    }[backend] || backend || '-';
+}
+
+function renderStoreConfigSummary(values = readStoreConfigForm()) {
+    const container = document.getElementById('store-config-summary');
+    if (!container) return;
+    const mode = storeValue(values, 'SHIPPING_MODE');
+    const fixed = storeValue(values, 'SHIPPING_FIXED_VALUE') || '0';
+    const minimum = storeValue(values, 'SHIPPING_FREE_MINIMUM') || '0';
+    const provider = storeValue(values, 'SHIPPING_PROVIDER') || 'internal';
+    const emailBackend = storeValue(values, 'EMAIL_BACKEND') || 'console';
+    const originZip = storeValue(values, 'MELHOR_ENVIO_FROM_POSTAL_CODE') || '-';
+    container.innerHTML = `
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Frete</strong><span>${escapeHTML(shippingModeLabel(mode))}</span></div><span class="coupon-status">${escapeHTML(storeValue(values, 'SHIPPING_ESTIMATED_DAYS') || '-')}</span></div>
+            <div class="admin-coupon-meta"><small>Valor: ${formatPrice(Number(fixed || 0))}</small><small>Gratis acima: ${formatPrice(Number(minimum || 0))}</small></div>
+        </div>
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Integracao</strong><span>${escapeHTML(provider)}</span></div><span class="coupon-status">${escapeHTML(originZip)}</span></div>
+            <div class="admin-coupon-meta"><small>Servicos: ${escapeHTML(storeValue(values, 'MELHOR_ENVIO_SERVICES') || '-')}</small><small>Timeout: ${escapeHTML(storeValue(values, 'MELHOR_ENVIO_TIMEOUT_SECONDS') || '-')}s</small></div>
+        </div>
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>E-mail</strong><span>${escapeHTML(emailBackendLabel(emailBackend))}</span></div><span class="coupon-status">${escapeHTML(storeValue(values, 'EMAIL_FROM_NAME') || '-')}</span></div>
+            <div class="admin-coupon-meta"><small>Remetente: ${escapeHTML(storeValue(values, 'EMAIL_FROM_ADDRESS') || '-')}</small><small>SMTP: ${escapeHTML(storeValue(values, 'EMAIL_SMTP_HOST') || '-')}</small></div>
+        </div>
+    `;
+}
+
+function renderContactConfigPreview(values = readStoreConfigForm()) {
+    const container = document.getElementById('contact-config-preview');
+    if (!container) return;
+    const instagram = String(storeValue(values, 'STORE_INSTAGRAM') || '').replace(/^@/, '');
+    container.innerHTML = `
+        <div class="admin-coupon-row">
+            <div class="admin-coupon-main"><div><strong>Contato</strong><span>${escapeHTML(storeValue(values, 'STORE_EMAIL') || '-')}</span></div><span class="coupon-status">Rodape</span></div>
+            <div class="admin-coupon-meta">
+                <small>Telefone: ${escapeHTML(storeValue(values, 'STORE_PHONE') || '-')}</small>
+                <small>WhatsApp: ${escapeHTML(storeValue(values, 'STORE_WHATSAPP') || '-')}</small>
+                <small>Instagram: ${instagram ? '@' + escapeHTML(instagram) : '-'}</small>
+                <small>Local: ${escapeHTML(storeValue(values, 'STORE_LOCATION') || '-')}</small>
+                <small>Horario: ${escapeHTML(storeValue(values, 'STORE_BUSINESS_HOURS') || '-')}</small>
+                <small>CNPJ: ${escapeHTML(storeValue(values, 'STORE_CNPJ') || '-')}</small>
+            </div>
+        </div>
+    `;
+}
+
 function readStoreConfigForm() {
     const values = {};
     document.querySelectorAll('[data-store-config]').forEach(field => {
@@ -149,7 +308,8 @@ function readStoreConfigForm() {
 
 async function handleStoreConfigSubmit(event) {
     event.preventDefault();
-    const submit = document.getElementById('store-config-submit');
+    const form = event.target;
+    const submit = form.querySelector('[data-store-config-submit]') || document.getElementById('store-config-submit');
     if (submit) {
         submit.disabled = true;
         submit.textContent = 'Salvando...';
@@ -158,7 +318,7 @@ async function handleStoreConfigSubmit(event) {
     const result = await API.updateAdminStoreConfig(readStoreConfigForm());
     if (submit) {
         submit.disabled = false;
-        submit.textContent = 'Salvar configuracoes';
+        submit.textContent = form.id === 'contact-config-form' ? 'Salvar contatos' : 'Salvar configuracoes';
     }
 
     if (!result.success) {
@@ -167,8 +327,368 @@ async function handleStoreConfigSubmit(event) {
     }
 
     fillStoreConfigForm(result.data.values || {});
+    renderStoreConfigSummary(result.data.values || {});
+    renderContactConfigPreview(result.data.values || {});
     await applyStoreEnvironmentConfig();
-    showToast('Configuracoes da loja atualizadas', 'success');
+    showToast(form.id === 'contact-config-form' ? 'Contatos atualizados' : 'Configuracoes atualizadas', 'success');
+}
+
+async function sendTestEmail() {
+    const button = document.getElementById('email-test-submit');
+    const recipientField = document.getElementById('email-test-recipient');
+    const storeEmailField = document.querySelector('[data-store-config="STORE_EMAIL"]');
+    const email = (recipientField?.value || storeEmailField?.value || '').trim();
+    if (!email) {
+        showToast('Informe um e-mail para teste', 'error');
+        return;
+    }
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Enviando...';
+    }
+
+    const saveResult = await API.updateAdminStoreConfig(readStoreConfigForm());
+    if (!saveResult.success) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Enviar teste';
+        }
+        showToast(saveResult.error || 'Falha ao salvar configuracoes de e-mail', 'error');
+        return;
+    }
+    fillStoreConfigForm(saveResult.data.values || {});
+    renderStoreConfigSummary(saveResult.data.values || {});
+    renderContactConfigPreview(saveResult.data.values || {});
+    await applyStoreEnvironmentConfig();
+
+    const result = await API.sendAdminEmailTest(email);
+    if (button) {
+        button.disabled = false;
+        button.textContent = 'Enviar teste';
+    }
+    if (!result.success) {
+        showToast(result.error || 'Falha ao enviar e-mail de teste', 'error');
+        return;
+    }
+    showToast(result.data?.message || 'E-mail de teste enviado', 'success');
+}
+
+// ============================================
+// CUPONS PROMOCIONAIS
+// ============================================
+
+function setupCouponAdminForm() {
+    const form = document.getElementById('admin-coupon-form');
+    if (!form) return;
+    form.addEventListener('submit', handleCouponSubmit);
+}
+
+async function loadAdminCoupons() {
+    const list = document.getElementById('admin-coupons-list');
+    if (!list) return;
+    const result = await API.getAdminCoupons();
+    if (!result.success) {
+        showToast(result.error || 'Falha ao carregar cupons', 'error');
+        return;
+    }
+    adminCoupons = result.data || [];
+    renderAdminCoupons();
+}
+
+function readCouponForm() {
+    return {
+        code: document.getElementById('coupon-code').value.trim(),
+        discount_type: document.getElementById('coupon-discount-type').value,
+        discount_value: document.getElementById('coupon-discount-value').value,
+        minimum_subtotal: document.getElementById('coupon-minimum-subtotal').value || '0',
+        usage_limit: document.getElementById('coupon-usage-limit').value || '0',
+        per_customer_limit: document.getElementById('coupon-per-customer-limit').value || '0',
+        starts_at: document.getElementById('coupon-starts-at').value,
+        ends_at: document.getElementById('coupon-ends-at').value,
+        is_active: document.getElementById('coupon-is-active').checked,
+    };
+}
+
+function resetCouponForm() {
+    const form = document.getElementById('admin-coupon-form');
+    if (!form) return;
+    form.reset();
+    document.getElementById('coupon-id').value = '';
+    document.getElementById('coupon-is-active').checked = true;
+    document.getElementById('coupon-minimum-subtotal').value = '0';
+    document.getElementById('coupon-usage-limit').value = '0';
+    document.getElementById('coupon-per-customer-limit').value = '0';
+    document.getElementById('coupon-form-title').textContent = 'Novo cupom';
+    document.getElementById('coupon-submit').textContent = 'Salvar cupom';
+}
+
+function dateInputValue(value) {
+    if (!value) return '';
+    return String(value).slice(0, 10);
+}
+
+function editCoupon(id) {
+    const coupon = adminCoupons.find(item => Number(item.id) === Number(id));
+    if (!coupon) return;
+    document.getElementById('coupon-id').value = coupon.id;
+    document.getElementById('coupon-code').value = coupon.code || '';
+    document.getElementById('coupon-discount-type').value = coupon.discount_type || 'percent';
+    document.getElementById('coupon-discount-value').value = coupon.discount_value || '';
+    document.getElementById('coupon-minimum-subtotal').value = coupon.minimum_subtotal || 0;
+    document.getElementById('coupon-usage-limit').value = coupon.usage_limit || 0;
+    document.getElementById('coupon-per-customer-limit').value = coupon.per_customer_limit || 0;
+    document.getElementById('coupon-starts-at').value = dateInputValue(coupon.starts_at);
+    document.getElementById('coupon-ends-at').value = dateInputValue(coupon.ends_at);
+    document.getElementById('coupon-is-active').checked = Boolean(coupon.is_active);
+    document.getElementById('coupon-form-title').textContent = `Editar ${coupon.code}`;
+    document.getElementById('coupon-submit').textContent = 'Atualizar cupom';
+}
+
+async function toggleCoupon(id) {
+    const coupon = adminCoupons.find(item => Number(item.id) === Number(id));
+    if (!coupon) return;
+    const result = await API.updateAdminCoupon(id, { is_active: !coupon.is_active });
+    if (!result.success) {
+        showToast(result.error || 'Falha ao atualizar cupom', 'error');
+        return;
+    }
+    await loadAdminCoupons();
+    showToast(coupon.is_active ? 'Cupom pausado' : 'Cupom reativado', 'success');
+}
+
+async function handleCouponSubmit(event) {
+    event.preventDefault();
+    const id = document.getElementById('coupon-id').value;
+    const submit = document.getElementById('coupon-submit');
+    const payload = readCouponForm();
+
+    if (submit) {
+        submit.disabled = true;
+        submit.textContent = id ? 'Atualizando...' : 'Criando...';
+    }
+
+    const result = id
+        ? await API.updateAdminCoupon(id, payload)
+        : await API.createAdminCoupon(payload);
+
+    if (submit) {
+        submit.disabled = false;
+        submit.textContent = id ? 'Atualizar cupom' : 'Salvar cupom';
+    }
+
+    if (!result.success) {
+        showToast(result.error || 'Falha ao salvar cupom', 'error');
+        return;
+    }
+
+    resetCouponForm();
+    await loadAdminCoupons();
+    await loadAdminSecurity();
+    showToast('Cupom salvo com sucesso', 'success');
+}
+
+function couponDiscountLabel(coupon) {
+    if (coupon.discount_type === 'fixed') {
+        return `${formatPrice(coupon.discount_value || 0)} OFF`;
+    }
+    return `${Number(coupon.discount_value || coupon.discount_percent || 0)}% OFF`;
+}
+
+function couponValidityLabel(coupon) {
+    const start = coupon.starts_at ? dateInputValue(coupon.starts_at) : 'agora';
+    const end = coupon.ends_at ? dateInputValue(coupon.ends_at) : 'sem fim';
+    return `${start} ate ${end}`;
+}
+
+function renderAdminCoupons() {
+    const container = document.getElementById('admin-coupons-list');
+    if (!container) return;
+
+    if (!adminCoupons.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">CUP</div>
+                <p>Nenhum cupom cadastrado ainda.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminCoupons.map(coupon => {
+        const redemptions = Array.isArray(coupon.redemptions) ? coupon.redemptions : [];
+        const latest = redemptions.slice(0, 3).map(redemption => `
+            <small>${escapeHTML(redemption.customer_email || redemption.customer_cpf || 'cliente')} - ${formatPrice(redemption.discount_amount || 0)}</small>
+        `).join('');
+        const usageLimit = coupon.usage_limit > 0 ? coupon.usage_limit : 'sem limite';
+        const perCustomer = coupon.per_customer_limit > 0 ? coupon.per_customer_limit : 'sem limite';
+        return `
+            <div class="admin-coupon-row ${coupon.is_active ? '' : 'inactive'}">
+                <div class="admin-coupon-main">
+                    <div>
+                        <strong>${escapeHTML(coupon.code)}</strong>
+                        <span>${escapeHTML(couponDiscountLabel(coupon))}</span>
+                    </div>
+                    <span class="coupon-status">${coupon.is_active ? 'Ativo' : 'Pausado'}</span>
+                </div>
+                <div class="admin-coupon-meta">
+                    <small>Usos: ${coupon.used_count || 0}/${usageLimit}</small>
+                    <small>Por cliente: ${perCustomer}</small>
+                    <small>Minimo: ${formatPrice(coupon.minimum_subtotal || 0)}</small>
+                    <small>Validade: ${escapeHTML(couponValidityLabel(coupon))}</small>
+                </div>
+                ${latest ? `<div class="admin-coupon-redemptions">${latest}</div>` : ''}
+                <div class="admin-coupon-actions">
+                    <button class="btn btn-outline" type="button" onclick="editCoupon(${coupon.id})">Editar</button>
+                    <button class="btn btn-outline" type="button" onclick="toggleCoupon(${coupon.id})">
+                        ${coupon.is_active ? 'Pausar' : 'Reativar'}
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ============================================
+// ADMINISTRADORES E AUDITORIA
+// ============================================
+
+function setupAdminSecurityForm() {
+    const form = document.getElementById('admin-user-form');
+    if (!form) return;
+    form.addEventListener('submit', handleAdminUserSubmit);
+}
+
+async function loadAdminSecurity() {
+    const usersResult = await API.getAdminUsers();
+    if (usersResult.success) {
+        adminUsers = usersResult.data || [];
+        renderAdminUsers();
+    }
+
+    const logsResult = await API.getAdminAuditLogs(80);
+    if (logsResult.success) {
+        adminAuditLogs = logsResult.data || [];
+        renderAdminAuditLogs();
+    }
+}
+
+function adminAuditLabel(action) {
+    return {
+        'admin.login.succeeded': 'Login admin realizado',
+        'admin.login.failed': 'Tentativa de login falhou',
+        'admin.user.created': 'Administrador criado',
+        'store.config.updated': 'Configuracoes da loja alteradas',
+        'catalog.imported': 'Catalogo importado',
+        'catalog.cleared': 'Catalogo limpo',
+        'coupon.created': 'Cupom criado',
+        'coupon.updated': 'Cupom alterado',
+    }[action] || action || 'Evento';
+}
+
+function adminAuditDetail(log) {
+    const metadata = log.metadata || {};
+    if (Array.isArray(metadata.sensitive_keys) && metadata.sensitive_keys.length) {
+        return `Campos sensiveis: ${metadata.sensitive_keys.join(', ')}`;
+    }
+    if (Array.isArray(metadata.changed_keys) && metadata.changed_keys.length) {
+        return `Campos: ${metadata.changed_keys.join(', ')}`;
+    }
+    if (typeof metadata.deleted === 'number') {
+        return `${metadata.deleted} produtos removidos`;
+    }
+    if (typeof metadata.products === 'number') {
+        return `${metadata.products} produtos, ${metadata.images || 0} imagens`;
+    }
+    if (metadata.email) {
+        return metadata.email;
+    }
+    return log.resource || '';
+}
+
+function renderAdminUsers() {
+    const container = document.getElementById('admin-users-list');
+    if (!container) return;
+
+    if (!adminUsers.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">ADM</div>
+                <p>Nenhum administrador encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminUsers.map(user => `
+        <div class="admin-user-row">
+            <div>
+                <strong>${escapeHTML(user.name || user.email)}</strong>
+                <span>${escapeHTML(user.email || '')}</span>
+            </div>
+            <div>
+                <small>Criado em ${formatOrderDate(user.created_at)}</small>
+                <small>Ultimo login ${formatOrderDate(user.last_login_at)}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+function renderAdminAuditLogs() {
+    const container = document.getElementById('admin-audit-list');
+    if (!container) return;
+
+    if (!adminAuditLogs.length) {
+        container.innerHTML = `
+            <div class="empty-admin-list">
+                <div class="icon">LOG</div>
+                <p>Nenhum log encontrado</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = adminAuditLogs.map(log => `
+        <div class="admin-audit-row ${String(log.action || '').includes('failed') ? 'warning' : ''}">
+            <div>
+                <strong>${escapeHTML(adminAuditLabel(log.action))}</strong>
+                <span>${escapeHTML(adminAuditDetail(log))}</span>
+            </div>
+            <div>
+                <small>${formatOrderDate(log.created_at)}</small>
+                <small>${escapeHTML(log.ip_address || '')}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function handleAdminUserSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const name = document.getElementById('new-admin-name').value.trim();
+    const email = document.getElementById('new-admin-email').value.trim();
+    const password = document.getElementById('new-admin-password').value;
+    const submit = document.getElementById('admin-user-submit');
+
+    if (submit) {
+        submit.disabled = true;
+        submit.textContent = 'Criando...';
+    }
+
+    const result = await API.createAdminUser({ name, email, password });
+
+    if (submit) {
+        submit.disabled = false;
+        submit.textContent = 'Criar admin';
+    }
+
+    if (!result.success) {
+        showToast(result.error || 'Falha ao criar administrador', 'error');
+        return;
+    }
+
+    form.reset();
+    await loadAdminSecurity();
+    showToast('Administrador criado com sucesso', 'success');
 }
 
 // ============================================
@@ -265,7 +785,7 @@ function renderProductGalleryPreview() {
     if (productGalleryImages.length === 0) {
         preview.innerHTML = `
             <div class="upload-placeholder">
-                <div style="font-size: 3rem;">📷</div>
+                <div style="font-size: 3rem;">ðŸ“·</div>
                 <p>Clique ou arraste as imagens</p>
                 <small>PNG, JPG ate 5MB cada</small>
             </div>
@@ -299,7 +819,7 @@ function syncImageFromUrl() {
 }
 
 // ============================================
-// FORMULÁRIO
+// FORMULÃRIO
 // ============================================
 
 function escapeHTML(value) {
@@ -309,6 +829,10 @@ function escapeHTML(value) {
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
+}
+
+function escapeJSString(value) {
+    return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 function badgeLabel(badge) {
@@ -355,11 +879,20 @@ function currentFormProduct() {
         categoryName: categoryMap[category] || category,
         price: parseFloat(document.getElementById('product-price').value) || 0,
         oldPrice: parseFloat(document.getElementById('product-old-price').value) || null,
+        sku: document.getElementById('product-sku')?.value.trim() || '',
+        reference: document.getElementById('product-reference')?.value.trim() || '',
         image: productGalleryImages[0] || '',
-        icon: document.getElementById('product-icon').value.trim() || '💎',
+        icon: document.getElementById('product-icon').value.trim() || 'ðŸ’Ž',
         badge: document.getElementById('product-badge').value || null,
         is_active: document.getElementById('product-active')?.checked ?? true,
         stock_status: document.getElementById('product-stock-status')?.value || 'available',
+        stock_quantity: parseInt(document.getElementById('product-stock-quantity')?.value || '0', 10) || 0,
+        low_stock_alert: parseInt(document.getElementById('product-low-stock-alert')?.value || '0', 10) || 0,
+        weight_grams: parseInt(document.getElementById('product-weight-grams')?.value || '100', 10) || 100,
+        height_cm: parseFloat(document.getElementById('product-height-cm')?.value || '2') || 2,
+        width_cm: parseFloat(document.getElementById('product-width-cm')?.value || '10') || 10,
+        length_cm: parseFloat(document.getElementById('product-length-cm')?.value || '15') || 15,
+        shipping_profile: document.getElementById('product-shipping-profile')?.value.trim() || 'default',
         description: document.getElementById('product-description').value.trim(),
     };
 }
@@ -383,11 +916,14 @@ function renderProductFormPreview() {
         : `<span class="preview-status ${product.stock_status}">${stockLabel(product.stock_status)}</span>`;
     const imageHTML = product.image
         ? `<img src="${escapeHTML(product.image)}" alt="${escapeHTML(product.name || 'Produto')}">`
-        : `<div class="placeholder">${escapeHTML(product.icon || '💎')}</div>`;
+        : `<div class="placeholder">${escapeHTML(product.icon || 'ðŸ’Ž')}</div>`;
     const priceHTML = product.price ? formatPrice(product.price) : 'R$ 0,00';
     const oldPriceHTML = product.oldPrice
         ? `<span class="old-price">${formatPrice(product.oldPrice)}</span>`
         : '';
+    const referenceHTML = product.reference ? `<small>Referencia: ${escapeHTML(product.reference)}</small>` : '';
+    const stockHTML = `<small>SKU: ${escapeHTML(product.sku || 'sem SKU')} | Estoque: ${product.stock_quantity}</small>`;
+    const shippingHTML = `<small>Frete: ${product.weight_grams}g | ${product.length_cm} x ${product.width_cm} x ${product.height_cm} cm</small>`;
 
     container.className = 'admin-product-preview';
     container.innerHTML = `
@@ -403,6 +939,9 @@ function renderProductFormPreview() {
                 </div>
                 <strong>${escapeHTML(product.name || 'Nome do produto')}</strong>
                 <p>${escapeHTML(product.description || 'Descricao curta do produto.')}</p>
+                ${referenceHTML}
+                ${stockHTML}
+                ${shippingHTML}
                 <div class="preview-price">${oldPriceHTML}${priceHTML}</div>
             </div>
         </div>
@@ -428,28 +967,37 @@ async function handleProductSubmit(event) {
         .split('\n')
         .map(f => f.trim())
         .filter(f => f.length > 0)
-        .map(f => f.startsWith('✓') ? f : `✓ ${f}`);
+        .map(f => f.startsWith('âœ“') ? f : `âœ“ ${f}`);
     
     data.images = [...productGalleryImages];
     data.image = data.images[0] || null;
     
-    // Define ícone padrão se não informado
+    // Define Ã­cone padrÃ£o se nÃ£o informado
     if (!data.icon) {
         const iconMap = {
-            'brincos': '✨',
-            'colares': '📿',
-            'pulseiras': '⚜️',
-            'aneis': '💍',
-            'pingentes': '🔮',
-            'chaveiros': '🔑',
-            'conjuntos': '🎁'
+            'brincos': 'âœ¨',
+            'colares': 'ðŸ“¿',
+            'pulseiras': 'âšœï¸',
+            'aneis': 'ðŸ’',
+            'pingentes': 'ðŸ”®',
+            'chaveiros': 'ðŸ”‘',
+            'conjuntos': 'ðŸŽ'
         };
-        data.icon = iconMap[data.category] || '💎';
+        data.icon = iconMap[data.category] || 'ðŸ’Ž';
     }
     
-    // Converte preços
+    // Converte preÃ§os
     data.price = parseFloat(data.price) || 0;
     data.oldPrice = data.oldPrice ? parseFloat(data.oldPrice) : null;
+    data.sku = data.sku || null;
+    data.reference = data.reference || null;
+    data.stock_quantity = parseInt(data.stock_quantity || '0', 10);
+    data.low_stock_alert = parseInt(data.low_stock_alert || '0', 10);
+    data.weight_grams = parseInt(data.weight_grams || '100', 10);
+    data.height_cm = parseFloat(data.height_cm || '2');
+    data.width_cm = parseFloat(data.width_cm || '10');
+    data.length_cm = parseFloat(data.length_cm || '15');
+    data.shipping_profile = data.shipping_profile || 'default';
     data.is_active = document.getElementById('product-active')?.checked ?? true;
     data.stock_status = document.getElementById('product-stock-status')?.value || 'available';
     
@@ -461,16 +1009,16 @@ async function handleProductSubmit(event) {
         'brincos': 'Brincos',
         'colares': 'Colares',
         'pulseiras': 'Pulseiras',
-        'aneis': 'Anéis',
+        'aneis': 'AnÃ©is',
         'pingentes': 'Pingentes',
         'chaveiros': 'Chaveiros',
         'conjuntos': 'Conjuntos'
     };
     data.categoryName = categoryMap[data.category] || data.category;
     
-    // Validações
+    // ValidaÃ§Ãµes
     if (!data.name || !data.category || !data.price || !data.description) {
-        showToast('Preencha todos os campos obrigatórios', 'error', 'Campos vazios');
+        showToast('Preencha todos os campos obrigatÃ³rios', 'error', 'Campos vazios');
         return;
     }
     
@@ -499,8 +1047,15 @@ function resetForm() {
     document.getElementById('product-form').reset();
     document.getElementById('product-active').checked = true;
     document.getElementById('product-stock-status').value = 'available';
+    document.getElementById('product-stock-quantity').value = '1';
+    document.getElementById('product-low-stock-alert').value = '1';
+    document.getElementById('product-weight-grams').value = '100';
+    document.getElementById('product-height-cm').value = '2.00';
+    document.getElementById('product-width-cm').value = '10.00';
+    document.getElementById('product-length-cm').value = '15.00';
+    document.getElementById('product-shipping-profile').value = 'default';
     setProductGalleryImages([]);
-    document.getElementById('form-title').textContent = '➕ Adicionar Novo Produto';
+    document.getElementById('form-title').textContent = 'âž• Adicionar Novo Produto';
     editingId = null;
     renderProductFormPreview();
 }
@@ -510,19 +1065,28 @@ function editProduct(id) {
     if (!product) return;
     
     editingId = id;
-    document.getElementById('form-title').textContent = '✏️ Editar Produto';
+    document.getElementById('form-title').textContent = 'âœï¸ Editar Produto';
     
     document.getElementById('product-id').value = id;
     document.getElementById('product-name').value = product.name;
     document.getElementById('product-category').value = product.category;
     document.getElementById('product-price').value = product.price;
     document.getElementById('product-old-price').value = product.oldPrice || '';
+    document.getElementById('product-sku').value = product.sku || '';
+    document.getElementById('product-reference').value = product.reference || '';
     document.getElementById('product-icon').value = product.icon || '';
     document.getElementById('product-badge').value = product.badge || '';
     document.getElementById('product-active').checked = product.is_active !== false;
     document.getElementById('product-stock-status').value = product.stock_status || 'available';
+    document.getElementById('product-stock-quantity').value = product.stock_quantity ?? 0;
+    document.getElementById('product-low-stock-alert').value = product.low_stock_alert ?? 1;
+    document.getElementById('product-weight-grams').value = product.weight_grams ?? 100;
+    document.getElementById('product-height-cm').value = product.height_cm ?? 2;
+    document.getElementById('product-width-cm').value = product.width_cm ?? 10;
+    document.getElementById('product-length-cm').value = product.length_cm ?? 15;
+    document.getElementById('product-shipping-profile').value = product.shipping_profile || 'default';
     document.getElementById('product-description').value = product.description;
-    document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^✓\s*/, '')).join('\n');
+    document.getElementById('product-features').value = (product.features || []).map(f => f.replace(/^âœ“\s*/, '')).join('\n');
     setProductGalleryImages(
         Array.isArray(product.images) && product.images.length
             ? product.images
@@ -537,7 +1101,7 @@ function editProduct(id) {
 function deleteProduct(id) {
     showConfirmModal(
         'Excluir Produto',
-        'Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.',
+        'Tem certeza que deseja excluir este produto? Esta aÃ§Ã£o nÃ£o pode ser desfeita.',
         async () => {
             const result = await API.deleteProduct(id);
             if (!result.success) {
@@ -545,7 +1109,34 @@ function deleteProduct(id) {
                 return;
             }
             await showAdminPanel();
-            showToast('Produto excluído', 'info', 'Removido');
+            showToast('Produto excluÃ­do', 'info', 'Removido');
+        }
+    );
+}
+
+function confirmClearCatalog() {
+    showConfirmModal(
+        'Limpar Catalogo',
+        'Esta acao apaga todos os produtos do catalogo. Clique em Confirmar e digite LIMPAR CATALOGO para continuar.',
+        async () => {
+            const typed = window.prompt('Digite LIMPAR CATALOGO para confirmar a limpeza do catalogo:');
+            if (typed !== 'LIMPAR CATALOGO') {
+                showToast('Confirmacao incorreta. O catalogo foi preservado.', 'info', 'Acao cancelada');
+                return;
+            }
+
+            const result = await API.deleteAllProducts(typed);
+            if (!result.success) {
+                showToast(result.error || 'Erro ao limpar catalogo', 'error', 'Limpeza falhou');
+                return;
+            }
+
+            adminProducts = [];
+            apiProductsCache = [];
+            apiLoaded = false;
+            renderAdminProducts();
+            await updateStats();
+            showToast(`${result.data.deleted || 0} produtos removidos.`, 'success', 'Catalogo limpo');
         }
     );
 }
@@ -563,6 +1154,8 @@ function renderAdminProducts() {
         products = products.filter(p => p.custom);
     } else if (currentFilter === 'inactive') {
         products = products.filter(p => p.is_active === false);
+    } else if (currentFilter === 'low_stock') {
+        products = products.filter(p => p.stock_is_low);
     } else if (currentFilter === 'out_of_stock') {
         products = products.filter(p => p.stock_status === 'out_of_stock');
     } else if (currentFilter !== 'all') {
@@ -574,14 +1167,16 @@ function renderAdminProducts() {
         const search = currentSearch.toLowerCase();
         products = products.filter(p => 
             p.name.toLowerCase().includes(search) ||
-            p.description.toLowerCase().includes(search)
+            p.description.toLowerCase().includes(search) ||
+            String(p.sku || '').toLowerCase().includes(search) ||
+            String(p.reference || '').toLowerCase().includes(search)
         );
     }
     
     if (products.length === 0) {
         container.innerHTML = `
             <div class="empty-admin-list">
-                <div class="icon">📦</div>
+                <div class="icon">ðŸ“¦</div>
                 <p>Nenhum produto encontrado</p>
             </div>
         `;
@@ -590,12 +1185,12 @@ function renderAdminProducts() {
     
     container.innerHTML = products.map(p => {
         const thumbHTML = p.image ? 
-            `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${p.icon || '💎'}';">` :
-            (p.icon || '💎');
+            `<img src="${p.image}" alt="${p.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='${p.icon || 'ðŸ’Ž'}';">` :
+            (p.icon || 'ðŸ’Ž');
         
         const badgeHTML = p.custom
             ? '<span class="badge-mini custom">NOVO</span>'
-            : '<span class="badge-mini fixed">CATÁLOGO</span>';
+            : '<span class="badge-mini fixed">CATÃLOGO</span>';
         
         const storefrontBadgeLabel = badgeLabel(p.badge);
         const storefrontBadge = storefrontBadgeLabel
@@ -605,17 +1200,24 @@ function renderAdminProducts() {
             ? '<span class="badge-mini inactive">INATIVO</span>'
             : '<span class="badge-mini active">ATIVO</span>';
         const stockBadge = `<span class="badge-mini stock ${p.stock_status || 'available'}">${stockLabel(p.stock_status)}</span>`;
+        const lowStockBadge = p.stock_is_low ? '<span class="badge-mini stock low">BAIXO</span>' : '';
+        const referenceMeta = p.reference ? `Referencia ${escapeHTML(p.reference)} | ` : '';
+        const stockMeta = `${referenceMeta}SKU ${escapeHTML(p.sku || '-')} | Estoque ${p.stock_quantity ?? 0}`;
+        const shippingMeta = `${p.weight_grams ?? 100}g | ${p.length_cm ?? 15} x ${p.width_cm ?? 10} x ${p.height_cm ?? 2} cm`;
         
         return `
             <div class="admin-product-item">
                 <div class="admin-product-thumb">${thumbHTML}</div>
                 <div class="admin-product-info">
                     <h4>${p.name}</h4>
+                    <p>${stockMeta}</p>
+                    <p>${shippingMeta}</p>
                     <div class="product-meta">
                         <span class="admin-product-price">${formatPrice(p.price)}</span>
                         ${storefrontBadge}
                         ${activeBadge}
                         ${stockBadge}
+                        ${lowStockBadge}
                         ${badgeHTML}
                     </div>
                 </div>
@@ -639,7 +1241,7 @@ async function updateStats() {
     document.getElementById('stat-categories').textContent = categories;
     document.getElementById('stat-avg-price').textContent = formatPrice(avgPrice);
     document.getElementById('stat-orders-pending').textContent =
-        adminOrders.filter(order => order.status === 'pending').length;
+        adminOrders.filter(order => ['pending', 'payment_pending'].includes(order.status)).length;
     document.getElementById('stat-orders-paid').textContent =
         adminOrders.filter(order => ['paid', 'processing', 'shipped', 'delivered'].includes(order.status)).length;
 }
@@ -648,9 +1250,16 @@ async function updateStats() {
 // PEDIDOS
 // ============================================
 
+function orderStatusOptions(selectedStatus = '') {
+    const statuses = ['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'];
+    return statuses.map(status => `
+        <option value="${status}" ${status === selectedStatus ? 'selected' : ''}>${orderStatusLabel(status)}</option>
+    `).join('');
+}
 function orderStatusLabel(status) {
     return {
         pending: 'Pendente',
+        payment_pending: 'Aguardando pagamento',
         paid: 'Pago',
         processing: 'Em separacao',
         shipped: 'Enviado',
@@ -680,6 +1289,31 @@ function orderItemsSummary(order) {
         .slice(0, 3)
         .map(item => `${item.quantity || 1}x ${item.name || `Produto ${item.id}`}`)
         .join(', ') + (items.length > 3 ? ` +${items.length - 3}` : '');
+}
+
+function orderEventsTimeline(order) {
+    const events = Array.isArray(order.events) ? order.events : [];
+    if (!events.length) return '';
+    return `
+        <div class="order-events-timeline">
+            ${events.slice(-4).map(event => `
+                <div class="order-event-row">
+                    <span>${escapeHTML(event.message || orderStatusLabel(event.status))}</span>
+                    <small>${formatOrderDate(event.created_at)}</small>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function orderTrackingSummary(order) {
+    if (!order.tracking_code && !order.tracking_carrier) return '';
+    return `
+        <div class="order-tracking-summary">
+            <span>Rastreio: ${escapeHTML(order.tracking_code || '-')}</span>
+            <small>${escapeHTML(order.tracking_carrier || 'Transportadora nao informada')}</small>
+        </div>
+    `;
 }
 
 async function loadAdminOrders() {
@@ -734,29 +1368,95 @@ function renderAdminOrders() {
                 <span>${escapeHTML(order.customer_phone || '')}</span>
             </div>
             <p class="order-items-summary">${escapeHTML(orderItemsSummary(order))}</p>
+            ${orderTrackingSummary(order)}
+            ${orderEventsTimeline(order)}
             <div class="order-footer">
                 <strong>${formatPrice(order.total || 0)}</strong>
-                <select onchange="changeOrderStatus('${escapeHTML(order.id)}', this.value)">
-                    ${['pending', 'paid', 'processing', 'shipped', 'delivered', 'canceled', 'failed'].map(status => `
-                        <option value="${status}" ${order.status === status ? 'selected' : ''}>${orderStatusLabel(status)}</option>
-                    `).join('')}
-                </select>
+                <button class="btn btn-outline order-manage-btn" type="button" onclick="openOrderModal('${escapeJSString(order.id)}')">Gerenciar</button>
             </div>
         </article>
     `).join('');
 }
 
-async function changeOrderStatus(orderId, status) {
-    const result = await API.updateOrderStatus(orderId, status);
+function orderModalItemsHTML(order) {
+    const items = Array.isArray(order.items) ? order.items : [];
+    if (!items.length) return '<p class="empty-admin-list">Nenhum item registrado.</p>';
+    return items.map(item => `
+        <div class="order-modal-row">
+            <span>${escapeHTML(item.quantity || 1)}x ${escapeHTML(item.name || `Produto ${item.id || ''}`)}</span>
+            <strong>${formatPrice((item.price || 0) * (item.quantity || 1))}</strong>
+        </div>
+    `).join('');
+}
+
+function orderModalEventsHTML(order) {
+    const events = Array.isArray(order.events) ? [...order.events].reverse() : [];
+    if (!events.length) return '<p class="empty-admin-list">Nenhum historico registrado.</p>';
+    return events.map(event => `
+        <div class="order-modal-event">
+            <span>${escapeHTML(event.message || orderStatusLabel(event.status))}</span>
+            <small>${formatOrderDate(event.created_at)}</small>
+        </div>
+    `).join('');
+}
+
+function openOrderModal(orderId) {
+    const order = adminOrders.find(item => item.id === orderId);
+    if (!order) return;
+    activeOrderModalId = orderId;
+    document.getElementById('order-modal-title').textContent = `Pedido ${order.id}`;
+    document.getElementById('order-modal-subtitle').textContent = `${order.customer_name || 'Cliente'} - ${formatOrderDate(order.created_at)}`;
+    document.getElementById('order-modal-status').innerHTML = orderStatusOptions(order.status);
+    document.getElementById('order-modal-tracking-code').value = order.tracking_code || '';
+    document.getElementById('order-modal-tracking-carrier').value = order.tracking_carrier || '';
+    document.getElementById('order-modal-summary').innerHTML = `
+        <div><span>Cliente</span><strong>${escapeHTML(order.customer_name || '-')}</strong></div>
+        <div><span>E-mail</span><strong>${escapeHTML(order.customer_email || '-')}</strong></div>
+        <div><span>Total</span><strong>${formatPrice(order.total || 0)}</strong></div>
+        <div><span>Frete</span><strong>${escapeHTML(order.shipping_company || order.shipping_service || order.shipping_provider || 'Frete')}</strong></div>
+        <div><span>Destino</span><strong>${escapeHTML([order.address_city, order.address_state].filter(Boolean).join('/') || '-')}</strong></div>
+    `;
+    document.getElementById('order-modal-items').innerHTML = orderModalItemsHTML(order);
+    document.getElementById('order-modal-events').innerHTML = orderModalEventsHTML(order);
+    document.getElementById('order-modal').classList.add('active');
+    document.getElementById('order-modal').setAttribute('aria-hidden', 'false');
+}
+
+function closeOrderModal() {
+    activeOrderModalId = null;
+    document.getElementById('order-modal')?.classList.remove('active');
+    document.getElementById('order-modal')?.setAttribute('aria-hidden', 'true');
+}
+
+async function changeOrderStatus(orderId, status, payload = {}) {
+    const result = await API.updateOrderStatus(orderId, status, payload);
     if (!result.success) {
         showToast(result.error || 'Erro ao atualizar pedido', 'error');
-        return;
+        return false;
     }
     const index = adminOrders.findIndex(order => order.id === orderId);
     if (index >= 0) adminOrders[index] = result.data;
     renderAdminOrders();
     updateStats();
     showToast('Status do pedido atualizado', 'success');
+    return true;
+}
+
+async function saveOrderModal(event) {
+    event.preventDefault();
+    if (!activeOrderModalId) return;
+    const submit = document.getElementById('order-modal-submit');
+    const status = document.getElementById('order-modal-status').value;
+    const payload = {
+        tracking_code: document.getElementById('order-modal-tracking-code').value.trim(),
+        tracking_carrier: document.getElementById('order-modal-tracking-carrier').value.trim(),
+    };
+    submit.disabled = true;
+    submit.textContent = 'Salvando...';
+    const success = await changeOrderStatus(activeOrderModalId, status, payload);
+    submit.disabled = false;
+    submit.textContent = 'Salvar pedido';
+    if (success) closeOrderModal();
 }
 
 // ============================================
@@ -769,13 +1469,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.success && result.data.is_admin) {
             await showAdminPanel();
         } else {
-            sessionStorage.removeItem('vj_admin_token');
+            sessionStorage.removeItem('vj_admin_authenticated');
             document.getElementById('login-screen').style.display = 'flex';
         }
     } else {
         document.getElementById('login-screen').style.display = 'flex';
     }
     
+    window.addEventListener('hashchange', () => {
+        if (document.getElementById('admin-panel')?.style.display !== 'none') {
+            switchAdminPage(adminPageFromHash(), { updateHash: false });
+        }
+    });
+
     // Filtros
     document.querySelectorAll('.admin-filters .filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -833,7 +1539,7 @@ function exportProducts() {
     link.download = `vj-produtos-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    showToast('Produtos exportados!', 'success', '📥 Download');
+    showToast('Produtos exportados!', 'success', 'ðŸ“¥ Download');
 }
 
 function importFilePath(file) {
@@ -1093,6 +1799,21 @@ async function confirmImportProducts() {
 }
 
 async function uploadValidatedImport(files) {
+    const storageStatus = await API.getStorageStatus();
+    const isRemoteHost = !['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+    if (
+        storageStatus.success &&
+        isRemoteHost &&
+        storageStatus.data.backend !== 'r2'
+    ) {
+        showToast(
+            'Storage remoto nao esta usando R2. Configure STORAGE_BACKEND=r2 no Render antes de importar.',
+            'error',
+            'Importacao bloqueada'
+        );
+        return;
+    }
+
     showToast(
         `Enviando ${files.length} arquivos...`,
         'info',
@@ -1124,9 +1845,9 @@ async function legacyImportProducts(event) {
     });
     if (!hasManifest) {
         showToast(
-            'Selecione a pasta completa que contém manifest.json',
+            'Selecione a pasta completa que contÃ©m manifest.json',
             'error',
-            'Pasta inválida'
+            'Pasta invÃ¡lida'
         );
         event.target.value = '';
         return;
@@ -1135,13 +1856,13 @@ async function legacyImportProducts(event) {
     showToast(
         `Enviando ${files.length} arquivos...`,
         'info',
-        'Importando catálogo'
+        'Importando catÃ¡logo'
     );
     const result = await API.importProductFolder(files);
     event.target.value = '';
 
     if (!result.success) {
-        showToast(result.error, 'error', 'Erro na importação');
+        showToast(result.error, 'error', 'Erro na importaÃ§Ã£o');
         return;
     }
 
@@ -1149,12 +1870,12 @@ async function legacyImportProducts(event) {
     showToast(
         `${result.data.products} produtos processados, ${result.data.images} imagens.`,
         'success',
-        'Catálogo importado'
+        'CatÃ¡logo importado'
     );
 }
 
 // ============================================
-// MODAL DE CONFIRMAÇÃO
+// MODAL DE CONFIRMAÃ‡ÃƒO
 // ============================================
 
 // ============================================
@@ -1297,9 +2018,9 @@ function renderCatalogPdfItems() {
                 </div>
             </div>
             <div class="catalog-product-controls">
-                <button type="button" onclick="moveCatalogPdfItem(${index}, -1)" title="Subir">↑</button>
-                <button type="button" onclick="moveCatalogPdfItem(${index}, 1)" title="Descer">↓</button>
-                <button type="button" class="danger" onclick="removeCatalogPdfItem(${index})" title="Remover">×</button>
+                <button type="button" onclick="moveCatalogPdfItem(${index}, -1)" title="Subir">â†‘</button>
+                <button type="button" onclick="moveCatalogPdfItem(${index}, 1)" title="Descer">â†“</button>
+                <button type="button" class="danger" onclick="removeCatalogPdfItem(${index})" title="Remover">Ã—</button>
             </div>
         </div>
     `).join('');

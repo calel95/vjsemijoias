@@ -10,8 +10,18 @@ from backend.config import settings
 from backend.database import get_db
 from backend.infinitepay_client import InfinitePayError, checkout_token
 from backend.models import Payment
-from backend.services.orders import create_local_order, validate_order_data
+from backend.services.orders import (
+    create_local_order,
+    existing_order_by_idempotency_key,
+    validate_order_data,
+)
+from backend.services.order_events import record_status_event
 from backend.services.payments import cents, infinitepay, public_url, update_infinitepay_payment
+from backend.services.stock import deduct_stock_for_order
+from backend.services.transactional_emails import (
+    send_order_created_email,
+    send_payment_approved_email,
+)
 from backend.store_config import effective_store_settings
 
 
@@ -53,10 +63,25 @@ def create_infinitepay_checkout(
     db: Session = Depends(get_db),
 ):
     try:
+        existing_order = existing_order_by_idempotency_key(db, data)
+        if existing_order and existing_order.payment and existing_order.payment.checkout_url:
+            return {
+                "order": existing_order.to_dict(),
+                "payment": existing_order.payment.to_dict(),
+                "checkout_url": existing_order.payment.checkout_url,
+                "reused": True,
+            }
         totals = validate_order_data(db, data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    order = create_local_order(db, data, totals, "infinitepay_checkout", claims)
+    order = create_local_order(
+        db,
+        data,
+        totals,
+        "infinitepay_checkout",
+        claims,
+        initial_status="payment_pending",
+    )
     payment = Payment(
         order=order,
         checkout_token=checkout_token(),
@@ -97,11 +122,19 @@ def create_infinitepay_checkout(
                 "A InfinitePay não retornou o link de pagamento",
                 details=provider_order,
             )
+        payment.checkout_url = checkout_url
         db.commit()
+        send_order_created_email(order, payment)
     except InfinitePayError as exc:
         payment.status = "failed"
         payment.status_detail = str(exc)
         order.status = "failed"
+        record_status_event(
+            db,
+            order,
+            "failed",
+            metadata={"provider": "infinitepay", "reason": str(exc)},
+        )
         db.commit()
         return JSONResponse(
             status_code=exc.status_code,
@@ -144,8 +177,25 @@ def confirm_infinitepay_payment(
                 "capture_method": data.get("capture_method"),
             }
         )
-        update_infinitepay_payment(payment, provider_data)
+        was_paid = payment.status == "paid" and payment.order.status == "paid"
+        send_paid_email = False
+        if update_infinitepay_payment(payment, provider_data):
+            deduct_stock_for_order(db, payment.order)
+            if not was_paid:
+                send_paid_email = True
+                record_status_event(
+                    db,
+                    payment.order,
+                    "paid",
+                    metadata={
+                        "provider": "infinitepay",
+                        "transaction_nsu": data["transaction_nsu"],
+                        "slug": data["slug"],
+                    },
+                )
         db.commit()
+        if send_paid_email:
+            send_payment_approved_email(payment.order, payment)
     except (InfinitePayError, ValueError) as exc:
         return JSONResponse(
             status_code=getattr(exc, "status_code", 400),
@@ -181,8 +231,26 @@ def infinitepay_webhook(
                 "capture_method": data.get("capture_method"),
             }
         )
-        update_infinitepay_payment(payment, provider_data)
+        was_paid = payment.status == "paid" and payment.order.status == "paid"
+        send_paid_email = False
+        if update_infinitepay_payment(payment, provider_data):
+            deduct_stock_for_order(db, payment.order)
+            if not was_paid:
+                send_paid_email = True
+                record_status_event(
+                    db,
+                    payment.order,
+                    "paid",
+                    metadata={
+                        "provider": "infinitepay",
+                        "transaction_nsu": transaction_nsu,
+                        "slug": slug,
+                        "source": "webhook",
+                    },
+                )
         db.commit()
+        if send_paid_email:
+            send_payment_approved_email(payment.order, payment)
     except (InfinitePayError, ValueError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"received": True}

@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: vjsemijoias-dev
+    runtime: python
+    plan: free
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run alembic upgrade head && uv run uvicorn backend.app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/ready
+    autoDeploy: false
+    envVars:
+      - key: APP_ENV
+        value: development
+      - key: DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: INFINITEPAY_HANDLE
+        sync: false
+      - key: INFINITEPAY_API_BASE
+        value: https://api.checkout.infinitepay.io
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: STORAGE_BACKEND
+        value: r2
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_BUCKET
+        value: vjsemijoias-dev
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false

@@ -1,0 +1,8 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 20260624_0013 -> 20260626_0014, add product reference
+INFO  [alembic.runtime.migration] Running upgrade 20260626_0014 -> 20260629_0015, add vj admin suppliers and pricing
+INFO:     Started server process [45920]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:5010 (Press CTRL+C to quit)

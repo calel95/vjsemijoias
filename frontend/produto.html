@@ -74,6 +74,8 @@
                 <ul>
                     <li data-store-email>📧 contato@vjsemijoias.com</li>
                     <li data-store-phone>📱 (11) 99999-9999</li>
+                    <li data-store-location>&#128205; Canoas - RS</li>
+                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
                 </ul>
             </div>
         </div>
@@ -107,10 +109,7 @@
 
             document.getElementById('breadcrumb-product').textContent = product.name;
             document.title = `${product.name} - VJ Semijoias`;
-            const shippingResult = await API.calculateShipping(product.price || 0);
-            const shippingMessage = shippingResult.success
-                ? shippingResult.data.message
-                : 'Frete calculado no carrinho';
+            window.productDetailCurrentProduct = product;
 
             const productImages = Array.isArray(product.images) && product.images.length
                 ? product.images
@@ -170,7 +169,31 @@
                     <div class="product-price">${formatPrice(product.price)}</div>
                     <p class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</p>
                     ${stockHTML}
-                    <p class="product-installment" style="color: var(--success); font-weight: 600;">${shippingMessage}</p>
+
+                    <div class="product-shipping-quote">
+                        <div class="product-shipping-head">
+                            <strong>Calcule o frete</strong>
+                            <span>Informe seu CEP para ver as opcoes deste produto.</span>
+                        </div>
+                        <div class="product-shipping-form">
+                            <input
+                                type="text"
+                                id="product-shipping-cep"
+                                data-mask="cep"
+                                inputmode="numeric"
+                                maxlength="9"
+                                placeholder="00000-000"
+                                autocomplete="postal-code"
+                                aria-label="CEP para calcular frete"
+                            >
+                            <button type="button" class="btn btn-secondary" id="product-shipping-submit" onclick="calculateProductShipping()">
+                                Calcular
+                            </button>
+                        </div>
+                        <div class="product-shipping-result" id="product-shipping-result">
+                            Digite o CEP para consultar o frete sem ir ao carrinho.
+                        </div>
+                    </div>
                     
                     <p class="product-description">${product.description}</p>
                     
@@ -210,6 +233,7 @@
             `;
 
             document.getElementById('product-content').innerHTML = content;
+            setupProductShippingCalculator();
 
             const related = getAllProductsMerged()
                 .filter(p => p.category === product.category && p.id !== product.id)
@@ -228,6 +252,112 @@
                 item.classList.remove('active');
             });
             button.classList.add('active');
+        }
+
+        function productDigitsOnly(value) {
+            return String(value || '').replace(/\D/g, '');
+        }
+
+        function productEscapeText(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function productShippingOptionLabel(option) {
+            const company = option.company || option.provider || '';
+            const service = option.display_service || option.service || option.name || 'Frete';
+            const label = company && !String(service).includes(company) ? `${company} - ${service}` : service;
+            const estimatedDays = option.estimated_days || option.delivery_time || '';
+            return estimatedDays ? `${label} - ${estimatedDays} dias uteis` : label;
+        }
+
+        function renderProductShippingOptions(options) {
+            if (!Array.isArray(options) || options.length === 0) {
+                return '<div class="product-shipping-empty">Nenhuma opcao de frete encontrada para este CEP.</div>';
+            }
+
+            return `
+                <div class="product-shipping-options">
+                    ${options.map(option => `
+                        <div class="product-shipping-option">
+                            <div>
+                                <strong>${productEscapeText(productShippingOptionLabel(option))}</strong>
+                                ${option.message ? `<span>${productEscapeText(option.message)}</span>` : ''}
+                            </div>
+                            <b>${Number(option.shipping || 0) === 0 ? 'Gratis' : formatPrice(Number(option.shipping || 0))}</b>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function setupProductShippingCalculator() {
+            if (typeof applyInputMasks === 'function') {
+                applyInputMasks();
+            }
+
+            const input = document.getElementById('product-shipping-cep');
+            if (!input) return;
+
+            input.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    calculateProductShipping();
+                }
+            });
+
+            input.addEventListener('input', () => {
+                const result = document.getElementById('product-shipping-result');
+                if (result && productDigitsOnly(input.value).length < 8) {
+                    result.className = 'product-shipping-result';
+                    result.textContent = 'Digite o CEP para consultar o frete sem ir ao carrinho.';
+                }
+            });
+        }
+
+        async function calculateProductShipping() {
+            const product = window.productDetailCurrentProduct;
+            const input = document.getElementById('product-shipping-cep');
+            const result = document.getElementById('product-shipping-result');
+            const button = document.getElementById('product-shipping-submit');
+            if (!product || !input || !result) return;
+
+            const cepDigits = productDigitsOnly(input.value);
+            if (cepDigits.length !== 8) {
+                result.className = 'product-shipping-result error';
+                result.textContent = 'Informe um CEP valido com 8 digitos.';
+                input.focus();
+                return;
+            }
+
+            result.className = 'product-shipping-result loading';
+            result.textContent = 'Calculando frete...';
+            if (button) button.disabled = true;
+
+            const quantity = Math.max(1, parseInt(document.getElementById('quantity')?.value || '1', 10) || 1);
+            const shippingResult = await API.calculateShipping(
+                Number(product.price || 0) * quantity,
+                cepDigits,
+                [{ id: product.id, quantity }]
+            );
+
+            if (button) button.disabled = false;
+
+            if (!shippingResult.success) {
+                result.className = 'product-shipping-result error';
+                result.textContent = shippingResult.error || 'Nao foi possivel calcular o frete para este CEP.';
+                return;
+            }
+
+            const options = Array.isArray(shippingResult.data.options) && shippingResult.data.options.length
+                ? shippingResult.data.options
+                : (shippingResult.data.selected_option ? [shippingResult.data.selected_option] : []);
+            result.className = 'product-shipping-result success';
+            result.innerHTML = renderProductShippingOptions(options);
         }
 
         function changeQuantity(delta) {

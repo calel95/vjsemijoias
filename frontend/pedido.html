@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acompanhar Pedido - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/jpeg" href="images/logo.png">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <img src="images/logo.png" alt="VJ Semijoias" class="logo-img">
+                <div class="logo-text"><span class="logo-vj">VJ</span><span class="logo-tagline">SEMIJOIAS</span></div>
+            </a>
+            <ul class="nav-menu">
+                <li><a href="/">Inicio</a></li>
+                <li><a href="/catalogo">Catalogo</a></li>
+                <li><a href="/pedido" class="active">Pedido</a></li>
+            </ul>
+            <div class="nav-actions">
+                <a href="/login" class="nav-icon" data-user-info><span>Conta</span></a>
+                <a href="/carrinho" class="nav-icon"><span>Carrinho</span><span class="cart-badge">0</span></a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="offline-notice" id="offline-notice"></div>
+
+    <main class="order-tracking-page">
+        <section class="order-tracking-hero">
+            <h1>Acompanhe seu pedido</h1>
+            <p>Veja status, frete, rastreio e historico de atualizacoes.</p>
+        </section>
+
+        <section class="order-tracking-grid">
+            <form class="order-tracking-form" id="order-tracking-form">
+                <h2>Consultar pedido</h2>
+                <div class="form-group">
+                    <label>Numero do pedido</label>
+                    <input type="text" name="order_id" id="tracking-order-id" required autocomplete="off">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>E-mail da compra</label>
+                        <input type="email" name="email" id="tracking-email" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label>CPF</label>
+                        <input type="text" name="cpf" id="tracking-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Token do link seguro</label>
+                    <input type="text" name="token" id="tracking-token" autocomplete="off" placeholder="Preenchido automaticamente quando vier do e-mail">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block" id="tracking-submit">Consultar pedido</button>
+                <p class="order-tracking-hint">O token vem no link enviado por e-mail. Sem token, informe e-mail e CPF da compra.</p>
+            </form>
+
+            <div class="order-tracking-result" id="order-tracking-result">
+                <div class="order-empty-state">
+                    <strong>Pedido ainda nao carregado</strong>
+                    <span>Informe os dados ao lado ou abra o link recebido por e-mail.</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
+            </div>
+            <div class="footer-col">
+                <h3>Contato</h3>
+                <ul>
+                    <li data-store-email>contato@vjsemijoias.com</li>
+                    <li data-store-location>&#128205; Canoas - RS</li>
+                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/store-config.js"></script>
+    <script src="js/products.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/offline.js"></script>
+    <script>
+        const statusLabels = {
+            pending: 'Pedido recebido',
+            payment_pending: 'Aguardando pagamento',
+            paid: 'Pagamento confirmado',
+            processing: 'Em separacao',
+            shipped: 'Enviado',
+            delivered: 'Entregue',
+            canceled: 'Cancelado',
+            failed: 'Falhou'
+        };
+        const statusSteps = ['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered'];
+
+        function trackingEscape(value) {
+            const div = document.createElement('div');
+            div.textContent = value ?? '';
+            return div.innerHTML;
+        }
+
+        function digitsOnly(value) {
+            return String(value || '').replace(/\D/g, '');
+        }
+
+        function trackingPrice(value) {
+            return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function trackingDate(value) {
+            if (!value) return '-';
+            return new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+        }
+
+        function orderStatusLabel(status) {
+            return statusLabels[status] || status || 'Pedido recebido';
+        }
+
+        function renderProgress(order) {
+            const currentIndex = Math.max(statusSteps.indexOf(order.status), 0);
+            return `
+                <div class="tracking-progress">
+                    ${statusSteps.map((step, index) => `
+                        <div class="tracking-step ${index <= currentIndex ? 'done' : ''} ${step === order.status ? 'current' : ''}">
+                            <span></span>
+                            <small>${trackingEscape(orderStatusLabel(step))}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function renderItems(order) {
+            const items = Array.isArray(order.items) ? order.items : [];
+            if (!items.length) return '<p class="muted">Itens nao informados.</p>';
+            return items.map(item => `
+                <div class="tracking-item">
+                    <span>${trackingEscape(item.quantity || 1)}x ${trackingEscape(item.name || `Produto ${item.id || ''}`)}</span>
+                    <strong>${trackingPrice((item.price || 0) * (item.quantity || 1))}</strong>
+                </div>
+            `).join('');
+        }
+
+        function renderEvents(order) {
+            const events = Array.isArray(order.events) ? [...order.events].reverse() : [];
+            if (!events.length) return '<p class="muted">Nenhuma atualizacao registrada.</p>';
+            return events.map(event => `
+                <div class="tracking-event">
+                    <span>${trackingEscape(event.message || orderStatusLabel(event.status))}</span>
+                    <small>${trackingDate(event.created_at)}</small>
+                </div>
+            `).join('');
+        }
+
+        function renderOrder(order) {
+            const destination = [order.address_city, order.address_state].filter(Boolean).join('/');
+            const shippingName = order.shipping_company || order.shipping_service || order.shipping_provider || 'Frete';
+            document.getElementById('order-tracking-result').innerHTML = `
+                <article class="tracking-card">
+                    <div class="tracking-card-head">
+                        <div>
+                            <span>Pedido</span>
+                            <strong>${trackingEscape(order.id)}</strong>
+                        </div>
+                        <b class="tracking-status ${trackingEscape(order.status)}">${trackingEscape(orderStatusLabel(order.status))}</b>
+                    </div>
+                    ${renderProgress(order)}
+                    <div class="tracking-panels">
+                        <section>
+                            <h3>Entrega</h3>
+                            <p>${trackingEscape(shippingName)}</p>
+                            <p>${order.shipping_estimated_days ? `Prazo estimado: ${trackingEscape(order.shipping_estimated_days)} dias` : 'Prazo a confirmar'}</p>
+                            <p>${destination ? `Destino: ${trackingEscape(destination)}` : 'Destino nao informado'}</p>
+                            ${order.tracking_code || order.tracking_carrier ? `
+                                <div class="tracking-code-box">
+                                    <small>Rastreio</small>
+                                    <strong>${trackingEscape(order.tracking_code || '-')}</strong>
+                                    <span>${trackingEscape(order.tracking_carrier || 'Transportadora nao informada')}</span>
+                                </div>
+                            ` : '<div class="tracking-code-box pending"><span>Rastreio ainda nao informado.</span></div>'}
+                        </section>
+                        <section>
+                            <h3>Resumo</h3>
+                            <div class="tracking-total-row"><span>Subtotal</span><strong>${trackingPrice(order.subtotal)}</strong></div>
+                            <div class="tracking-total-row"><span>Frete</span><strong>${trackingPrice(order.shipping)}</strong></div>
+                            <div class="tracking-total-row"><span>Desconto</span><strong>-${trackingPrice(order.discount)}</strong></div>
+                            <div class="tracking-total-row total"><span>Total</span><strong>${trackingPrice(order.total)}</strong></div>
+                        </section>
+                    </div>
+                    <section class="tracking-section">
+                        <h3>Itens</h3>
+                        ${renderItems(order)}
+                    </section>
+                    <section class="tracking-section">
+                        <h3>Historico</h3>
+                        ${renderEvents(order)}
+                    </section>
+                </article>
+            `;
+        }
+
+        function fillFromQuery() {
+            const params = new URLSearchParams(window.location.search);
+            document.getElementById('tracking-order-id').value = params.get('id') || '';
+            document.getElementById('tracking-token').value = params.get('token') || '';
+        }
+
+        async function loadOrderFromForm() {
+            const button = document.getElementById('tracking-submit');
+            const orderId = document.getElementById('tracking-order-id').value.trim();
+            const token = document.getElementById('tracking-token').value.trim();
+            const email = document.getElementById('tracking-email').value.trim();
+            const cpf = document.getElementById('tracking-cpf').value.trim();
+            if (!orderId) {
+                showToast('Informe o numero do pedido', 'error');
+                return;
+            }
+            button.disabled = true;
+            button.textContent = 'Consultando...';
+            const result = token
+                ? await API.getPublicOrder(orderId, token)
+                : await API.lookupPublicOrder({ order_id: orderId, email, cpf: digitsOnly(cpf) });
+            button.disabled = false;
+            button.textContent = 'Consultar pedido';
+            if (!result.success) {
+                document.getElementById('order-tracking-result').innerHTML = `
+                    <div class="order-empty-state error">
+                        <strong>Pedido nao encontrado</strong>
+                        <span>${trackingEscape(result.error || 'Confira os dados informados e tente novamente.')}</span>
+                    </div>
+                `;
+                return;
+            }
+            renderOrder(result.data);
+        }
+
+        document.getElementById('order-tracking-form').addEventListener('submit', event => {
+            event.preventDefault();
+            loadOrderFromForm();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            Cart.init();
+            fillFromQuery();
+            if (document.getElementById('tracking-order-id').value && document.getElementById('tracking-token').value) {
+                loadOrderFromForm();
+            }
+        });
+    </script>
+</body>
+</html>

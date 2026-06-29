@@ -67,6 +67,9 @@ uv --cache-dir .uv-cache run alembic upgrade head
 
 Para um banco novo, esse comando cria todas as tabelas atuais.
 
+O app nao cria nem altera schema no startup; em DEV/PRD rode sempre as
+migrations antes de iniciar o servidor.
+
 Se o banco ja existe porque foi criado antes pelo app, marque a migration base
 como aplicada e depois rode as proximas:
 
@@ -81,6 +84,13 @@ Quando alterar modelos em `backend/models.py`, crie uma nova migration:
 uv --cache-dir .uv-cache run alembic revision --autogenerate -m "descricao da alteracao"
 uv --cache-dir .uv-cache run alembic upgrade head
 ```
+
+## Deploy DEV
+
+Para publicar um ambiente DEV acessivel fora do seu computador, veja
+[docs/deploy-dev.md](docs/deploy-dev.md). O caminho recomendado agora e
+Dokploy com Railpack, Postgres remoto e Cloudflare R2, evitando SQLite em
+ambiente remoto.
 
 ## Seguranca do admin
 
@@ -97,6 +107,20 @@ ADMIN_LOGIN_LOCKOUT_SECONDS=300
 Tokens comuns de usuario, mesmo de um usuario marcado como admin no banco, nao
 acessam rotas administrativas. Para producao, use uma `ADMIN_PASSWORD` forte e
 uma `JWT_SECRET_KEY` longa e aleatoria.
+
+O login de clientes tambem usa cookie `HttpOnly`, configuravel por:
+
+```env
+USER_TOKEN_EXPIRE_DAYS=7
+USER_COOKIE_NAME=vj_user_token
+USER_COOKIE_SECURE=true
+USER_COOKIE_SAMESITE=lax
+CSRF_COOKIE_SECURE=true
+```
+
+Quando a autenticacao acontece por cookie, rotas autenticadas de escrita exigem
+o header `X-CSRF-Token`, preenchido automaticamente pelo frontend a partir do
+cookie `vj_csrf_token`.
 
 ## Estrutura do projeto
 
@@ -288,15 +312,20 @@ STORE_CATALOG_FILENAME=catalogo-vj-semijoias.pdf
 O endpoint `GET /api/store/config` expõe a configuracao publica da loja para o
 frontend: marca, contato, catalogo, frete e cupom.
 
-## Frete e desconto por ambiente
+## Frete e desconto
 
-Configure no `.env` local ou nas variaveis de ambiente do deploy:
+As variaveis abaixo definem os valores iniciais/fallback. Depois do sistema rodando, os campos de frete podem ser ajustados no painel admin, em Configuracoes da loja, sem novo deploy.
 
 ```env
 SHIPPING_MODE=free
 SHIPPING_FIXED_VALUE=0
 SHIPPING_FREE_MINIMUM=0
 SHIPPING_ESTIMATED_DAYS=5-10
+SHIPPING_PROVIDER=internal
+MELHOR_ENVIO_FROM_POSTAL_CODE=01001000
+MELHOR_ENVIO_SERVICES=1,2
+MELHOR_ENVIO_ALLOWED_COMPANY_IDS=1,2,14,15,12,6
+MELHOR_ENVIO_TIMEOUT_SECONDS=6
 
 COUPONS_ENABLED=true
 COUPON_CODE=VJ10
@@ -309,6 +338,8 @@ Modos de frete:
 - `free`: frete gratis.
 - `fixed`: usa sempre `SHIPPING_FIXED_VALUE`.
 - `threshold`: usa `SHIPPING_FIXED_VALUE`, mas zera o frete quando o subtotal for maior ou igual a `SHIPPING_FREE_MINIMUM`.
+
+O admin tambem permite escolher `SHIPPING_PROVIDER` (`internal` ou `melhor_envio`), CEP de origem, servicos, transportadoras permitidas e timeout do Melhor Envio. O token e a URL base do Melhor Envio continuam nas variaveis de ambiente por seguranca.
 
 Exemplo para producao sem desconto e com frete fixo:
 

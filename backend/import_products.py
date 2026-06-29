@@ -1,21 +1,48 @@
 import argparse
 import json
+import os
 import shutil
 import unicodedata
 from collections import Counter, defaultdict
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage, ProductImport
+from backend.services.product_shipping import (
+    normalize_dimension_cm,
+    normalize_shipping_profile,
+    normalize_weight_grams,
+)
+from backend.services.stock import (
+    normalize_low_stock_alert,
+    normalize_sku,
+    normalize_stock_quantity,
+    sync_stock_status,
+)
+from backend.services.storage import r2_enabled, store_public_file
+from backend.services.validation import (
+    clean_text,
+    clean_text_list,
+    normalize_product_reference,
+    validate_image_bytes,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = PROJECT_ROOT / "import_data" / "catalogo_extraido"
 FRONTEND_ROOT = PROJECT_ROOT / "frontend"
 CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog"
+IMPORT_IMAGE_MAX_BYTES = 20 * 1024 * 1024
+IMPORT_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+}
 
 CATEGORY_MAP = {
     "aneis": ("aneis", "Aneis", "\U0001f48d"),
@@ -49,7 +76,7 @@ def slugify(value):
 
 def parse_price(value):
     if isinstance(value, (int, float, Decimal)):
-        return float(value)
+        return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     text = str(value).strip()
     if not text:
@@ -65,7 +92,7 @@ def parse_price(value):
         text = text.replace(".", "").replace(",", ".")
 
     try:
-        return float(Decimal(text))
+        return Decimal(text).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     except (InvalidOperation, ValueError):
         raise ValueError(f"Preco invalido: {value!r}") from None
 
@@ -119,6 +146,33 @@ def product_old_price(item):
     for key in ("oldPrice", "old_price", "preco_antigo"):
         if key in item and str(item[key]).strip():
             return parse_price(item[key])
+    return None
+
+
+def product_stock_quantity(item):
+    for key in ("stock_quantity", "stock", "quantity", "estoque"):
+        if key in item and str(item[key]).strip():
+            return normalize_stock_quantity(item[key])
+    return 1
+
+
+def product_low_stock_alert(item):
+    for key in ("low_stock_alert", "alerta_estoque_baixo"):
+        if key in item and str(item[key]).strip():
+            return normalize_low_stock_alert(item[key])
+    return 1
+
+
+def product_reference(item):
+    return normalize_product_reference(
+        first_present(item, "reference", "referencia", "ref", "codigo")
+    )
+
+
+def first_present(item, *keys):
+    for key in keys:
+        if key in item and item[key] not in (None, ""):
+            return item[key]
     return None
 
 
@@ -203,8 +257,22 @@ def copy_images(source_root, item, destination_slug, source_folder="", dry_run=F
             raise FileNotFoundError(f"Imagem nao encontrada: {source_path}")
 
         extension = source_path.suffix.lower() or ".jpeg"
+        content_type = IMPORT_CONTENT_TYPES.get(extension)
+        if not content_type:
+            raise ValueError(f"Formato de imagem nao suportado: {source_path.name}")
+        content = source_path.read_bytes()
+        content_type, extension = validate_image_bytes(
+            content,
+            content_type,
+            filename=source_path.name,
+            max_bytes=IMPORT_IMAGE_MAX_BYTES,
+        )
         destination_path = destination_dir / f"img_{position}{extension}"
         if not dry_run:
+            if r2_enabled():
+                key = f"catalog/imported/{destination_slug}/img_{position}{extension}"
+                image_paths.append(store_public_file(key, content, content_type))
+                continue
             destination_dir.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_path, destination_path)
         image_paths.append(destination_path.relative_to(FRONTEND_ROOT).as_posix())
@@ -212,7 +280,19 @@ def copy_images(source_root, item, destination_slug, source_folder="", dry_run=F
     return image_paths
 
 
+def ensure_import_storage_is_safe(dry_run=False):
+    if dry_run or r2_enabled():
+        return
+    app_env = os.getenv("APP_ENV", "").strip().lower()
+    if app_env in {"development", "staging", "production"}:
+        raise RuntimeError(
+            "STORAGE_BACKEND=local nao deve ser usado para importar catalogo "
+            "em ambiente remoto. Configure STORAGE_BACKEND=r2 e reimporte."
+        )
+
+
 def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
+    ensure_import_storage_is_safe(dry_run=dry_run)
     source = Path(source).resolve()
     manifest_path = source / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -232,8 +312,20 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
                 select(ProductImport).where(ProductImport.source_key == source_key)
             )
 
-            display_name = item.get("display_name") or legacy_names.get(item.get("page")) or title
+            display_name = clean_text(
+                item.get("display_name") or legacy_names.get(item.get("page")) or title,
+                field="name",
+                max_length=200,
+                required=True,
+            )
             category, category_name, icon = category_from_item(item, title)
+            category = clean_text(category, field="category", max_length=50, required=True)
+            category_name = clean_text(
+                category_name,
+                field="categoryName",
+                max_length=50,
+                required=True,
+            )
             destination_slug = product_destination_slug(item, title, index)
             image_paths = copy_images(
                 source,
@@ -242,8 +334,13 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
                 source_folder=source_folder,
                 dry_run=dry_run,
             )
-            features = product_features(item)
-            description = product_description(item, display_name, features)
+            features = clean_text_list(product_features(item), field="features")
+            description = clean_text(
+                product_description(item, display_name, features),
+                field="description",
+                max_length=1000,
+                required=True,
+            )
 
             if import_record:
                 product = import_record.product
@@ -258,12 +355,35 @@ def import_catalog(source=DEFAULT_SOURCE, dry_run=False):
             product.categoryName = category_name
             product.price = parse_price(product_price(item))
             product.oldPrice = product_old_price(item)
+            product.reference = product_reference(item)
+            product.sku = normalize_sku(
+                item.get("sku") or item.get("codigo") or item.get("referencia")
+            )
+            product.stock_quantity = product_stock_quantity(item)
+            product.low_stock_alert = product_low_stock_alert(item)
+            product.weight_grams = normalize_weight_grams(
+                first_present(item, "weight_grams", "peso_gramas", "peso")
+            )
+            product.height_cm = normalize_dimension_cm(
+                first_present(item, "height_cm", "altura_cm", "altura"),
+                field="height_cm",
+            )
+            product.width_cm = normalize_dimension_cm(
+                first_present(item, "width_cm", "largura_cm", "largura"),
+                field="width_cm",
+            )
+            product.length_cm = normalize_dimension_cm(
+                first_present(item, "length_cm", "comprimento_cm", "comprimento"),
+                field="length_cm",
+            )
+            product.shipping_profile = normalize_shipping_profile(item.get("shipping_profile"))
             product.image = image_paths[0] if image_paths else None
-            product.icon = item.get("icon") or icon
-            product.badge = item.get("badge", "new")
+            product.icon = clean_text(item.get("icon") or icon, field="icon", max_length=10)
+            product.badge = clean_text(item.get("badge", "new"), field="badge", max_length=20)
             product.description = description
             product.features = json.dumps(features, ensure_ascii=False)
             product.custom = bool(item.get("custom", True))
+            sync_stock_status(product)
 
             if not import_record:
                 db.flush()

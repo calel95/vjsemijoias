@@ -405,6 +405,19 @@ input, select, textarea {
     color: var(--white);
 }
 
+.btn-danger {
+    background: var(--error);
+    color: var(--white);
+    border-color: var(--error);
+}
+
+.btn-danger:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+    color: var(--white);
+    transform: translateY(-2px);
+}
+
 .btn-block { width: 100%; }
 
 .btn:disabled {
@@ -1236,6 +1249,117 @@ input, select, textarea {
     font-size: 1.1rem;
 }
 
+.product-shipping-quote {
+    border: 1px solid var(--gray-light);
+    border-radius: 10px;
+    padding: 0.95rem;
+    margin: 1.25rem 0;
+    background: var(--white);
+    max-width: 560px;
+}
+
+.product-shipping-head {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.product-shipping-head strong {
+    color: var(--dark);
+    font-size: 1rem;
+}
+
+.product-shipping-head span {
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.product-shipping-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 122px;
+    gap: 0.65rem;
+    align-items: center;
+}
+
+.product-shipping-form input {
+    width: 100%;
+    height: 38px;
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 0 0.9rem;
+    font: inherit;
+    color: var(--dark);
+}
+
+.product-shipping-form input:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
+}
+
+.product-shipping-form .btn {
+    height: 38px;
+    padding: 0 1rem;
+    white-space: nowrap;
+}
+
+.product-shipping-result {
+    margin-top: 1rem;
+    color: var(--gray);
+    font-size: 0.9rem;
+}
+
+.product-shipping-result.loading {
+    color: var(--gold-dark);
+    font-weight: 600;
+}
+
+.product-shipping-result.error {
+    color: #856404;
+    background: #fff3cd;
+    border-radius: 8px;
+    padding: 0.85rem;
+}
+
+.product-shipping-options {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.product-shipping-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid var(--gray-pale);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    background: var(--cream);
+}
+
+.product-shipping-option div {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.product-shipping-option strong {
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+.product-shipping-option span {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.product-shipping-option b {
+    color: var(--gold-dark);
+    white-space: nowrap;
+}
+
+.product-shipping-empty {
+    color: var(--gray);
+}
 .quantity-selector {
     display: flex;
     align-items: center;
@@ -1393,7 +1517,150 @@ input, select, textarea {
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--gray-light);
 }
+.cart-shipping-box {
+    border: 1px solid var(--gray-light);
+    border-radius: 10px;
+    padding: 0.95rem;
+    margin: 1rem 0;
+    background: var(--white);
+}
 
+.cart-shipping-title {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 0.75rem;
+}
+
+.cart-shipping-title strong {
+    color: var(--dark);
+    font-size: 0.98rem;
+}
+
+.cart-shipping-title span,
+.cart-shipping-message,
+.cart-shipping-option small {
+    color: var(--gray);
+    font-size: 0.85rem;
+}
+
+.cart-shipping-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 104px;
+    gap: 0.6rem;
+    margin-bottom: 0.8rem;
+}
+
+.cart-shipping-form input {
+    min-width: 0;
+    height: 38px;
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    padding: 0 0.85rem;
+    font: inherit;
+    background: #f3f5ff;
+}
+
+.cart-shipping-form input:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
+}
+
+.cart-shipping-form button {
+    height: 38px;
+    border-radius: 999px;
+    background: var(--white);
+    color: var(--gold-dark);
+    border: 2px solid var(--gold-primary);
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.cart-shipping-form button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.cart-shipping-message {
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 0.7rem;
+}
+
+.cart-shipping-message.error {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.cart-shipping-options {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.cart-shipping-option {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: center;
+    border: 1px solid var(--gray-pale);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    background: var(--cream);
+    cursor: pointer;
+}
+
+.cart-shipping-option.selected {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.18);
+}
+
+.cart-shipping-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cart-shipping-option span {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.cart-shipping-option strong {
+    color: var(--dark);
+    font-size: 0.92rem;
+}
+
+.cart-shipping-option b {
+    color: var(--gold-dark);
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.cart-shipping-selected-message {
+    background: var(--cream);
+    color: var(--gray-dark);
+    padding: 0.8rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.checkout-shipping-summary {
+    display: grid;
+    gap: 0.25rem;
+    background: var(--cream);
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.checkout-shipping-summary span {
+    color: var(--gray-dark);
+}
 .summary-row {
     display: flex;
     justify-content: space-between;
@@ -1978,7 +2245,26 @@ input, select, textarea {
         border-top: 1px solid var(--gray-pale);
         padding-top: 1rem;
     }
-    
+        .cart-shipping-form {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-shipping-option {
+        grid-template-columns: 1fr;
+    }
+
+    .product-shipping-form {
+        grid-template-columns: 1fr;
+    }
+
+    .product-shipping-form .btn {
+        width: 100%;
+    }
+
+    .product-shipping-option {
+        align-items: flex-start;
+        flex-direction: column;
+    }
     .auth-container { padding: 2rem 1.5rem; }
     
     .toast-container {
@@ -1998,4 +2284,229 @@ input, select, textarea {
     .products-grid { grid-template-columns: 1fr; }
     .categories-grid { grid-template-columns: 1fr 1fr; }
     .btn { padding: 0.8rem 1.5rem; font-size: 0.85rem; }
+}
+
+/* ========== ORDER TRACKING ========== */
+.order-tracking-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    min-height: 65vh;
+    padding: 3rem 2rem;
+}
+
+.order-tracking-hero {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.order-tracking-hero h1 {
+    font-size: 2.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.order-tracking-hero p,
+.order-tracking-hint,
+.muted {
+    color: var(--gray);
+}
+
+.order-tracking-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.4fr);
+    align-items: start;
+}
+
+.order-tracking-form,
+.tracking-card,
+.order-empty-state {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+}
+
+.order-tracking-form h2 {
+    margin-bottom: 1rem;
+}
+
+.order-tracking-hint {
+    font-size: 0.85rem;
+    margin: 0.8rem 0 0;
+}
+
+.order-empty-state {
+    display: grid;
+    gap: 0.35rem;
+    min-height: 180px;
+    place-content: center;
+    text-align: center;
+}
+
+.order-empty-state.error {
+    background: #fff8f2;
+    border-color: #f1c4a8;
+}
+
+.tracking-card {
+    display: grid;
+    gap: 1rem;
+}
+
+.tracking-card-head {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.tracking-card-head span {
+    color: var(--gray);
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+}
+
+.tracking-card-head strong {
+    font-size: 1.25rem;
+}
+
+.tracking-status {
+    background: var(--gold-dark);
+    border-radius: 999px;
+    color: var(--white);
+    font-size: 0.76rem;
+    padding: 0.35rem 0.75rem;
+    text-transform: uppercase;
+}
+
+.tracking-status.paid,
+.tracking-status.processing,
+.tracking-status.shipped,
+.tracking-status.delivered {
+    background: var(--success);
+}
+
+.tracking-status.canceled,
+.tracking-status.failed {
+    background: var(--error);
+}
+
+.tracking-progress {
+    display: grid;
+    gap: 0.45rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.tracking-step {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.tracking-step span {
+    background: var(--gray-light);
+    border-radius: 999px;
+    height: 6px;
+}
+
+.tracking-step.done span {
+    background: var(--gold-primary);
+}
+
+.tracking-step.current small {
+    color: var(--dark);
+    font-weight: 700;
+}
+
+.tracking-step small {
+    color: var(--gray);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
+.tracking-panels {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tracking-panels section,
+.tracking-section {
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.tracking-panels h3,
+.tracking-section h3 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.tracking-panels p {
+    color: var(--gray-dark);
+    margin: 0 0 0.35rem;
+}
+
+.tracking-code-box {
+    background: var(--white);
+    border: 1px solid var(--gray-light);
+    border-radius: 8px;
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+}
+
+.tracking-code-box small,
+.tracking-code-box span {
+    color: var(--gray);
+}
+
+.tracking-code-box strong {
+    color: var(--gold-dark);
+}
+
+.tracking-total-row,
+.tracking-item,
+.tracking-event {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+}
+
+.tracking-total-row.total {
+    border-top: 1px solid var(--gray-light);
+    color: var(--gold-dark);
+    font-size: 1.05rem;
+    margin-top: 0.35rem;
+    padding-top: 0.75rem;
+}
+
+.tracking-event {
+    border-bottom: 1px solid var(--gray-light);
+}
+
+.tracking-event:last-child {
+    border-bottom: 0;
+}
+
+.tracking-event small {
+    color: var(--gray);
+    white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+    .order-tracking-grid,
+    .tracking-panels {
+        grid-template-columns: 1fr;
+    }
+
+    .tracking-progress {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }

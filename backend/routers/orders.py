@@ -1,25 +1,88 @@
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from backend.auth import admin_claims, optional_claims, required_claims
 from backend.database import get_db
-from backend.models import Coupon, Newsletter, Order, Product, User
+from backend.models import Coupon, Newsletter, Order, Product, User, utc_now
 from backend.services.common import get_or_404
 from backend.services.orders import (
-    configured_shipping,
+    apply_paid_status,
     create_local_order,
+    existing_order_by_idempotency_key,
     money,
     normalize_order_status,
     validate_order_data,
 )
+from backend.services.shipping import (
+    build_shipping_package,
+    calculate_shipping_options,
+    serialize_shipping_option,
+)
+from backend.services.admin_security import record_admin_audit
+from backend.services.coupons import (
+    normalize_coupon_payload,
+    validate_coupon_for_order,
+)
+from backend.services.order_events import record_status_event
+from backend.services.transactional_emails import (
+    send_order_created_email,
+    send_order_shipped_email,
+)
+from backend.services.validation import clean_text, digits_only, normalize_email
 from backend.store_config import effective_store_settings, public_store_config
 
 
 router = APIRouter(prefix="/api")
+
+
+def shipping_quote_input(data: dict[str, Any], db: Session):
+    raw_items = data.get("items")
+    if not raw_items:
+        return money(data.get("total", 0)), None
+    if not isinstance(raw_items, list):
+        raise ValueError("items deve ser uma lista")
+
+    product_ids = []
+    quantities = {}
+    for item in raw_items:
+        try:
+            product_id = int(item["id"])
+            quantity = int(item.get("quantity", 1))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("Item de frete invalido") from exc
+        if quantity < 1 or quantity > 20:
+            raise ValueError("A quantidade deve estar entre 1 e 20")
+        if product_id not in quantities:
+            product_ids.append(product_id)
+            quantities[product_id] = 0
+        quantities[product_id] += quantity
+
+    if not product_ids:
+        raise ValueError("Informe ao menos um item para calcular frete")
+
+    products = db.scalars(
+        select(Product).where(
+            Product.id.in_(product_ids),
+            Product.is_active.is_(True),
+            Product.stock_status != "out_of_stock",
+        )
+    ).all()
+    products_by_id = {product.id: product for product in products}
+    if len(products_by_id) != len(product_ids):
+        raise ValueError("Um ou mais produtos nao estao disponiveis")
+
+    subtotal = money("0")
+    shipping_items = []
+    for product_id in product_ids:
+        product = products_by_id[product_id]
+        quantity = quantities[product_id]
+        subtotal += money(product.price) * quantity
+        shipping_items.append((product, quantity))
+    return subtotal, build_shipping_package(shipping_items)
 
 
 @router.post("/orders", status_code=201)
@@ -29,6 +92,9 @@ def create_order(
     db: Session = Depends(get_db),
 ):
     try:
+        existing_order = existing_order_by_idempotency_key(db, data)
+        if existing_order:
+            return existing_order.to_dict()
         totals = validate_order_data(db, data)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -36,6 +102,7 @@ def create_order(
         db, data, totals, data.get("payment_method", "manual"), claims
     )
     db.commit()
+    send_order_created_email(order)
     return order.to_dict()
 
 
@@ -45,6 +112,44 @@ def get_orders(claims=Depends(required_claims), db: Session = Depends(get_db)):
     if not claims.get("is_admin"):
         statement = statement.where(Order.user_id == int(claims["sub"]))
     return [order.to_dict() for order in db.scalars(statement).all()]
+
+
+@router.get("/orders/{order_id}/public")
+def get_public_order(
+    order_id: str,
+    token: str = "",
+    db: Session = Depends(get_db),
+):
+    order = get_or_404(db, Order, order_id)
+    if not order.public_token or token != order.public_token:
+        raise HTTPException(status_code=404, detail="Pedido nao encontrado")
+    data = order.to_dict()
+    data["payment"] = order.payment.to_dict(include_pix=False) if order.payment else None
+    return data
+
+
+@router.post("/orders/public/lookup")
+def lookup_public_order(
+    data: dict[str, Any] = Body(default_factory=dict),
+    db: Session = Depends(get_db),
+):
+    order_id = clean_text(data.get("order_id"), field="order_id", max_length=50)
+    if not order_id:
+        raise HTTPException(status_code=400, detail="Informe o numero do pedido")
+    try:
+        email = normalize_email(data.get("email"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    cpf = digits_only(data.get("cpf"))
+    if len(cpf) != 11:
+        raise HTTPException(status_code=400, detail="CPF deve conter 11 digitos")
+
+    order = get_or_404(db, Order, order_id)
+    if order.customer_email.lower() != email.lower() or digits_only(order.customer_cpf) != cpf:
+        raise HTTPException(status_code=404, detail="Pedido nao encontrado")
+    data = order.to_dict()
+    data["payment"] = order.payment.to_dict(include_pix=False) if order.payment else None
+    return data
 
 
 @router.get("/orders/{order_id}")
@@ -63,12 +168,58 @@ def get_order(
 def update_order_status(
     order_id: str,
     data: dict[str, Any] = Body(default_factory=dict),
-    _claims=Depends(admin_claims),
+    claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     order = get_or_404(db, Order, order_id)
-    order.status = normalize_order_status(data.get("status"))
+    status = normalize_order_status(data.get("status"))
+    previous_status = order.status
+    actor_user_id = int(claims["sub"]) if claims and claims.get("sub") else None
+    tracking_changed = False
+    tracking_metadata = {}
+    if "tracking_code" in data:
+        tracking_code = clean_text(
+            data.get("tracking_code"),
+            field="tracking_code",
+            max_length=100,
+        )
+        tracking_changed = tracking_code != (order.tracking_code or "")
+        order.tracking_code = tracking_code or None
+        tracking_metadata["tracking_code"] = order.tracking_code
+    if "tracking_carrier" in data:
+        tracking_carrier = clean_text(
+            data.get("tracking_carrier"),
+            field="tracking_carrier",
+            max_length=100,
+        )
+        tracking_changed = tracking_changed or tracking_carrier != (order.tracking_carrier or "")
+        order.tracking_carrier = tracking_carrier or None
+        tracking_metadata["tracking_carrier"] = order.tracking_carrier
+    if status == "shipped" and not order.shipped_at:
+        order.shipped_at = utc_now()
+    if status == "delivered" and not order.delivered_at:
+        order.delivered_at = utc_now()
+    should_send_shipped_email = status == "shipped" and (
+        previous_status != status or tracking_changed
+    )
+    if status == "paid":
+        try:
+            apply_paid_status(db, order, actor_user_id=actor_user_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        order.status = status
+        if previous_status != status or tracking_changed:
+            record_status_event(
+                db,
+                order,
+                status,
+                actor_user_id=actor_user_id,
+                metadata=tracking_metadata,
+            )
     db.commit()
+    if should_send_shipped_email:
+        send_order_shipped_email(order)
     return order.to_dict()
 
 
@@ -78,9 +229,10 @@ def subscribe_newsletter(
     db: Session = Depends(get_db),
 ):
     active_settings = effective_store_settings(db)
-    email = data.get("email", "")
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="E-mail invalido")
+    try:
+        email = normalize_email(data.get("email"))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     coupon_percent = float(money(active_settings.coupon.discount_percent))
     if db.scalar(select(Newsletter).where(Newsletter.email == email)):
@@ -120,23 +272,119 @@ def validate_coupon(
     data: dict[str, Any] = Body(default_factory=dict),
     db: Session = Depends(get_db),
 ):
-    active_settings = effective_store_settings(db)
-    code = data.get("code", "").upper()
-    if not active_settings.coupon.enabled:
-        raise HTTPException(status_code=404, detail="Cupons desativados")
-    coupon = db.scalar(
-        select(Coupon).where(Coupon.code == code, Coupon.is_active.is_(True))
+    try:
+        coupon, discount = validate_coupon_for_order(
+            db,
+            data.get("code", ""),
+            data.get("total", 0),
+            customer_email=data.get("customer_email", ""),
+            customer_cpf=data.get("customer_cpf", ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    discount_percent = (
+        float(coupon.discount_value) if coupon.discount_type == "percent" else 0.0
     )
-    if not coupon:
-        raise HTTPException(status_code=404, detail="Cupom invalido ou expirado")
-    if coupon.used_count >= coupon.usage_limit:
-        raise HTTPException(status_code=400, detail="Cupom esgotado")
     return {
         "valid": True,
         "code": coupon.code,
-        "discount_percent": coupon.discount_percent,
-        "message": f"Cupom {coupon.code} aplicado! {coupon.discount_percent:.0f}% de desconto",
+        "discount_percent": discount_percent,
+        "discount_type": coupon.discount_type,
+        "discount_value": float(coupon.discount_value),
+        "minimum_subtotal": float(coupon.minimum_subtotal or 0),
+        "discount": float(discount),
+        "message": f"Cupom {coupon.code} aplicado!",
     }
+
+
+@router.get("/admin/coupons")
+def list_admin_coupons(
+    _claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    coupons = db.scalars(select(Coupon).order_by(Coupon.created_at.desc(), Coupon.id.desc())).all()
+    return [coupon.to_dict(include_redemptions=True) for coupon in coupons]
+
+
+@router.post("/admin/coupons", status_code=201)
+def create_admin_coupon(
+    request: Request,
+    data: dict[str, Any] = Body(default_factory=dict),
+    claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    try:
+        payload = normalize_coupon_payload(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if db.scalar(select(Coupon).where(Coupon.code == payload["code"])):
+        raise HTTPException(status_code=409, detail="Cupom ja cadastrado")
+
+    coupon = Coupon(**payload)
+    if coupon.discount_type == "percent":
+        coupon.discount_percent = coupon.discount_value
+    db.add(coupon)
+
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "coupon.created",
+        admin_user=actor,
+        resource="coupon",
+        resource_id=payload["code"],
+        metadata={
+            "code": payload["code"],
+            "discount_type": payload["discount_type"],
+            "usage_limit": payload["usage_limit"],
+            "per_customer_limit": payload["per_customer_limit"],
+        },
+    )
+    db.commit()
+    db.refresh(coupon)
+    return coupon.to_dict(include_redemptions=True)
+
+
+@router.put("/admin/coupons/{coupon_id}")
+def update_admin_coupon(
+    coupon_id: int,
+    request: Request,
+    data: dict[str, Any] = Body(default_factory=dict),
+    claims=Depends(admin_claims),
+    db: Session = Depends(get_db),
+):
+    coupon = get_or_404(db, Coupon, coupon_id)
+    try:
+        payload = normalize_coupon_payload(data, partial=True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if "code" in payload and payload["code"] != coupon.code:
+        if db.scalar(select(Coupon).where(Coupon.code == payload["code"])):
+            raise HTTPException(status_code=409, detail="Cupom ja cadastrado")
+
+    changed_keys = []
+    for key, value in payload.items():
+        if getattr(coupon, key) != value:
+            setattr(coupon, key, value)
+            changed_keys.append(key)
+    if coupon.discount_type == "percent":
+        coupon.discount_percent = coupon.discount_value
+
+    actor = db.get(User, int(claims["sub"])) if claims and claims.get("sub") else None
+    record_admin_audit(
+        db,
+        request,
+        "coupon.updated",
+        admin_user=actor,
+        resource="coupon",
+        resource_id=str(coupon.id),
+        metadata={"code": coupon.code, "changed_keys": changed_keys},
+    )
+    db.commit()
+    db.refresh(coupon)
+    return coupon.to_dict(include_redemptions=True)
 
 
 @router.post("/shipping/calculate")
@@ -145,13 +393,28 @@ def calculate_shipping(
     db: Session = Depends(get_db),
 ):
     try:
-        shipping_data = configured_shipping(data.get("total", 0), db)
+        subtotal, package = shipping_quote_input(data, db)
+        shipping_options = calculate_shipping_options(
+            subtotal,
+            zip_code=data.get("zip_code", ""),
+            package=package,
+            db=db,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    serialized_options = [serialize_shipping_option(option) for option in shipping_options]
+    selected_option = serialized_options[0]
     return {
-        "shipping": float(shipping_data["shipping"]),
-        "message": shipping_data["message"],
-        "estimated_days": shipping_data["estimated_days"],
+        "subtotal": float(subtotal),
+        "shipping": selected_option["shipping"],
+        "message": selected_option["message"],
+        "estimated_days": selected_option["estimated_days"],
+        "provider": selected_option["provider"],
+        "service": selected_option["service"],
+        "destination_zip": selected_option["destination_zip"],
+        "package": selected_option["package"],
+        "selected_option": selected_option,
+        "options": serialized_options,
     }
 
 
@@ -176,6 +439,6 @@ def get_admin_stats(
         "total_orders": db.scalar(select(func.count(Order.id))),
         "total_users": db.scalar(select(func.count(User.id))),
         "total_newsletter": db.scalar(select(func.count(Newsletter.id))),
-        "total_revenue": total_revenue,
+        "total_revenue": float(total_revenue),
         "recent_orders": [order.to_dict() for order in recent_orders],
     }

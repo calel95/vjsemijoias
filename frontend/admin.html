@@ -41,12 +41,16 @@
             <p style="color: var(--gray); margin-bottom: 1.5rem;">VJ Semijoias</p>
             <form id="login-form" onsubmit="handleAdminLogin(event)">
                 <div class="form-group">
+                    <label>E-mail do Administrador</label>
+                    <input type="email" id="admin-email" placeholder="admin@vjsemijoias.com" autocomplete="username" required autofocus>
+                </div>
+                <div class="form-group">
                     <label>Senha de Acesso</label>
-                    <input type="password" id="admin-password" placeholder="Digite a senha" required autofocus>
+                    <input type="password" id="admin-password" placeholder="Digite a senha" autocomplete="current-password" required>
                 </div>
                 <button type="submit" class="btn btn-primary btn-block">Entrar</button>
                 <p style="text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--gray);">
-                    Use a senha definida no arquivo <code>.env</code> do servidor.
+                    No primeiro acesso, use o e-mail do administrador e a senha bootstrap configurada no servidor.
                 </p>
             </form>
         </div>
@@ -56,12 +60,54 @@
     <div id="admin-panel" style="display: none;">
         <div class="admin-header">
             <div class="container">
-                <h1>📦 Gerenciar Produtos</h1>
-                <p>Adicione, edite ou remova produtos do catálogo</p>
+                <h1 id="admin-page-title">Resumo do painel</h1>
+                <p id="admin-page-subtitle">Acompanhe indicadores gerais e escolha uma area para operar.</p>
             </div>
         </div>
 
         <div class="admin-container">
+            <div class="admin-layout">
+                <aside class="admin-page-nav" aria-label="Navegacao do painel administrativo">
+                    <button type="button" class="admin-page-link active" data-admin-page-target="overview" onclick="switchAdminPage('overview')">
+                        <span>Resumo</span>
+                        <small>Indicadores principais</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="orders" onclick="switchAdminPage('orders')">
+                        <span>Pedidos</span>
+                        <small>Status e entregas</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="settings" onclick="switchAdminPage('settings')">
+                        <span>Configuracoes</span>
+                        <small>Frete e e-mails</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="contacts" onclick="switchAdminPage('contacts')">
+                        <span>Contatos</span>
+                        <small>Rodape do site</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="coupons" onclick="switchAdminPage('coupons')">
+                        <span>Cupons</span>
+                        <small>Promocoes</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="security" onclick="switchAdminPage('security')">
+                        <span>Acessos</span>
+                        <small>Admins e auditoria</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="products" onclick="switchAdminPage('products')">
+                        <span>Produtos</span>
+                        <small>Cadastro e estoque</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="catalog" onclick="switchAdminPage('catalog')">
+                        <span>Catalogo PDF</span>
+                        <small>Geracao visual</small>
+                    </button>
+                    <button type="button" class="admin-page-link" data-admin-page-target="import" onclick="switchAdminPage('import')">
+                        <span>Importacao</span>
+                        <small>Acoes globais</small>
+                    </button>
+                </aside>
+
+                <div class="admin-pages">
+                    <section class="admin-page active" id="admin-page-overview" data-admin-page="overview">
             <!-- ESTATÍSTICAS -->
             <div class="admin-stats">
                 <div class="stat-card">
@@ -96,6 +142,9 @@
                 </div>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-orders" data-admin-page="orders">
             <div class="admin-card orders-card">
                 <div class="orders-header">
                     <div>
@@ -127,142 +176,412 @@
                 </div>
             </div>
 
-            <div class="admin-card store-config-card">
+            <div class="admin-modal-overlay" id="order-modal" aria-hidden="true">
+                <div class="admin-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-modal-title">
+                    <button class="admin-modal-close" type="button" onclick="closeOrderModal()" aria-label="Fechar">x</button>
+                    <div class="orders-header">
+                        <div>
+                            <h2 id="order-modal-title">Gerenciar pedido</h2>
+                            <p id="order-modal-subtitle">Atualize status, rastreio e acompanhe o historico.</p>
+                        </div>
+                    </div>
+                    <form id="order-modal-form" onsubmit="saveOrderModal(event)">
+                        <div class="order-modal-grid">
+                            <section>
+                                <h3>Status e rastreio</h3>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="order-modal-status"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Codigo de rastreio</label>
+                                    <input type="text" id="order-modal-tracking-code" maxlength="100" placeholder="BR123456789">
+                                </div>
+                                <div class="form-group">
+                                    <label>Transportadora</label>
+                                    <input type="text" id="order-modal-tracking-carrier" maxlength="100" placeholder="Correios, Jadlog, Loggi">
+                                </div>
+                            </section>
+                            <section>
+                                <h3>Resumo</h3>
+                                <div id="order-modal-summary" class="order-modal-summary"></div>
+                            </section>
+                        </div>
+                        <section class="order-modal-section">
+                            <h3>Itens do pedido</h3>
+                            <div id="order-modal-items"></div>
+                        </section>
+                        <section class="order-modal-section">
+                            <h3>Historico</h3>
+                            <div id="order-modal-events"></div>
+                        </section>
+                        <div class="order-modal-actions">
+                            <button class="btn btn-outline" type="button" onclick="closeOrderModal()">Cancelar</button>
+                            <button class="btn btn-primary" id="order-modal-submit" type="submit">Salvar pedido</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+                    </section>
+
+                    <section class="admin-page" id="admin-page-settings" data-admin-page="settings">
+            <div class="admin-card store-config-card shipping-config-card">
                 <div class="orders-header">
                     <div>
-                        <h2>Configuracoes da loja</h2>
-                        <p>Atualize identidade, contato, catalogo, frete e cupom sem alterar o deploy.</p>
+                        <h2>Frete e e-mails</h2>
+                        <p>Configure regras de entrega, Melhor Envio e e-mails transacionais.</p>
                     </div>
                     <button class="btn btn-outline" type="button" onclick="loadAdminStoreConfig()">Recarregar</button>
                 </div>
 
-                <form id="store-config-form">
-                    <h3>Marca</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Nome da loja</label>
-                            <input type="text" data-store-config="STORE_NAME">
+                <div class="coupon-admin-grid settings-admin-grid">
+                    <form id="store-config-form" class="admin-coupon-form store-config-form" data-store-config-form>
+                        <h3>Configurar frete</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Modo de frete</label>
+                                <select data-store-config="SHIPPING_MODE">
+                                    <option value="free">Gratis</option>
+                                    <option value="fixed">Fixo</option>
+                                    <option value="threshold">Gratis por valor minimo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Prazo estimado</label>
+                                <input type="text" data-store-config="SHIPPING_ESTIMATED_DAYS">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Nome curto</label>
-                            <input type="text" data-store-config="STORE_SHORT_NAME">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Frete abaixo do minimo (R$)</label>
+                                <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
+                                <small class="field-hint">No modo gratis por valor minimo, este valor e cobrado antes de atingir o minimo.</small>
+                            </div>
+                            <div class="form-group">
+                                <label>Gratis acima de (R$)</label>
+                                <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FREE_MINIMUM">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Tagline</label>
-                            <input type="text" data-store-config="STORE_TAGLINE">
-                        </div>
-                        <div class="form-group">
-                            <label>Slogan</label>
-                            <input type="text" data-store-config="STORE_SLOGAN">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Descricao</label>
-                        <textarea rows="2" data-store-config="STORE_DESCRIPTION"></textarea>
-                    </div>
 
-                    <h3>Contato</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>E-mail</label>
-                            <input type="email" data-store-config="STORE_EMAIL">
+                        <h3>Integracao de frete</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Provedor</label>
+                                <select data-store-config="SHIPPING_PROVIDER">
+                                    <option value="internal">Interno</option>
+                                    <option value="melhor_envio">Melhor Envio</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>CEP de origem</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_FROM_POSTAL_CODE" maxlength="9" placeholder="01001000">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Telefone</label>
-                            <input type="text" data-store-config="STORE_PHONE">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Servicos Melhor Envio</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_SERVICES" placeholder="1,2">
+                            </div>
+                            <div class="form-group">
+                                <label>Transportadoras permitidas</label>
+                                <input type="text" data-store-config="MELHOR_ENVIO_ALLOWED_COMPANY_IDS" placeholder="1,2,14,15,12,6">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>WhatsApp</label>
-                            <input type="text" data-store-config="STORE_WHATSAPP">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Timeout Melhor Envio (s)</label>
+                                <input type="number" min="1" max="30" step="0.5" data-store-config="MELHOR_ENVIO_TIMEOUT_SECONDS">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Instagram</label>
-                            <input type="text" data-store-config="STORE_INSTAGRAM">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Site</label>
-                            <input type="text" data-store-config="STORE_WEBSITE">
-                        </div>
-                        <div class="form-group">
-                            <label>CNPJ</label>
-                            <input type="text" data-store-config="STORE_CNPJ">
-                        </div>
-                    </div>
 
-                    <h3>Catalogo e PDF</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Titulo do catalogo</label>
-                            <input type="text" data-store-config="STORE_CATALOG_TITLE">
+                        <h3>E-mails transacionais</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Modo de envio</label>
+                                <select data-store-config="EMAIL_BACKEND">
+                                    <option value="console">Console / logs</option>
+                                    <option value="smtp">SMTP</option>
+                                    <option value="disabled">Desativado</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nome do remetente</label>
+                                <input type="text" data-store-config="EMAIL_FROM_NAME" placeholder="VJ Semijoias">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label>Colecao</label>
-                            <input type="text" data-store-config="STORE_CATALOG_COLLECTION">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>E-mail do remetente</label>
+                                <input type="email" data-store-config="EMAIL_FROM_ADDRESS" placeholder="contato@seudominio.com">
+                            </div>
+                            <div class="form-group">
+                                <label>Servidor SMTP</label>
+                                <input type="text" data-store-config="EMAIL_SMTP_HOST" placeholder="smtp.seudominio.com">
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Nome do arquivo PDF</label>
-                        <input type="text" data-store-config="STORE_CATALOG_FILENAME">
-                    </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Porta SMTP</label>
+                                <input type="number" min="1" max="65535" step="1" data-store-config="EMAIL_SMTP_PORT">
+                            </div>
+                            <div class="form-group">
+                                <label>Usuario SMTP</label>
+                                <input type="text" data-store-config="EMAIL_SMTP_USERNAME" autocomplete="username">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Senha SMTP</label>
+                                <input type="password" data-store-config="EMAIL_SMTP_PASSWORD" autocomplete="new-password" placeholder="Preencha apenas para trocar">
+                            </div>
+                            <label class="admin-toggle store-config-toggle email-tls-toggle">
+                                <input type="checkbox" data-store-config="EMAIL_SMTP_USE_TLS">
+                                <span></span>
+                                Usar TLS no SMTP
+                            </label>
+                        </div>
+                        <div class="email-test-panel">
+                            <div class="form-group">
+                                <label>E-mail para teste</label>
+                                <input type="email" id="email-test-recipient" placeholder="cliente@exemplo.com">
+                            </div>
+                            <button class="btn btn-outline" id="email-test-submit" type="button" onclick="sendTestEmail()">
+                                Enviar teste
+                            </button>
+                        </div>
 
-                    <h3>Frete e cupom</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Modo de frete</label>
-                            <select data-store-config="SHIPPING_MODE">
-                                <option value="free">Gratis</option>
-                                <option value="fixed">Fixo</option>
-                                <option value="threshold">Gratis por valor minimo</option>
-                            </select>
+                        <div class="coupon-actions store-config-actions">
+                            <button class="btn btn-primary" id="store-config-submit" data-store-config-submit type="submit">
+                                Salvar configuracoes
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label>Prazo estimado</label>
-                            <input type="text" data-store-config="SHIPPING_ESTIMATED_DAYS">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Frete fixo (R$)</label>
-                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FIXED_VALUE">
-                        </div>
-                        <div class="form-group">
-                            <label>Gratis acima de (R$)</label>
-                            <input type="number" min="0" step="0.01" data-store-config="SHIPPING_FREE_MINIMUM">
+                    </form>
+
+                    <div>
+                        <h3>Resumo atual</h3>
+                        <div id="store-config-summary" class="admin-coupons-list store-config-summary">
+                            <div class="empty-admin-list">
+                                <div class="icon">CFG</div>
+                                <p>Nenhuma configuracao carregada ainda.</p>
+                            </div>
                         </div>
                     </div>
-                    <label class="admin-toggle store-config-toggle">
-                        <input type="checkbox" data-store-config="COUPONS_ENABLED">
-                        <span></span>
-                        Cupons ativos
-                    </label>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Codigo do cupom</label>
-                            <input type="text" data-store-config="COUPON_CODE">
-                        </div>
-                        <div class="form-group">
-                            <label>Desconto (%)</label>
-                            <input type="number" min="0" max="100" step="0.01" data-store-config="COUPON_DISCOUNT_PERCENT">
-                        </div>
-                    </div>
-                    <div class="form-row store-config-actions">
-                        <div class="form-group">
-                            <label>Limite de uso</label>
-                            <input type="number" min="0" step="1" data-store-config="COUPON_USAGE_LIMIT">
-                        </div>
-                        <button class="btn btn-primary" id="store-config-submit" type="submit">
-                            Salvar configuracoes
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
 
+                    </section>
+
+                    <section class="admin-page" id="admin-page-contacts" data-admin-page="contacts">
+            <div class="admin-card store-config-card contacts-config-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Contatos do site</h2>
+                        <p>Atualize os dados exibidos no rodape da loja.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminStoreConfig()">Recarregar</button>
+                </div>
+
+                <div class="coupon-admin-grid contacts-admin-grid">
+                    <form id="contact-config-form" class="admin-coupon-form store-config-form" data-store-config-form>
+                        <h3>Dados de contato</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>E-mail</label>
+                                <input type="email" data-store-config="STORE_EMAIL">
+                            </div>
+                            <div class="form-group">
+                                <label>Telefone</label>
+                                <input type="text" data-store-config="STORE_PHONE">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>WhatsApp</label>
+                                <input type="text" data-store-config="STORE_WHATSAPP">
+                            </div>
+                            <div class="form-group">
+                                <label>Instagram</label>
+                                <input type="text" data-store-config="STORE_INSTAGRAM">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Localizacao</label>
+                                <input type="text" data-store-config="STORE_LOCATION" placeholder="Canoas - RS">
+                            </div>
+                            <div class="form-group">
+                                <label>Horario de atendimento</label>
+                                <input type="text" data-store-config="STORE_BUSINESS_HOURS" placeholder="Seg-Sex: 9h as 18h">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Site</label>
+                                <input type="text" data-store-config="STORE_WEBSITE">
+                            </div>
+                            <div class="form-group">
+                                <label>CNPJ</label>
+                                <input type="text" data-store-config="STORE_CNPJ">
+                            </div>
+                        </div>
+                        <div class="coupon-actions store-config-actions">
+                            <button class="btn btn-primary" id="contact-config-submit" data-store-config-submit type="submit">
+                                Salvar contatos
+                            </button>
+                        </div>
+                    </form>
+
+                    <div>
+                        <h3>Preview do rodape</h3>
+                        <div id="contact-config-preview" class="admin-coupons-list contact-config-preview">
+                            <div class="empty-admin-list">
+                                <div class="icon">CTT</div>
+                                <p>Nenhum contato carregado ainda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                    </section>
+
+                    <section class="admin-page" id="admin-page-coupons" data-admin-page="coupons">
+            <div class="admin-card coupon-admin-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Cupons promocionais</h2>
+                        <p>Crie cupons independentes com validade, minimo de compra e limite por cliente.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminCoupons()">Atualizar cupons</button>
+                </div>
+
+                <div class="coupon-admin-grid">
+                    <form id="admin-coupon-form" class="admin-coupon-form">
+                        <input type="hidden" id="coupon-id">
+                        <h3 id="coupon-form-title">Novo cupom</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Codigo</label>
+                                <input type="text" id="coupon-code" maxlength="20" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Tipo</label>
+                                <select id="coupon-discount-type">
+                                    <option value="percent">Percentual</option>
+                                    <option value="fixed">Valor fixo</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Desconto</label>
+                                <input type="number" id="coupon-discount-value" min="0.01" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Compra minima (R$)</label>
+                                <input type="number" id="coupon-minimum-subtotal" min="0" step="0.01" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Limite total</label>
+                                <input type="number" id="coupon-usage-limit" min="0" step="1" value="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Limite por CPF/e-mail</label>
+                                <input type="number" id="coupon-per-customer-limit" min="0" step="1" value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Valido de</label>
+                                <input type="date" id="coupon-starts-at">
+                            </div>
+                            <div class="form-group">
+                                <label>Valido ate</label>
+                                <input type="date" id="coupon-ends-at">
+                            </div>
+                        </div>
+                        <label class="admin-toggle store-config-toggle">
+                            <input type="checkbox" id="coupon-is-active" checked>
+                            <span></span>
+                            Cupom ativo
+                        </label>
+                        <div class="coupon-actions">
+                            <button class="btn btn-primary" id="coupon-submit" type="submit">Salvar cupom</button>
+                            <button class="btn btn-outline" type="button" onclick="resetCouponForm()">Novo</button>
+                        </div>
+                    </form>
+
+                    <div>
+                        <h3>Cupons cadastrados</h3>
+                        <div id="admin-coupons-list" class="admin-coupons-list">
+                            <div class="empty-admin-list">
+                                <div class="icon">CUP</div>
+                                <p>Nenhum cupom carregado ainda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                    </section>
+
+                    <section class="admin-page" id="admin-page-security" data-admin-page="security">
+            <div class="admin-card admin-security-card">
+                <div class="orders-header">
+                    <div>
+                        <h2>Administradores e auditoria</h2>
+                        <p>Gerencie acessos administrativos e acompanhe eventos sensiveis da loja.</p>
+                    </div>
+                    <button class="btn btn-outline" type="button" onclick="loadAdminSecurity()">Atualizar logs</button>
+                </div>
+
+                <div class="admin-security-grid">
+                    <form id="admin-user-form" class="admin-user-form">
+                        <h3>Criar administrador</h3>
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="new-admin-name" autocomplete="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" id="new-admin-email" autocomplete="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Senha temporaria</label>
+                            <input type="password" id="new-admin-password" autocomplete="new-password" minlength="8" required>
+                        </div>
+                        <button class="btn btn-primary" id="admin-user-submit" type="submit">
+                            Criar admin
+                        </button>
+                    </form>
+
+                    <div>
+                        <h3>Admins cadastrados</h3>
+                        <div id="admin-users-list" class="admin-users-list">
+                            <div class="empty-admin-list">
+                                <div class="icon">ADM</div>
+                                <p>Nenhum administrador carregado ainda.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="admin-audit-block">
+                    <h3>Auditoria recente</h3>
+                    <div id="admin-audit-list" class="admin-audit-list">
+                        <div class="empty-admin-list">
+                            <div class="icon">LOG</div>
+                            <p>Nenhum log carregado ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+                    </section>
+
+                    <section class="admin-page" id="admin-page-products" data-admin-page="products">
             <div class="admin-grid">
                 <!-- FORMULÁRIO DE ADICIONAR/EDITAR -->
                 <div class="admin-card">
@@ -329,6 +648,17 @@
 
                         <div class="form-row">
                             <div class="form-group">
+                                <label>Referencia da peca</label>
+                                <input type="text" id="product-reference" name="reference" maxlength="80" placeholder="Ex: REF-1234">
+                            </div>
+                            <div class="form-group">
+                                <label>SKU / Codigo interno</label>
+                                <input type="text" id="product-sku" name="sku" maxlength="80" placeholder="VJ-BRINCO-001">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
                                 <label>Ícone Emoji (opcional)</label>
                                 <input type="text" id="product-icon" name="icon" placeholder="💎" maxlength="2">
                             </div>
@@ -345,6 +675,10 @@
 
                         <div class="form-row">
                             <div class="form-group">
+                                <label>Quantidade em estoque</label>
+                                <input type="number" id="product-stock-quantity" name="stock_quantity" min="0" step="1" value="1">
+                            </div>
+                            <div class="form-group">
                                 <label>Disponibilidade</label>
                                 <select id="product-stock-status" name="stock_status">
                                     <option value="available">Disponivel</option>
@@ -352,6 +686,40 @@
                                     <option value="out_of_stock">Sem estoque</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label>Alerta de estoque baixo</label>
+                                <input type="number" id="product-low-stock-alert" name="low_stock_alert" min="0" step="1" value="1">
+                            </div>
+                        </div>
+
+                        <h3>Dados para frete</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Peso (g)</label>
+                                <input type="number" id="product-weight-grams" name="weight_grams" min="1" max="30000" step="1" value="100">
+                            </div>
+                            <div class="form-group">
+                                <label>Perfil de frete</label>
+                                <input type="text" id="product-shipping-profile" name="shipping_profile" maxlength="50" value="default">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Altura (cm)</label>
+                                <input type="number" id="product-height-cm" name="height_cm" min="0.01" max="200" step="0.01" value="2.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Largura (cm)</label>
+                                <input type="number" id="product-width-cm" name="width_cm" min="0.01" max="200" step="0.01" value="10.00">
+                            </div>
+                            <div class="form-group">
+                                <label>Comprimento (cm)</label>
+                                <input type="number" id="product-length-cm" name="length_cm" min="0.01" max="200" step="0.01" value="15.00">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
                             <div class="form-group">
                                 <label>Status na loja</label>
                                 <label class="admin-toggle">
@@ -407,6 +775,7 @@
                         <button class="filter-btn active" data-filter="all">Todos</button>
                         <button class="filter-btn" data-filter="custom">Customizados</button>
                         <button class="filter-btn" data-filter="inactive">Inativos</button>
+                        <button class="filter-btn" data-filter="low_stock">Baixo estoque</button>
                         <button class="filter-btn" data-filter="out_of_stock">Sem estoque</button>
                         <button class="filter-btn" data-filter="brincos">Brincos</button>
                         <button class="filter-btn" data-filter="colares">Colares</button>
@@ -423,6 +792,9 @@
             </div>
 
             <!-- GERADOR DE CATALOGO PDF -->
+                    </section>
+
+                    <section class="admin-page" id="admin-page-catalog" data-admin-page="catalog">
             <div class="admin-card catalog-pdf-card">
                 <div class="catalog-pdf-header">
                     <div>
@@ -506,6 +878,9 @@
             </div>
 
             <!-- BOTÕES DE AÇÃO GLOBAIS -->
+                    </section>
+
+                    <section class="admin-page" id="admin-page-import" data-admin-page="import">
             <div class="admin-actions">
                 <h3>🛠️ Ações Globais</h3>
                 <div class="admin-action-toolbar">
@@ -528,6 +903,9 @@
                     <button class="btn btn-outline" onclick="showAdminPanel()">
                         Atualizar Catálogo
                     </button>
+                    <button class="btn btn-danger" onclick="confirmClearCatalog()">
+                        Limpar Catalogo
+                    </button>
                 </div>
                 <p class="import-help-text">
                     Selecione a pasta completa que contem <code>manifest.json</code> e <code>products/</code>.
@@ -541,6 +919,9 @@
                     </div>
                 </div>
             </div>
+                    </section>
+                </div><!-- /.admin-pages -->
+            </div><!-- /.admin-layout -->
         </div>
     </div>
 

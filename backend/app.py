@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import secrets
 
 import uvicorn
@@ -9,10 +9,22 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import FRONTEND_ROOT, settings
-from backend.database import Base, SessionLocal, engine
-from backend.routers import auth, catalog_pdf, orders, pages, payments, products, store_settings
+from backend.database import SessionLocal
+from backend.routers import (
+    address,
+    auth,
+    catalog_pdf,
+    orders,
+    pages,
+    payments,
+    products,
+    store_settings,
+    vj_admin,
+)
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
-from backend.services.startup import bootstrap_database
+from backend.services.csrf import csrf_middleware
+from backend.services.rate_limit import rate_limit_middleware
+from backend.services.startup import bootstrap_runtime_data
 
 
 logger = logging.getLogger(__name__)
@@ -20,10 +32,12 @@ logger = logging.getLogger(__name__)
 
 def create_app():
     app = FastAPI(title="VJ Semijoias API", version="1.0.0")
+    app.middleware("http")(rate_limit_middleware)
+    app.middleware("http")(csrf_middleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
+        allow_origins=list(settings.cors_allowed_origins),
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -35,7 +49,7 @@ def create_app():
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(_request, exc):
         errors = exc.errors()
-        message = errors[0].get("msg", "Dados inválidos") if errors else "Dados inválidos"
+        message = errors[0].get("msg", "Dados invÃ¡lidos") if errors else "Dados invÃ¡lidos"
         return JSONResponse(status_code=422, content={"error": message})
 
     @app.exception_handler(Exception)
@@ -57,16 +71,18 @@ def create_app():
 
     app.include_router(pages.router)
     app.include_router(products.router)
+    app.include_router(address.router)
     app.include_router(auth.router)
     app.include_router(payments.router)
     app.include_router(orders.router)
     app.include_router(catalog_pdf.router)
     app.include_router(store_settings.router)
+    app.include_router(vj_admin.router)
     app.mount("/", StaticFiles(directory=FRONTEND_ROOT, html=True), name="frontend")
     return app
 
 
-bootstrap_database(Base, engine, SessionLocal)
+bootstrap_runtime_data(SessionLocal)
 app = create_app()
 
 
@@ -77,3 +93,5 @@ if __name__ == "__main__":
         port=settings.port,
         reload=settings.debug,
     )
+
+

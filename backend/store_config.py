@@ -5,8 +5,9 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.config import FRONTEND_ROOT, env_bool
+from backend.config import FRONTEND_ROOT, env_bool, settings
 from backend.models import Coupon, StoreSetting
+from backend.services.validation import clean_text, digits_only, normalize_email, normalize_phone
 
 
 def env_value(name, default=""):
@@ -58,6 +59,8 @@ class ContactSettings:
     instagram: str = env_value("STORE_INSTAGRAM", "vj_semijoias")
     website: str = env_value("STORE_WEBSITE", "www.vjsemijoias.com")
     cnpj: str = env_value("STORE_CNPJ", "")
+    location: str = env_value("STORE_LOCATION", "Canoas - RS")
+    business_hours: str = env_value("STORE_BUSINESS_HOURS", "Seg-Sex: 9h as 18h")
 
 
 @dataclass(frozen=True)
@@ -76,6 +79,11 @@ class ShippingSettings:
     fixed_value: str = env_value("SHIPPING_FIXED_VALUE", "0")
     free_minimum: str = env_value("SHIPPING_FREE_MINIMUM", "0")
     estimated_days: str = env_value("SHIPPING_ESTIMATED_DAYS", "5-10")
+    provider: str = env_value("SHIPPING_PROVIDER", "internal").lower()
+    melhor_envio_from_postal_code: str = env_value("MELHOR_ENVIO_FROM_POSTAL_CODE", "")
+    melhor_envio_services: str = env_value("MELHOR_ENVIO_SERVICES", "")
+    melhor_envio_allowed_company_ids: str = env_value("MELHOR_ENVIO_ALLOWED_COMPANY_IDS", "1,2,14,15,12,6")
+    melhor_envio_timeout_seconds: str = env_value("MELHOR_ENVIO_TIMEOUT_SECONDS", "6")
 
 
 @dataclass(frozen=True)
@@ -124,7 +132,12 @@ class StoreSettings:
                 "contact_line": self.catalog_contact_line,
                 "coupon_label": self.coupon_label,
             },
-            "shipping": asdict(self.shipping),
+            "shipping": {
+                "mode": self.shipping.mode,
+                "fixed_value": self.shipping.fixed_value,
+                "free_minimum": self.shipping.free_minimum,
+                "estimated_days": self.shipping.estimated_days,
+            },
             "coupon": {
                 "enabled": self.coupon.enabled,
                 "code": self.coupon.code if self.coupon.enabled else "",
@@ -152,6 +165,8 @@ STORE_SETTING_KEYS = (
     "STORE_INSTAGRAM",
     "STORE_WEBSITE",
     "STORE_CNPJ",
+    "STORE_LOCATION",
+    "STORE_BUSINESS_HOURS",
     "STORE_CATALOG_TITLE",
     "STORE_CATALOG_COLLECTION",
     "STORE_CATALOG_FILENAME",
@@ -159,10 +174,23 @@ STORE_SETTING_KEYS = (
     "SHIPPING_FIXED_VALUE",
     "SHIPPING_FREE_MINIMUM",
     "SHIPPING_ESTIMATED_DAYS",
+    "SHIPPING_PROVIDER",
+    "MELHOR_ENVIO_FROM_POSTAL_CODE",
+    "MELHOR_ENVIO_SERVICES",
+    "MELHOR_ENVIO_ALLOWED_COMPANY_IDS",
+    "MELHOR_ENVIO_TIMEOUT_SECONDS",
     "COUPONS_ENABLED",
     "COUPON_CODE",
     "COUPON_DISCOUNT_PERCENT",
     "COUPON_USAGE_LIMIT",
+    "EMAIL_BACKEND",
+    "EMAIL_FROM_NAME",
+    "EMAIL_FROM_ADDRESS",
+    "EMAIL_SMTP_HOST",
+    "EMAIL_SMTP_PORT",
+    "EMAIL_SMTP_USERNAME",
+    "EMAIL_SMTP_PASSWORD",
+    "EMAIL_SMTP_USE_TLS",
 )
 
 
@@ -180,6 +208,8 @@ def default_store_values(settings_obj: StoreSettings = store_settings):
         "STORE_INSTAGRAM": settings_obj.contact.instagram,
         "STORE_WEBSITE": settings_obj.contact.website,
         "STORE_CNPJ": settings_obj.contact.cnpj,
+        "STORE_LOCATION": settings_obj.contact.location,
+        "STORE_BUSINESS_HOURS": settings_obj.contact.business_hours,
         "STORE_CATALOG_TITLE": settings_obj.catalog.title,
         "STORE_CATALOG_COLLECTION": settings_obj.catalog.collection,
         "STORE_CATALOG_FILENAME": settings_obj.catalog.filename,
@@ -187,10 +217,23 @@ def default_store_values(settings_obj: StoreSettings = store_settings):
         "SHIPPING_FIXED_VALUE": settings_obj.shipping.fixed_value,
         "SHIPPING_FREE_MINIMUM": settings_obj.shipping.free_minimum,
         "SHIPPING_ESTIMATED_DAYS": settings_obj.shipping.estimated_days,
+        "SHIPPING_PROVIDER": settings_obj.shipping.provider,
+        "MELHOR_ENVIO_FROM_POSTAL_CODE": settings_obj.shipping.melhor_envio_from_postal_code,
+        "MELHOR_ENVIO_SERVICES": settings_obj.shipping.melhor_envio_services,
+        "MELHOR_ENVIO_ALLOWED_COMPANY_IDS": settings_obj.shipping.melhor_envio_allowed_company_ids,
+        "MELHOR_ENVIO_TIMEOUT_SECONDS": settings_obj.shipping.melhor_envio_timeout_seconds,
         "COUPONS_ENABLED": bool_text(settings_obj.coupon.enabled),
         "COUPON_CODE": settings_obj.coupon.code,
         "COUPON_DISCOUNT_PERCENT": settings_obj.coupon.discount_percent,
         "COUPON_USAGE_LIMIT": str(settings_obj.coupon.usage_limit),
+        "EMAIL_BACKEND": settings.email_backend,
+        "EMAIL_FROM_NAME": settings.email_from_name,
+        "EMAIL_FROM_ADDRESS": settings.email_from_address,
+        "EMAIL_SMTP_HOST": settings.email_smtp_host,
+        "EMAIL_SMTP_PORT": str(settings.email_smtp_port),
+        "EMAIL_SMTP_USERNAME": settings.email_smtp_username,
+        "EMAIL_SMTP_PASSWORD": settings.email_smtp_password,
+        "EMAIL_SMTP_USE_TLS": bool_text(settings.email_smtp_use_tls),
     }
 
 
@@ -200,6 +243,25 @@ def load_store_overrides(db: Session | None):
     rows = db.scalars(select(StoreSetting)).all()
     return {row.key: row.value for row in rows if row.key in STORE_SETTING_KEYS}
 
+
+def normalize_csv_ints(value, *, field: str) -> str:
+    raw_value = str(value or "").strip()
+    if not raw_value:
+        return ""
+    parts = [part.strip() for part in raw_value.split(",") if part.strip()]
+    if not parts or any(not part.isdigit() for part in parts):
+        raise ValueError(f"{field} deve conter apenas numeros separados por virgula")
+    return ",".join(parts)
+
+
+def normalize_timeout_seconds(value) -> str:
+    try:
+        timeout = Decimal(str(value or "6")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except (InvalidOperation, TypeError, ValueError) as exc:
+        raise ValueError("MELHOR_ENVIO_TIMEOUT_SECONDS deve ser numerico") from exc
+    if timeout < Decimal("1") or timeout > Decimal("30"):
+        raise ValueError("MELHOR_ENVIO_TIMEOUT_SECONDS deve ficar entre 1 e 30")
+    return format(timeout.normalize(), "f")
 
 def validate_store_values(values):
     cleaned = {}
@@ -214,9 +276,50 @@ def validate_store_values(values):
         if cleaned["SHIPPING_MODE"] not in {"free", "fixed", "threshold"}:
             raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
 
+    if "EMAIL_BACKEND" in cleaned:
+        cleaned["EMAIL_BACKEND"] = cleaned["EMAIL_BACKEND"].lower()
+        if cleaned["EMAIL_BACKEND"] not in {"console", "smtp", "disabled"}:
+            raise ValueError("EMAIL_BACKEND deve ser console, smtp ou disabled")
+
+    if "SHIPPING_PROVIDER" in cleaned:
+        cleaned["SHIPPING_PROVIDER"] = cleaned["SHIPPING_PROVIDER"].lower()
+        if cleaned["SHIPPING_PROVIDER"] not in {"internal", "melhor_envio"}:
+            raise ValueError("SHIPPING_PROVIDER deve ser internal ou melhor_envio")
+
+    if "MELHOR_ENVIO_FROM_POSTAL_CODE" in cleaned:
+        postal_code = digits_only(cleaned["MELHOR_ENVIO_FROM_POSTAL_CODE"])
+        if cleaned["MELHOR_ENVIO_FROM_POSTAL_CODE"] and len(postal_code) != 8:
+            raise ValueError("MELHOR_ENVIO_FROM_POSTAL_CODE deve conter 8 digitos")
+        cleaned["MELHOR_ENVIO_FROM_POSTAL_CODE"] = postal_code
+
+    for key in ("MELHOR_ENVIO_SERVICES", "MELHOR_ENVIO_ALLOWED_COMPANY_IDS"):
+        if key in cleaned:
+            cleaned[key] = normalize_csv_ints(cleaned[key], field=key)
+
+    if "MELHOR_ENVIO_TIMEOUT_SECONDS" in cleaned:
+        cleaned["MELHOR_ENVIO_TIMEOUT_SECONDS"] = normalize_timeout_seconds(cleaned["MELHOR_ENVIO_TIMEOUT_SECONDS"])
+
+    if "EMAIL_SMTP_PORT" in cleaned:
+        try:
+            smtp_port = int(cleaned["EMAIL_SMTP_PORT"] or "587")
+        except ValueError as exc:
+            raise ValueError("EMAIL_SMTP_PORT deve ser um numero inteiro") from exc
+        if smtp_port < 1 or smtp_port > 65535:
+            raise ValueError("EMAIL_SMTP_PORT deve ficar entre 1 e 65535")
+        cleaned["EMAIL_SMTP_PORT"] = str(smtp_port)
+
     for key in ("SHIPPING_FIXED_VALUE", "SHIPPING_FREE_MINIMUM", "COUPON_DISCOUNT_PERCENT"):
         if key in cleaned:
             cleaned[key] = str(money_value(cleaned[key]))
+
+    shipping_mode = cleaned.get("SHIPPING_MODE", defaults["SHIPPING_MODE"])
+    shipping_provider = cleaned.get("SHIPPING_PROVIDER", defaults["SHIPPING_PROVIDER"])
+    shipping_fixed_value = money_value(cleaned.get("SHIPPING_FIXED_VALUE", defaults["SHIPPING_FIXED_VALUE"]))
+    shipping_free_minimum = money_value(cleaned.get("SHIPPING_FREE_MINIMUM", defaults["SHIPPING_FREE_MINIMUM"]))
+    if shipping_mode == "threshold" and shipping_free_minimum <= 0:
+        raise ValueError("SHIPPING_FREE_MINIMUM deve ser maior que zero no modo threshold")
+    if shipping_mode == "threshold" and shipping_provider == "internal" and shipping_fixed_value <= 0:
+        raise ValueError("SHIPPING_FIXED_VALUE deve ser maior que zero para frete gratis acima de um valor")
 
     if "COUPON_DISCOUNT_PERCENT" in cleaned:
         percent = money_value(cleaned["COUPON_DISCOUNT_PERCENT"])
@@ -232,11 +335,55 @@ def validate_store_values(values):
             raise ValueError("COUPON_USAGE_LIMIT nao pode ser negativo")
         cleaned["COUPON_USAGE_LIMIT"] = str(usage_limit)
 
+    if "EMAIL_SMTP_USE_TLS" in cleaned:
+        cleaned["EMAIL_SMTP_USE_TLS"] = bool_text(parse_bool(cleaned["EMAIL_SMTP_USE_TLS"]))
+
     if "COUPONS_ENABLED" in cleaned:
         cleaned["COUPONS_ENABLED"] = bool_text(parse_bool(cleaned["COUPONS_ENABLED"]))
 
     if "COUPON_CODE" in cleaned:
         cleaned["COUPON_CODE"] = cleaned["COUPON_CODE"].upper()
+
+    text_limits = {
+        "STORE_NAME": 120,
+        "STORE_SHORT_NAME": 30,
+        "STORE_TAGLINE": 80,
+        "STORE_DESCRIPTION": 500,
+        "STORE_SLOGAN": 120,
+        "STORE_LOGO_PATH": 200,
+        "STORE_INSTAGRAM": 80,
+        "STORE_WEBSITE": 200,
+        "STORE_CNPJ": 30,
+        "STORE_LOCATION": 120,
+        "STORE_BUSINESS_HOURS": 120,
+        "STORE_CATALOG_TITLE": 120,
+        "STORE_CATALOG_COLLECTION": 120,
+        "STORE_CATALOG_FILENAME": 120,
+        "SHIPPING_ESTIMATED_DAYS": 30,
+        "SHIPPING_PROVIDER": 30,
+        "MELHOR_ENVIO_FROM_POSTAL_CODE": 20,
+        "MELHOR_ENVIO_SERVICES": 100,
+        "MELHOR_ENVIO_ALLOWED_COMPANY_IDS": 100,
+        "MELHOR_ENVIO_TIMEOUT_SECONDS": 10,
+        "COUPON_CODE": 30,
+        "EMAIL_BACKEND": 30,
+        "EMAIL_FROM_NAME": 120,
+        "EMAIL_SMTP_HOST": 200,
+        "EMAIL_SMTP_USERNAME": 200,
+        "EMAIL_SMTP_PASSWORD": 300,
+    }
+    for key, max_length in text_limits.items():
+        if key in cleaned:
+            cleaned[key] = clean_text(cleaned[key], field=key, max_length=max_length)
+
+    if "EMAIL_FROM_ADDRESS" in cleaned and cleaned["EMAIL_FROM_ADDRESS"]:
+        cleaned["EMAIL_FROM_ADDRESS"] = normalize_email(cleaned["EMAIL_FROM_ADDRESS"])
+    if "STORE_EMAIL" in cleaned and cleaned["STORE_EMAIL"]:
+        cleaned["STORE_EMAIL"] = normalize_email(cleaned["STORE_EMAIL"])
+    if "STORE_PHONE" in cleaned and cleaned["STORE_PHONE"]:
+        cleaned["STORE_PHONE"] = normalize_phone(cleaned["STORE_PHONE"])
+    if "STORE_WHATSAPP" in cleaned and cleaned["STORE_WHATSAPP"]:
+        cleaned["STORE_WHATSAPP"] = normalize_phone(cleaned["STORE_WHATSAPP"])
 
     return {key: cleaned.get(key, defaults[key]) for key in STORE_SETTING_KEYS}
 
@@ -259,6 +406,8 @@ def settings_from_values(values):
             instagram=data["STORE_INSTAGRAM"],
             website=data["STORE_WEBSITE"],
             cnpj=data["STORE_CNPJ"],
+            location=data["STORE_LOCATION"],
+            business_hours=data["STORE_BUSINESS_HOURS"],
         ),
         catalog=CatalogSettings(
             title=data["STORE_CATALOG_TITLE"],
@@ -270,6 +419,11 @@ def settings_from_values(values):
             fixed_value=data["SHIPPING_FIXED_VALUE"],
             free_minimum=data["SHIPPING_FREE_MINIMUM"],
             estimated_days=data["SHIPPING_ESTIMATED_DAYS"],
+            provider=data["SHIPPING_PROVIDER"].lower(),
+            melhor_envio_from_postal_code=data["MELHOR_ENVIO_FROM_POSTAL_CODE"],
+            melhor_envio_services=data["MELHOR_ENVIO_SERVICES"],
+            melhor_envio_allowed_company_ids=data["MELHOR_ENVIO_ALLOWED_COMPANY_IDS"],
+            melhor_envio_timeout_seconds=data["MELHOR_ENVIO_TIMEOUT_SECONDS"],
         ),
         coupon=CouponSettings(
             enabled=parse_bool(data["COUPONS_ENABLED"]),
@@ -301,11 +455,17 @@ def public_store_config(db: Session | None = None):
     return data
 
 
+def mask_sensitive_admin_values(values):
+    masked = dict(values)
+    masked["EMAIL_SMTP_PASSWORD"] = ""
+    return masked
+
+
 def admin_store_config(db: Session):
     values = {**default_store_values(), **load_store_overrides(db)}
     return {
-        "values": values,
-        "defaults": default_store_values(),
+        "values": mask_sensitive_admin_values(values),
+        "defaults": mask_sensitive_admin_values(default_store_values()),
         "public": public_store_config(db),
     }
 
@@ -317,14 +477,19 @@ def sync_coupon_record(db: Session, active_settings: StoreSettings):
     if not coupon:
         coupon = Coupon(code=active_settings.coupon.code)
         db.add(coupon)
-    coupon.discount_percent = float(money_value(active_settings.coupon.discount_percent))
+    coupon.discount_percent = money_value(active_settings.coupon.discount_percent)
+    coupon.discount_type = "percent"
+    coupon.discount_value = money_value(active_settings.coupon.discount_percent)
     coupon.usage_limit = active_settings.coupon.usage_limit
     coupon.is_active = active_settings.coupon.enabled
 
 
 def update_store_settings(db: Session, values):
     current_values = {**default_store_values(), **load_store_overrides(db)}
-    cleaned = validate_store_values({**current_values, **(values or {})})
+    incoming_values = dict(values or {})
+    if not str(incoming_values.get("EMAIL_SMTP_PASSWORD", "")).strip():
+        incoming_values.pop("EMAIL_SMTP_PASSWORD", None)
+    cleaned = validate_store_values({**current_values, **incoming_values})
     for key, value in cleaned.items():
         row = db.get(StoreSetting, key)
         if row:

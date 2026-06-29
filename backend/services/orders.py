@@ -7,12 +7,22 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Coupon, Order, Product
-from backend.store_config import effective_store_settings
+from backend.models import Order, Product
+from backend.services.coupons import redeem_coupon, validate_coupon_for_order
+from backend.services.validation import (
+    clean_text,
+    normalize_email,
+    normalize_phone,
+    validate_cpf,
+)
+from backend.services.stock import deduct_stock_for_order, ensure_orderable_stock
+from backend.services.order_events import record_status_event
+from backend.services.shipping import build_shipping_package, calculate_shipping_options
 
 
 ORDER_STATUSES = {
     "pending",
+    "payment_pending",
     "paid",
     "processing",
     "shipped",
@@ -29,37 +39,34 @@ def money(value):
         raise ValueError("Valor monetário inválido") from exc
 
 
-def configured_shipping(subtotal, db: Session | None = None):
-    subtotal = money(subtotal)
-    active_settings = effective_store_settings(db)
-    mode = active_settings.shipping.mode
-    fixed_value = money(active_settings.shipping.fixed_value)
-    free_minimum = money(active_settings.shipping.free_minimum)
-
-    if mode == "free":
-        shipping = Decimal("0.00")
-        message = "Frete Gratis!"
-    elif mode == "fixed":
-        shipping = fixed_value
-        message = f"Frete fixo de R$ {shipping:.2f}"
-    elif mode == "threshold":
-        if subtotal >= free_minimum:
-            shipping = Decimal("0.00")
-            message = f"Frete gratis acima de R$ {free_minimum:.2f}"
-        else:
-            shipping = fixed_value
-            message = f"Frete fixo de R$ {shipping:.2f}"
-    else:
-        raise ValueError("SHIPPING_MODE deve ser free, fixed ou threshold")
-
-    return {
-        "shipping": shipping,
-        "message": message,
-        "estimated_days": active_settings.shipping.estimated_days,
-    }
+def configured_shipping(
+    subtotal,
+    db: Session | None = None,
+    *,
+    zip_code: str = "",
+    package: dict | None = None,
+    selected_option_id: str = "",
+):
+    options = calculate_shipping_options(subtotal, zip_code=zip_code, package=package, db=db)
+    selected_option_id = str(selected_option_id or "").strip()
+    if selected_option_id:
+        for option in options:
+            if option["id"] == selected_option_id:
+                return option
+        raise ValueError("Opcao de frete invalida ou indisponivel")
+    return options[0]
 
 
-def calculate_order(db: Session, items, coupon_code=""):
+def calculate_order(
+    db: Session,
+    items,
+    coupon_code="",
+    *,
+    customer_email: str = "",
+    customer_cpf: str = "",
+    zip_code: str = "",
+    selected_shipping_option_id: str = "",
+):
     if not isinstance(items, list) or not items:
         raise ValueError("O pedido deve conter ao menos um produto")
 
@@ -90,10 +97,13 @@ def calculate_order(db: Session, items, coupon_code=""):
         raise ValueError("Um ou mais produtos não estão disponíveis")
 
     normalized_items = []
+    shipping_items = []
     subtotal = Decimal("0.00")
     for product_id in product_ids:
         product = products_by_id[product_id]
         quantity = quantities[product_id]
+        ensure_orderable_stock(product, quantity)
+        shipping_items.append((product, quantity))
         unit_price = money(product.price)
         subtotal += unit_price * quantity
         normalized_items.append(
@@ -107,34 +117,46 @@ def calculate_order(db: Session, items, coupon_code=""):
             }
         )
 
-    active_settings = effective_store_settings(db)
-    shipping_data = configured_shipping(subtotal, db)
+    package = build_shipping_package(shipping_items)
+    shipping_data = configured_shipping(
+        subtotal,
+        db,
+        zip_code=zip_code,
+        package=package,
+        selected_option_id=selected_shipping_option_id,
+    )
     shipping = shipping_data["shipping"]
     coupon_code = str(coupon_code or "").strip().upper()
     discount = Decimal("0.00")
+    coupon = None
+    coupon_id = None
     if coupon_code:
-        if not active_settings.coupon.enabled:
-            coupon_code = ""
-        else:
-            coupon = db.scalar(
-                select(Coupon).where(
-                    Coupon.code == coupon_code,
-                    Coupon.is_active.is_(True),
-                )
-            )
-            if not coupon or coupon.used_count >= coupon.usage_limit:
-                raise ValueError("Cupom inválido, expirado ou esgotado")
-            discount = (subtotal * money(coupon.discount_percent) / Decimal("100")).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-
+        coupon, discount = validate_coupon_for_order(
+            db,
+            coupon_code,
+            subtotal,
+            customer_email=customer_email,
+            customer_cpf=customer_cpf,
+        )
+        coupon_code = coupon.code
+        coupon_id = coupon.id
     return {
         "items": normalized_items,
         "subtotal": subtotal,
         "shipping": shipping,
+        "shipping_provider": shipping_data["provider"],
+        "shipping_service": shipping_data["service"],
+        "shipping_message": shipping_data["message"],
+        "shipping_estimated_days": shipping_data["estimated_days"],
+        "shipping_destination_zip": shipping_data["destination_zip"],
+        "shipping_option_id": shipping_data.get("id"),
+        "shipping_company_id": shipping_data.get("company_id"),
+        "shipping_company": shipping_data.get("company"),
         "discount": discount,
         "total": subtotal + shipping - discount,
         "coupon": coupon_code,
+        "coupon_id": coupon_id,
+        "coupon_model": coupon,
     }
 
 
@@ -142,12 +164,70 @@ def validate_order_data(db: Session, data):
     for field in ["customer_name", "customer_email", "customer_cpf", "items"]:
         if not data.get(field):
             raise ValueError(f"Campo obrigatório: {field}")
-    if "@" not in str(data["customer_email"]):
-        raise ValueError("E-mail inválido")
-    return calculate_order(db, data["items"], data.get("coupon", ""))
+    data["customer_name"] = clean_text(
+        data["customer_name"],
+        field="customer_name",
+        max_length=200,
+        required=True,
+    )
+    data["customer_email"] = normalize_email(data["customer_email"])
+    data["customer_cpf"] = validate_cpf(data["customer_cpf"])
+    data["customer_phone"] = normalize_phone(data.get("customer_phone"), required=False)
+    data["address_zip"] = clean_text(data.get("address_zip"), field="address_zip", max_length=20)
+    data["address_street"] = clean_text(
+        data.get("address_street"),
+        field="address_street",
+        max_length=200,
+    )
+    data["address_number"] = clean_text(
+        data.get("address_number"),
+        field="address_number",
+        max_length=20,
+    )
+    data["address_complement"] = clean_text(
+        data.get("address_complement"),
+        field="address_complement",
+        max_length=200,
+    )
+    data["address_neighborhood"] = clean_text(
+        data.get("address_neighborhood"),
+        field="address_neighborhood",
+        max_length=100,
+    )
+    data["address_city"] = clean_text(data.get("address_city"), field="address_city", max_length=100)
+    data["address_state"] = clean_text(data.get("address_state"), field="address_state", max_length=10)
+    data["idempotency_key"] = clean_text(
+        data.get("idempotency_key"),
+        field="idempotency_key",
+        max_length=100,
+    )
+    return calculate_order(
+        db,
+        data["items"],
+        data.get("coupon", ""),
+        customer_email=data["customer_email"],
+        customer_cpf=data["customer_cpf"],
+        zip_code=data.get("address_zip", ""),
+        selected_shipping_option_id=data.get("shipping_option_id", ""),
+    )
 
 
-def create_local_order(db: Session, data, totals, payment_method, claims=None):
+def existing_order_by_idempotency_key(db: Session, data):
+    key = clean_text(data.get("idempotency_key"), field="idempotency_key", max_length=100)
+    if not key:
+        return None
+    return db.scalar(select(Order).where(Order.idempotency_key == key))
+
+
+def create_local_order(
+    db: Session,
+    data,
+    totals,
+    payment_method,
+    claims=None,
+    *,
+    initial_status="pending",
+):
     order = Order(
         id="VJ" + datetime.now().strftime("%Y%m%d%H%M%S") + secrets.token_hex(2).upper(),
         user_id=int(claims["sub"]) if claims else None,
@@ -163,15 +243,39 @@ def create_local_order(db: Session, data, totals, payment_method, claims=None):
         address_city=data.get("address_city", ""),
         address_state=data.get("address_state", ""),
         items=json.dumps(totals["items"], ensure_ascii=False),
-        subtotal=float(totals["subtotal"]),
-        shipping=float(totals["shipping"]),
-        discount=float(totals["discount"]),
-        total=float(totals["total"]),
+        subtotal=totals["subtotal"],
+        shipping=totals["shipping"],
+        shipping_provider=totals.get("shipping_provider"),
+        shipping_service=totals.get("shipping_service"),
+        shipping_estimated_days=totals.get("shipping_estimated_days"),
+        shipping_destination_zip=totals.get("shipping_destination_zip"),
+        shipping_option_id=totals.get("shipping_option_id"),
+        shipping_company_id=totals.get("shipping_company_id"),
+        shipping_company=totals.get("shipping_company"),
+        discount=totals["discount"],
+        total=totals["total"],
         payment_method=payment_method,
-        status="pending",
+        status=initial_status,
         coupon=totals["coupon"],
+        idempotency_key=data.get("idempotency_key") or None,
+        public_token=secrets.token_urlsafe(24),
     )
     db.add(order)
+    if totals.get("coupon_model") and totals["discount"] > Decimal("0.00"):
+        redeem_coupon(
+            db,
+            coupon=totals["coupon_model"],
+            order=order,
+            discount_amount=totals["discount"],
+            customer_email=data["customer_email"],
+            customer_cpf=data["customer_cpf"],
+        )
+    record_status_event(
+        db,
+        order,
+        initial_status,
+        metadata={"payment_method": payment_method},
+    )
     return order
 
 
@@ -180,3 +284,11 @@ def normalize_order_status(value):
     if status not in ORDER_STATUSES:
         raise HTTPException(status_code=400, detail="Status de pedido invalido")
     return status
+
+
+def apply_paid_status(db: Session, order: Order, *, actor_user_id: int | None = None):
+    was_paid = order.status == "paid"
+    deduct_stock_for_order(db, order)
+    order.status = "paid"
+    if not was_paid:
+        record_status_event(db, order, "paid", actor_user_id=actor_user_id)

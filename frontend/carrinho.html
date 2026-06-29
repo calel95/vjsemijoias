@@ -64,6 +64,8 @@
                 <ul>
                     <li data-store-email>📧 contato@vjsemijoias.com</li>
                     <li data-store-phone>📱 (11) 99999-9999</li>
+                    <li data-store-location>&#128205; Canoas - RS</li>
+                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
                 </ul>
             </div>
         </div>
@@ -79,35 +81,107 @@
     <script src="js/main.js"></script>
     <script src="js/offline.js"></script>
     <script>
-        async function renderCart() {
+        let cartShippingLoading = false;
+        let cartShippingError = '';
+
+        function cartDigitsOnly(value) {
+            return String(value || '').replace(/\D/g, '');
+        }
+
+        function cartEscapeText(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function formatCartCep(value) {
+            const digits = cartDigitsOnly(value).slice(0, 8);
+            return typeof maskCEP === 'function' ? maskCEP(digits) : digits.replace(/(\d{5})(\d)/, '$1-$2');
+        }
+
+        function cartShippingOptionLabel(option) {
+            const company = option.company || option.provider || '';
+            const service = option.display_service || option.service || 'Frete';
+            return company && !String(service).includes(company) ? `${company} - ${service}` : service;
+        }
+
+        function cartShippingPriceLabel() {
+            if (!Cart.pricing.shippingOption) return 'Calcule pelo CEP';
+            const shipping = Cart.getShipping();
+            return shipping === 0 ? 'Gratis' : formatPrice(shipping);
+        }
+
+        function renderCartShippingOptionsHTML() {
+            if (cartShippingLoading) {
+                return '<div class="cart-shipping-message">Calculando frete...</div>';
+            }
+            if (cartShippingError) {
+                return `<div class="cart-shipping-message error">${cartEscapeText(cartShippingError)}</div>`;
+            }
+
+            const options = Cart.getShippingOptions();
+            if (!options.length) {
+                return '<div class="cart-shipping-message">Informe o CEP para ver as opcoes de frete.</div>';
+            }
+
+            const selectedId = Cart.pricing.shippingOption?.id || '';
+            return `
+                <div class="cart-shipping-options">
+                    ${options.map(option => {
+                        const selected = option.id === selectedId;
+                        const estimated = option.estimated_days ? `${cartEscapeText(option.estimated_days)} dias uteis` : 'prazo a confirmar';
+                        const price = Number(option.shipping || 0) === 0 ? 'Gratis' : formatPrice(Number(option.shipping || 0));
+                        const message = option.message || `${cartShippingOptionLabel(option)}: ${price}`;
+                        return `
+                            <label class="cart-shipping-option ${selected ? 'selected' : ''}">
+                                <input type="radio" name="cart_shipping_option" value="${cartEscapeText(option.id)}" ${selected ? 'checked' : ''} onchange="selectCartShippingOption(this.value)">
+                                <span>
+                                    <strong>${cartEscapeText(cartShippingOptionLabel(option))} - ${estimated}</strong>
+                                    <small>${cartEscapeText(message)}</small>
+                                </span>
+                                <b>${price}</b>
+                            </label>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function renderCart({ refreshPricing = true } = {}) {
             const container = document.getElementById('cart-content');
 
             if (Cart.items.length === 0) {
                 container.innerHTML = `
                     <div class="empty-cart">
-                        <div class="empty-cart-icon">🛒</div>
-                        <h2>Seu carrinho está vazio</h2>
+                        <div class="empty-cart-icon">Carrinho</div>
+                        <h2>Seu carrinho esta vazio</h2>
                         <p>Adicione produtos para continuar comprando</p>
-                        <a href="/catalogo" class="btn btn-primary">Ver Catálogo</a>
+                        <a href="/catalogo" class="btn btn-primary">Ver Catalogo</a>
                     </div>`;
                 return;
             }
 
-            await Cart.refreshPricing();
+            if (refreshPricing) {
+                await Cart.refreshPricing();
+            }
+
             const itemsHTML = Cart.items.map(item => `
                 <div class="cart-item">
                     <div class="cart-item-image">
                         ${item.image
                             ? `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                               <span class="cart-item-placeholder" style="display: none;">${item.icon || '💎'}</span>`
-                            : `<span class="cart-item-placeholder">${item.icon || '💎'}</span>`}
+                               <span class="cart-item-placeholder" style="display: none;">${item.icon || 'VJ'}</span>`
+                            : `<span class="cart-item-placeholder">${item.icon || 'VJ'}</span>`}
                     </div>
                     <div class="cart-item-info">
                         <h4>${item.name}</h4>
                         <p>${formatPrice(item.price)} cada</p>
                         <div class="quantity-selector" style="margin: 0.5rem 0;">
                             <div class="quantity-controls">
-                                <button onclick="updateItemQty(${item.id}, ${item.quantity - 1})">−</button>
+                                <button onclick="updateItemQty(${item.id}, ${item.quantity - 1})">-</button>
                                 <input type="number" value="${item.quantity}" readonly>
                                 <button onclick="updateItemQty(${item.id}, ${item.quantity + 1})">+</button>
                             </div>
@@ -115,16 +189,16 @@
                     </div>
                     <div class="cart-item-actions">
                         <div class="cart-item-price">${formatPrice(item.price * item.quantity)}</div>
-                        <button class="cart-item-remove" onclick="removeItem(${item.id})">🗑️ Remover</button>
+                        <button class="cart-item-remove" onclick="removeItem(${item.id})">Remover</button>
                     </div>
                 </div>
             `).join('');
 
-            const shipping = Cart.getShipping();
             const discount = Cart.getDiscount();
             const total = Cart.getFinalTotal();
             const subtotal = Cart.getSubtotal();
             const couponCode = Cart.getCouponCode();
+            const savedCep = formatCartCep(Cart.getShippingZipCode());
 
             container.innerHTML = `
                 <div class="cart-grid">
@@ -132,7 +206,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--gold-primary); flex-wrap: wrap; gap: 1rem;">
                             <h3 style="font-size: 1.3rem;">Itens do Carrinho (${Cart.getCount()})</h3>
                             <button onclick="clearCartConfirm()" style="color: var(--error); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--error);">
-                                🗑️ Limpar Carrinho
+                                Limpar Carrinho
                             </button>
                         </div>
                         ${itemsHTML}
@@ -145,10 +219,22 @@
                             <span>Subtotal:</span>
                             <span>${formatPrice(subtotal)}</span>
                         </div>
+
+                        <div class="cart-shipping-box">
+                            <div class="cart-shipping-title">
+                                <strong>Calcule o frete</strong>
+                                <span>Informe seu CEP para ver as opcoes do carrinho.</span>
+                            </div>
+                            <div class="cart-shipping-form">
+                                <input type="text" id="cart-shipping-cep" data-mask="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" value="${cartEscapeText(savedCep)}" onkeydown="handleCartShippingCepKey(event)">
+                                <button type="button" onclick="calculateCartShipping()" ${cartShippingLoading ? 'disabled' : ''}>${cartShippingLoading ? 'Calculando...' : 'Calcular'}</button>
+                            </div>
+                            <div id="cart-shipping-options">${renderCartShippingOptionsHTML()}</div>
+                        </div>
                         
                         <div class="summary-row">
                             <span>Frete:</span>
-                            <span>${shipping === 0 ? '🎁 Grátis' : formatPrice(shipping)}</span>
+                            <span>${cartShippingPriceLabel()}</span>
                         </div>
                         
                         ${discount > 0 ? `
@@ -168,32 +254,98 @@
                             <span class="price">${formatPrice(total)}</span>
                         </div>
                         
-                        <div style="background: #d4edda; color: #155724; padding: 0.8rem; border-radius: 8px; margin: 1rem 0; font-size: 0.85rem; text-align: center;">
+                        <div class="cart-shipping-selected-message">
                             ${Cart.getShippingMessage()}
                         </div>
                         
-                        <a href="/checkout" class="btn btn-primary btn-block" style="margin-top: 1rem;">
-                            💳 Finalizar Compra
+                        <a href="/checkout" class="btn btn-primary btn-block" style="margin-top: 1rem;" onclick="goToCheckoutFromCart(event)">
+                            Finalizar Compra
                         </a>
                         
                         <a href="/catalogo" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
-                            ← Continuar Comprando
+                            Continuar Comprando
                         </a>
                         
                         <div style="margin-top: 1.5rem; padding: 1rem; background: var(--white); border-radius: 8px; font-size: 0.85rem;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <span>🔒</span> Compra 100% segura
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                <span>💳</span> 12x sem juros
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                <span>🔄</span> Troca em 30 dias
-                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">Compra 100% segura</div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">12x sem juros</div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">Troca em 30 dias</div>
                         </div>
                     </div>
                 </div>
             `;
+
+            if (typeof applyInputMasks === 'function') {
+                applyInputMasks();
+            }
+        }
+
+        function handleCartShippingCepKey(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                calculateCartShipping();
+            }
+        }
+
+        async function calculateCartShipping() {
+            const input = document.getElementById('cart-shipping-cep');
+            const cepDigits = cartDigitsOnly(input?.value);
+            if (cepDigits.length !== 8) {
+                cartShippingError = 'Informe um CEP valido com 8 digitos.';
+                Cart.clearShippingQuote();
+                await renderCart({ refreshPricing: false });
+                document.getElementById('cart-shipping-cep')?.focus();
+                return;
+            }
+
+            cartShippingLoading = true;
+            cartShippingError = '';
+            await renderCart({ refreshPricing: false });
+
+            const result = await API.calculateShipping(Cart.getSubtotal(), cepDigits, Cart.items);
+            cartShippingLoading = false;
+
+            if (!result.success) {
+                cartShippingError = result.error || 'Nao foi possivel calcular o frete para este CEP.';
+                Cart.clearShippingQuote({ keepZip: true });
+                Cart.pricing.shippingZipCode = cepDigits;
+                Cart.savePricing();
+                await renderCart({ refreshPricing: false });
+                return;
+            }
+
+            const options = Array.isArray(result.data.options) && result.data.options.length
+                ? result.data.options
+                : (result.data.selected_option ? [result.data.selected_option] : []);
+            const previousSelectedId = Cart.pricing.shippingOption?.id || '';
+            Cart.setShippingQuote(cepDigits, options, previousSelectedId);
+            const coupon = await Cart.refreshCoupon(Cart.getSubtotal());
+            Cart.pricing.discount = coupon.discount;
+            Cart.pricing.discountCode = coupon.code;
+            Cart.pricing.discountPercent = coupon.percent;
+            Cart.savePricing();
+            await renderCart({ refreshPricing: false });
+        }
+
+        async function selectCartShippingOption(optionId) {
+            if (Cart.selectShippingOption(optionId)) {
+                cartShippingError = '';
+                await renderCart({ refreshPricing: false });
+            }
+        }
+
+        async function clearCartShipping() {
+            cartShippingError = '';
+            Cart.clearShippingQuote();
+            await renderCart({ refreshPricing: false });
+            document.getElementById('cart-shipping-cep')?.focus();
+        }
+
+        function goToCheckoutFromCart(event) {
+            if (Cart.pricing.shippingOption) return;
+            event.preventDefault();
+            showToast('Calcule e selecione o frete antes de finalizar', 'error', 'Frete pendente');
+            document.getElementById('cart-shipping-cep')?.focus();
         }
 
         async function updateItemQty(id, qty) { Cart.updateQuantity(id, qty); await renderCart(); }
@@ -228,15 +380,14 @@
 
             localStorage.removeItem('vj_coupon');
             localStorage.removeItem('vj_coupon_percent');
-            showToast(result.error || result.data?.message || 'Cupom inválido', 'error', 'Ops!');
+            showToast(result.error || result.data?.message || 'Cupom invalido', 'error', 'Ops!');
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProductsFromAPI();
             Cart.syncProductData();
             await renderCart();
-        });
-    </script>
+        });    </script>
 </body>
 
 </html>

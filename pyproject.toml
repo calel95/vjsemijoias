@@ -35,8 +35,9 @@ pythonpath = ["."]
 
 [tool.coverage.run]
 branch = true
-source = ["backend", "tools"]
+source = ["backend"]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 80

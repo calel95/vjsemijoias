@@ -58,6 +58,8 @@
                 <h3>Contato</h3>
                 <ul>
                     <li data-store-email>📧 contato@vjsemijoias.com</li>
+                    <li data-store-location>&#128205; Canoas - RS</li>
+                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
                 </ul>
             </div>
         </div>
@@ -86,6 +88,7 @@
                 <a id="pix-ticket-link" class="btn btn-outline btn-block" target="_blank" rel="noopener"
                     style="margin-top: 0.5rem;">Abrir instruções do Pix</a>
             </div>
+            <a id="order-tracking-link" href="/pedido" class="btn btn-secondary btn-block" style="margin-bottom: 0.6rem;">Acompanhar pedido</a>
             <a href="/" class="btn btn-primary btn-block">Voltar para a Loja</a>
         </div>
     </div>
@@ -99,6 +102,8 @@
     <script>
         let paymentPollTimer = null;
         let checkoutBusy = false;
+        let checkoutSelectedShippingId = '';
+        const CHECKOUT_IDEMPOTENCY_KEY = 'vj_checkout_idempotency_key';
 
         function escapeAttribute(value) {
             return String(value || '')
@@ -106,6 +111,21 @@
                 .replaceAll('"', '&quot;')
                 .replaceAll('<', '&lt;')
                 .replaceAll('>', '&gt;');
+        }
+
+        function escapeText(value) {
+            return String(value || '')
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;');
+        }
+
+        function shippingOptionLabel(option) {
+            const company = option.company || option.provider || '';
+            const service = option.display_service || option.service || 'Frete';
+            return company && !String(service).includes(company)
+                ? `${company} - ${service}`
+                : service;
         }
 
         async function renderCheckout() {
@@ -123,6 +143,7 @@
             }
 
             await Cart.refreshPricing();
+            checkoutSelectedShippingId = Cart.pricing.shippingOption?.id || '';
             const user = Auth.user;
             const subtotal = Cart.getSubtotal();
             const shipping = Cart.getShipping();
@@ -175,7 +196,7 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>CEP <span class="required">*</span></label>
-                                        <input type="text" name="cep" data-mask="cep" required placeholder="00000-000">
+                                        <input type="text" name="cep" data-mask="cep" required placeholder="00000-000" value="${escapeAttribute(typeof maskCEP === 'function' ? maskCEP(Cart.getShippingZipCode()) : Cart.getShippingZipCode())}">
                                     </div>
                                     <div class="form-group" style="flex: 2;">
                                         <label>Endereço <span class="required">*</span></label>
@@ -251,10 +272,14 @@
                                         </div>
                                     `).join('')}
                                 </div>
-                                <div class="summary-row"><span>Subtotal:</span><span>${formatPrice(subtotal)}</span></div>
-                                <div class="summary-row"><span>Frete:</span><span>${shipping === 0 ? '🎁 Grátis' : formatPrice(shipping)}</span></div>
-                                ${discount > 0 ? `<div class="summary-row" style="color: var(--success);"><span>Desconto:</span><span>-${formatPrice(discount)}</span></div>` : ''}
-                                <div class="summary-row total"><span>Total:</span><span class="price">${formatPrice(total)}</span></div>
+                                <div class="summary-row"><span>Subtotal:</span><span id="checkout-subtotal-price">${formatPrice(subtotal)}</span></div>
+                                <div class="checkout-shipping-summary">
+                                    <strong>Frete selecionado</strong>
+                                    <span>${Cart.pricing.shippingOption ? escapeText(shippingOptionLabel(Cart.pricing.shippingOption)) : 'Escolha o frete no carrinho antes de finalizar.'}</span>
+                                </div>
+                                <div class="summary-row"><span>Frete:</span><span id="checkout-shipping-price">${Cart.pricing.shippingOption ? (shipping === 0 ? 'Gratis' : formatPrice(shipping)) : 'Pendente'}</span></div>
+                                ${discount > 0 ? `<div class="summary-row" style="color: var(--success);"><span>Desconto:</span><span id="checkout-discount-price">-${formatPrice(discount)}</span></div>` : ''}
+                                <div class="summary-row total"><span>Total:</span><span id="checkout-total-price" class="price">${formatPrice(total)}</span></div>
                                 
                                 <button id="checkout-submit" type="button" class="btn btn-primary btn-block" style="margin-top: 1.5rem;" onclick="processInfinitePayCheckout()">
                                     Ir para o pagamento seguro
@@ -276,7 +301,60 @@
             `;
 
             applyInputMasks();
+            setupCepAutofill();
             initializePayments();
+        }
+
+        function digitsOnly(value) {
+            return String(value || '').replace(/\D/g, '');
+        }
+
+        function setCheckoutField(name, value, { overwrite = true } = {}) {
+            const field = document.querySelector(`#checkout-form [name="${name}"]`);
+            if (!field || value === undefined || value === null || value === '') return;
+            if (!overwrite && field.value.trim()) return;
+            field.value = value;
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function setupCepAutofill() {
+            const cepInput = document.querySelector('#checkout-form [name="cep"]');
+            if (!cepInput || cepInput.dataset.cepAutofillBound === 'true') return;
+            cepInput.dataset.cepAutofillBound = 'true';
+            let lookupTimer = null;
+
+            async function lookupCurrentCep() {
+                const cepDigits = digitsOnly(cepInput.value);
+                if (cepDigits.length !== 8 || cepInput.dataset.lastCepLookup === cepDigits) return;
+                cepInput.dataset.lastCepLookup = cepDigits;
+                cepInput.dataset.loadingCep = 'true';
+
+                const result = await API.lookupCep(cepDigits);
+                cepInput.dataset.loadingCep = 'false';
+                if (!result.success) {
+                    showToast(result.error || 'CEP nao encontrado', 'error', 'CEP nao encontrado');
+                    return;
+                }
+
+                const address = result.data || {};
+                setCheckoutField('address', address.street);
+                setCheckoutField('neighborhood', address.neighborhood);
+                setCheckoutField('city', address.city);
+                setCheckoutField('state', address.state);
+                setCheckoutField('complement', address.complement, { overwrite: false });
+                document.querySelector('#checkout-form [name="number"]')?.focus();
+            }
+
+            cepInput.addEventListener('input', () => {
+                delete cepInput.dataset.lastCepLookup;
+                clearTimeout(lookupTimer);
+                const cepDigits = digitsOnly(cepInput.value);
+                if (cepDigits.length === 8) {
+                    lookupTimer = setTimeout(lookupCurrentCep, 250);
+                }
+            });
+            cepInput.addEventListener('blur', lookupCurrentCep);
+            if (digitsOnly(cepInput.value).length === 8) lookupCurrentCep();
         }
 
         function getInstallmentOptions(total) {
@@ -292,6 +370,17 @@
 
         function checkoutField(name) {
             return document.querySelector(`#checkout-form [name="${name}"]`)?.value?.trim() || '';
+        }
+
+        function getCheckoutIdempotencyKey() {
+            let key = localStorage.getItem(CHECKOUT_IDEMPOTENCY_KEY);
+            if (!key) {
+                key = window.crypto?.randomUUID
+                    ? window.crypto.randomUUID()
+                    : `checkout-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                localStorage.setItem(CHECKOUT_IDEMPOTENCY_KEY, key);
+            }
+            return key;
         }
 
         function showMissingFields(fields, title) {
@@ -344,6 +433,20 @@
                 return null;
             }
 
+            const deliveryCep = digitsOnly(data.cep);
+            const shippingCep = digitsOnly(Cart.getShippingZipCode());
+            if (!Cart.pricing.shippingOption) {
+                showToast('Escolha o frete no carrinho antes de continuar', 'error', 'Frete pendente');
+                window.location.href = '/carrinho';
+                return null;
+            }
+            if (deliveryCep !== shippingCep) {
+                showToast('O CEP do endereco mudou. Recalcule o frete no carrinho.', 'error', 'Frete pendente');
+                window.location.href = '/carrinho';
+                return null;
+            }
+            checkoutSelectedShippingId = Cart.pricing.shippingOption.id;
+
             return {
                 customer_name: data.name,
                 customer_email: data.email,
@@ -357,7 +460,9 @@
                 address_city: data.city,
                 address_state: data.state,
                 items: Cart.items.map(item => ({ id: item.id, quantity: item.quantity })),
-                coupon: localStorage.getItem('vj_coupon') || ''
+                coupon: localStorage.getItem('vj_coupon') || '',
+                shipping_option_id: Cart.pricing.shippingOption?.id || checkoutSelectedShippingId,
+                idempotency_key: getCheckoutIdempotencyKey()
             };
         }
 
@@ -431,9 +536,15 @@
 
         function finishCheckout(order, payment) {
             Cart.clear();
+            localStorage.removeItem(CHECKOUT_IDEMPOTENCY_KEY);
             localStorage.removeItem('vj_coupon');
             localStorage.removeItem('vj_coupon_percent');
             document.getElementById('order-id').textContent = order.id;
+            const trackingLink = document.getElementById('order-tracking-link');
+            const trackingToken = order.public_token || '';
+            trackingLink.href = trackingToken
+                ? `/pedido?id=${encodeURIComponent(order.id)}&token=${encodeURIComponent(trackingToken)}`
+                : '/pedido';
 
             const paid = payment.status === 'paid';
             document.getElementById('payment-result-icon').textContent = paid ? '✓' : '⏳';

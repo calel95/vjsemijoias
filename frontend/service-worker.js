@@ -3,7 +3,7 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v24';
+const CACHE_NAME = 'vj-semijoias-v25';
 const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
@@ -11,6 +11,7 @@ const urlsToCache = [
     '/produto',
     '/carrinho',
     '/checkout',
+    '/pedido',
     '/login',
     '/cadastro',
     '/admin',
@@ -89,6 +90,12 @@ function productImageUrls(products) {
     return [...urls];
 }
 
+function productsFromPayload(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.items)) return payload.items;
+    return [];
+}
+
 async function cacheProductImages(products) {
     const cache = await caches.open(CACHE_NAME);
     await Promise.allSettled(
@@ -108,7 +115,7 @@ async function networkFirstProducts(request, event) {
         if (response.ok) {
             await cache.put(request, response.clone());
             const imageCacheTask = response.clone().json()
-                .then(products => Array.isArray(products) && cacheProductImages(products))
+                .then(payload => cacheProductImages(productsFromPayload(payload)))
                 .catch(() => {});
             event.waitUntil(imageCacheTask);
             return response;

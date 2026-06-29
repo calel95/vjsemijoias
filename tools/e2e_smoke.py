@@ -15,14 +15,22 @@ os.environ["SECRET_KEY"] = "test-secret"
 os.environ["INFINITEPAY_HANDLE"] = "vjsemijoias"
 os.environ["PUBLIC_BASE_URL"] = "https://vj.example.com"
 os.environ["SHIPPING_MODE"] = "free"
+os.environ["SHIPPING_PROVIDER"] = "internal"
 os.environ["COUPONS_ENABLED"] = "true"
 os.environ["COUPON_CODE"] = "VJ10"
 os.environ["COUPON_DISCOUNT_PERCENT"] = "10"
 os.environ["COUPON_USAGE_LIMIT"] = "100"
+os.environ["CSRF_COOKIE_SECURE"] = "false"
 
 from fastapi.testclient import TestClient
 
+from backend.database import Base, engine
+import backend.models  # noqa: F401
+
+Base.metadata.create_all(engine)
+
 from backend.app import ADMIN_LOGIN_ATTEMPTS, app
+from backend.config import settings
 
 
 client = TestClient(app)
@@ -55,6 +63,11 @@ def assert_true(condition, label):
 
 def log_step(message):
     print(f"[OK] {message}")
+
+
+def csrf_headers():
+    token = client.cookies.get(settings.csrf_cookie_name)
+    return {settings.csrf_header_name: token} if token else {}
 
 
 @contextmanager
@@ -201,7 +214,11 @@ def run():
     }
     with fake_infinitepay():
         checkout = assert_status(
-            client.post("/api/payments/infinitepay/checkout", json=order_payload),
+            client.post(
+                "/api/payments/infinitepay/checkout",
+                headers=csrf_headers(),
+                json=order_payload,
+            ),
             201,
             "checkout InfinitePay",
         ).json()
@@ -218,9 +235,14 @@ def run():
             "status pagamento pendente",
         ).json()
         assert_true(status["status"] == "pending", "pagamento deveria iniciar pendente")
+        assert_true(
+            checkout["order"]["status"] == "payment_pending",
+            "pedido deveria aguardar pagamento apos checkout",
+        )
         confirmed = assert_status(
             client.post(
                 "/api/payments/infinitepay/confirm",
+                headers=csrf_headers(),
                 json={
                     "order_nsu": checkout["order"]["id"],
                     "transaction_nsu": "transaction-e2e",

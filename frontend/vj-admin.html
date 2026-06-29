@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VJ Admin - VJ Semijoias</title>
+    <link rel="stylesheet" href="css/vj-admin.css">
+    <link rel="icon" type="image/png" href="images/logo.png">
+</head>
+<body>
+    <main class="login-view" id="login-view">
+        <form class="login-panel" id="login-form">
+            <img src="images/logo.png" alt="VJ Semijoias" class="login-logo">
+            <h1>VJ Admin</h1>
+            <label>
+                E-mail
+                <input id="login-email" type="email" autocomplete="username" value="admin@vjsemijoias.com" required>
+            </label>
+            <label>
+                Senha
+                <input id="login-password" type="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit">Entrar</button>
+            <p class="form-message" id="login-message"></p>
+        </form>
+    </main>
+
+    <main class="admin-shell hidden" id="admin-shell">
+        <aside class="sidebar">
+            <a class="brand" href="/">
+                <img src="images/logo.png" alt="VJ Semijoias">
+                <span>VJ Admin</span>
+            </a>
+            <nav>
+                <button class="nav-item active" type="button" data-view="products">Produtos</button>
+                <button class="nav-item" type="button" data-view="orders">Pedidos</button>
+                <button class="nav-item" type="button" data-view="stock">Estoque</button>
+                <button class="nav-item" type="button" data-view="suppliers">Fornecedores</button>
+            </nav>
+            <button class="ghost-button" id="logout-button" type="button">Sair</button>
+        </aside>
+
+        <section class="workspace">
+            <header class="topbar">
+                <div>
+                    <h1 id="view-title">Produtos</h1>
+                    <p id="view-subtitle">Cadastro, publicacao e precificacao</p>
+                </div>
+                <a href="/admin" class="legacy-link">Admin antigo</a>
+            </header>
+
+            <section class="view active" id="products-view">
+                <div class="metrics-grid" id="product-metrics">
+                    <div><strong>0</strong><span>Produtos</span></div>
+                    <div><strong>0</strong><span>Publicados</span></div>
+                    <div><strong>R$ 0,00</strong><span>Preco pix medio</span></div>
+                    <div><strong>R$ 0,00</strong><span>Lucro pix medio</span></div>
+                </div>
+
+                <section class="filter-bar" aria-label="Filtros de produtos">
+                    <label>Buscar<input id="product-search" type="search" placeholder="Nome ou codigo"></label>
+                    <label>Categoria<select id="filter-category"><option value="">Todas</option></select></label>
+                    <label>Fornecedor<select id="filter-supplier"><option value="">Todos</option></select></label>
+                    <label>Status<select id="filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                    <button class="secondary-button" id="clear-filters-button" type="button">Limpar</button>
+                    <button class="secondary-button" id="export-products-button" type="button">Exportar CSV</button>
+                </section>
+
+                <div class="split-layout">
+                    <section class="panel product-list-panel">
+                        <div class="panel-header">
+                            <h2>Produtos</h2>
+                            <small id="product-count-label">0 encontrados</small>
+                        </div>
+                        <div class="product-list" id="product-list"></div>
+                    </section>
+
+                    <section class="panel editor-panel">
+                        <div class="panel-header">
+                            <h2 id="product-form-title">Novo produto</h2>
+                            <button class="ghost-button" id="new-product-button" type="button">Novo</button>
+                        </div>
+                        <form id="product-form" class="product-form">
+                            <input type="hidden" id="product-id">
+                            <div class="form-grid two">
+                                <label>Codigo<input id="product-codigo" required maxlength="80"></label>
+                                <label>Nome<input id="product-nome" required maxlength="200"></label>
+                                <label>Categoria<input id="product-categoria" required maxlength="50" placeholder="brincos"></label>
+                                <label>Fornecedor<select id="product-fornecedor"><option value="">Sem fornecedor</option></select></label>
+                                <label>Material<input id="product-material" maxlength="120"></label>
+                                <label>Banho<input id="product-banho" maxlength="120"></label>
+                                <label>Cor<input id="product-cor" maxlength="80"></label>
+                                <label>Estoque inicial<input id="product-estoque" type="number" min="0" step="1" value="0"></label>
+                                <label>Custo da peca<input id="product-custo-peca" type="number" min="0" step="0.01" required></label>
+                                <label>Custo embalagem<input id="product-custo-embalagem" type="number" min="0" step="0.01" value="9.34"></label>
+                                <label>Markup<input id="product-markup" type="number" min="0.01" step="0.01" value="2.00"></label>
+                                <label>Status<select id="product-status"><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                            </div>
+                            <label>Imagem URL<input id="product-imagem" maxlength="2000" placeholder="images/catalog/admin/produto.jpg"></label>
+                            <label>Descricao<textarea id="product-descricao" rows="3" maxlength="2000"></textarea></label>
+                            <label class="check-row"><input id="product-publicado" type="checkbox"> Publicar no site</label>
+
+                            <div class="pricing-panel" id="pricing-preview" aria-label="Campos calculados somente leitura"></div>
+
+                            <div class="form-actions">
+                                <button class="secondary-button" id="recalculate-button" type="button">Recalcular precos</button>
+                                <button class="secondary-button" id="preview-button" type="button">Preview</button>
+                                <button class="secondary-button" id="publish-button" type="button">Publicar</button>
+                                <button class="secondary-button" id="unpublish-button" type="button">Despublicar</button>
+                                <button class="danger-button" id="deactivate-button" type="button">Inativar</button>
+                                <button type="submit">Salvar produto</button>
+                            </div>
+                            <p class="form-message" id="product-message"></p>
+                        </form>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="orders-view">
+                <section class="filter-bar" aria-label="Filtros de pedidos">
+                    <label>Buscar<input id="order-search" type="search" placeholder="Cliente ou WhatsApp"></label>
+                    <label>Status<select id="order-filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="confirmado">Confirmado</option><option value="cancelado">Cancelado</option></select></label>
+                    <button class="secondary-button" id="clear-order-filters-button" type="button">Limpar</button>
+                    <button class="secondary-button" id="new-order-button" type="button">Novo pedido</button>
+                </section>
+
+                <div class="split-layout orders-layout">
+                    <section class="panel product-list-panel">
+                        <div class="panel-header">
+                            <h2>Pedidos</h2>
+                            <small id="order-count-label">0 encontrados</small>
+                        </div>
+                        <div class="product-list order-list" id="order-list"></div>
+                    </section>
+
+                    <section class="panel editor-panel order-editor-panel">
+                        <div class="panel-header">
+                            <h2 id="order-form-title">Novo pedido</h2>
+                            <small id="order-status-label">Rascunho</small>
+                        </div>
+                        <form id="order-form" class="product-form">
+                            <input type="hidden" id="order-id">
+                            <div class="form-grid two">
+                                <label>Cliente<input id="order-client-name" maxlength="200" required></label>
+                                <label>WhatsApp<input id="order-client-whatsapp" maxlength="30"></label>
+                                <label>Pagamento<select id="order-payment-method"><option value="pix">Pix</option><option value="debito">Debito</option><option value="credito">Credito</option></select></label>
+                                <label>Parcelas<input id="order-installments" type="number" min="1" max="12" step="1" value="1"></label>
+                                <label>Desconto total<input id="order-discount" type="number" min="0" step="0.01" value="0"></label>
+                            </div>
+
+                            <section class="order-item-builder">
+                                <div class="form-grid two">
+                                    <label>Produto<select id="order-product"><option value="">Selecione</option></select></label>
+                                    <label>Quantidade<input id="order-quantity" type="number" min="1" step="1" value="1"></label>
+                                </div>
+                                <button class="secondary-button" id="add-order-item-button" type="button">Adicionar item</button>
+                            </section>
+
+                            <div class="order-items-list" id="order-items-list"></div>
+                            <div class="pricing-panel" id="order-totals"></div>
+
+                            <div class="form-actions">
+                                <button class="secondary-button" id="confirm-order-button" type="button">Confirmar</button>
+                                <button class="danger-button" id="cancel-order-button" type="button">Cancelar</button>
+                                <button id="save-order-button" type="submit">Salvar pedido</button>
+                            </div>
+                            <p class="form-message" id="order-message"></p>
+                        </form>
+                    </section>
+                </div>
+            </section>
+            <section class="view" id="stock-view">
+                <section class="filter-bar" aria-label="Filtros de estoque">
+                    <label>Produto<input id="stock-search" type="search" placeholder="Nome ou codigo"></label>
+                    <label>Categoria<select id="stock-filter-category"><option value="">Todas</option></select></label>
+                    <label>Fornecedor<select id="stock-filter-supplier"><option value="">Todos</option></select></label>
+                    <label>Status<select id="stock-filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                    <button class="secondary-button" id="clear-stock-filters-button" type="button">Limpar</button>
+                </section>
+
+                <div class="split-layout stock-layout">
+                    <section class="panel product-list-panel">
+                        <div class="panel-header">
+                            <h2>Estoque</h2>
+                            <small id="stock-count-label">0 encontrados</small>
+                        </div>
+                        <div class="product-list stock-list" id="stock-list"></div>
+                    </section>
+
+                    <section class="panel editor-panel stock-editor-panel">
+                        <div class="panel-header">
+                            <h2 id="stock-product-title">Movimentacao</h2>
+                            <small id="stock-product-balance">Selecione um produto</small>
+                        </div>
+                        <form id="stock-movement-form" class="product-form">
+                            <input type="hidden" id="stock-product-id">
+                            <div class="stock-summary" id="stock-summary"></div>
+                            <div class="form-grid two">
+                                <label>Tipo<select id="stock-movement-type" required><option value="entrada">Entrada</option><option value="saida">Saida</option><option value="ajuste">Ajuste</option></select></label>
+                                <label>Quantidade<input id="stock-movement-quantity" type="number" min="0" step="1" required></label>
+                            </div>
+                            <label>Motivo<input id="stock-movement-reason" maxlength="200" required placeholder="Compra, venda manual, conferencia"></label>
+                            <label>Observacoes<textarea id="stock-movement-notes" rows="3" maxlength="2000"></textarea></label>
+                            <div class="form-actions"><button type="submit">Registrar movimentacao</button></div>
+                            <p class="form-message" id="stock-message"></p>
+                        </form>
+                        <section class="stock-history-panel">
+                            <div class="panel-header compact">
+                                <h2>Historico</h2>
+                            </div>
+                            <div class="stock-history" id="stock-history"></div>
+                        </section>
+                    </section>
+                </div>
+            </section>
+            <section class="view" id="suppliers-view">
+                <div class="split-layout suppliers-layout">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Fornecedores</h2>
+                        </div>
+                        <div class="supplier-list" id="supplier-list"></div>
+                    </section>
+                    <section class="panel editor-panel">
+                        <div class="panel-header">
+                            <h2 id="supplier-form-title">Novo fornecedor</h2>
+                            <button class="ghost-button" id="new-supplier-button" type="button">Novo</button>
+                        </div>
+                        <form id="supplier-form" class="product-form">
+                            <input type="hidden" id="supplier-id">
+                            <label>Nome<input id="supplier-nome" required maxlength="200"></label>
+                            <label>WhatsApp<input id="supplier-whatsapp" maxlength="30"></label>
+                            <label>Instagram<input id="supplier-instagram" maxlength="120"></label>
+                            <label>Site<input id="supplier-site" maxlength="255"></label>
+                            <label>Observacoes<textarea id="supplier-observacoes" rows="5" maxlength="2000"></textarea></label>
+                            <div class="form-actions"><button type="submit">Salvar fornecedor</button></div>
+                            <p class="form-message" id="supplier-message"></p>
+                        </form>
+                    </section>
+                </div>
+            </section>
+        </section>
+    </main>
+
+    <div class="modal hidden" id="product-preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+        <div class="modal-panel">
+            <div class="panel-header">
+                <h2 id="preview-title">Preview do produto</h2>
+                <button class="ghost-button" id="close-preview-button" type="button">Fechar</button>
+            </div>
+            <div class="preview-card" id="product-preview-card"></div>
+        </div>
+    </div>
+
+    <script src="js/vj-admin/pricing.js"></script>
+    <script src="js/vj-admin/api.js"></script>
+    <script src="js/vj-admin/app.js"></script>
+</body>
+</html>
+
+

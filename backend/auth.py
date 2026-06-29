@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Cookie, Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -39,12 +39,20 @@ def create_admin_access_token(user):
     )
 
 
-def decode_token(credentials: HTTPAuthorizationCredentials | None):
-    if credentials is None:
+def create_user_access_token(user):
+    return create_access_token(
+        user,
+        expires_delta=timedelta(days=settings.user_token_expire_days),
+        token_use="user",
+    )
+
+
+def decode_token_value(token: str | None):
+    if not token:
         return None
     try:
         return jwt.decode(
-            credentials.credentials,
+            token,
             settings.jwt_secret_key,
             algorithms=["HS256"],
         )
@@ -52,10 +60,18 @@ def decode_token(credentials: HTTPAuthorizationCredentials | None):
         raise HTTPException(status_code=401, detail="Token inválido ou expirado") from exc
 
 
+def decode_token(credentials: HTTPAuthorizationCredentials | None):
+    return decode_token_value(credentials.credentials if credentials else None)
+
+
 def optional_claims(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    admin_cookie: str | None = Cookie(default=None, alias=settings.admin_cookie_name),
+    user_cookie: str | None = Cookie(default=None, alias=settings.user_cookie_name),
 ):
-    return decode_token(credentials)
+    if credentials is not None:
+        return decode_token(credentials)
+    return decode_token_value(admin_cookie or user_cookie)
 
 
 def required_claims(claims=Depends(optional_claims)):

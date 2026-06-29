@@ -32,7 +32,7 @@
                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                     <input type="checkbox"> Lembrar-me
                 </label>
-                <a href="#" style="color: var(--gold-dark); font-size: 0.9rem;">Esqueci a senha</a>
+                <a href="#" onclick="handlePasswordResetRequest(event)" style="color: var(--gold-dark); font-size: 0.9rem;">Esqueci a senha</a>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Entrar</button>
         </form>
@@ -64,13 +64,13 @@
     <script src="js/main.js"></script>
     <script src="js/offline.js"></script>
     <script>
-        function handleLogin(event) {
+        async function handleLogin(event) {
             event.preventDefault();
             const formData = new FormData(event.target);
             const email = formData.get('email');
             const password = formData.get('password');
             
-            const result = Auth.login(email, password);
+            const result = await Auth.login(email, password);
             
             if (result.success) {
                 showToast(result.message, 'success');
@@ -84,7 +84,38 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        async function handlePasswordResetRequest(event) {
+            event.preventDefault();
+            const email = window.prompt('Informe seu e-mail de cadastro:');
+            if (!email) return;
+            const result = await API.requestPasswordReset(email.trim());
+            showToast(
+                result.data?.message || result.error || 'Se o e-mail existir, enviaremos instrucoes.',
+                result.success ? 'success' : 'error'
+            );
+        }
+
+        async function handlePasswordResetToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const resetToken = urlParams.get('reset_token');
+            if (!resetToken) return false;
+            const password = window.prompt('Digite sua nova senha com pelo menos 6 caracteres:');
+            if (!password) return true;
+            const result = await API.confirmPasswordReset(resetToken, password);
+            if (!result.success) {
+                showToast(result.error || 'Link invalido ou expirado', 'error');
+                return true;
+            }
+            Auth.user = result.data.user;
+            localStorage.setItem('vj_user', JSON.stringify(Auth.user));
+            Auth.updateUI();
+            showToast('Senha atualizada com sucesso!', 'success');
+            setTimeout(() => window.location.href = '/', 1000);
+            return true;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (await handlePasswordResetToken()) return;
             if (Auth.isLoggedIn()) {
                 const urlParams = new URLSearchParams(window.location.search);
                 const redirect = urlParams.get('redirect') || '/';

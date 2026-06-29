@@ -3,7 +3,7 @@
 // Usa a API como fonte principal e o service worker como cache offline.
 // ============================================
 
-const CATEGORIES = [
+let CATEGORIES = [
     { id: "all", name: "Todos", icon: "💎" },
     { id: "brincos", name: "Brincos", icon: "✨" },
     { id: "colares", name: "Colares", icon: "📿" },
@@ -17,9 +17,12 @@ const CATEGORIES = [
 // worker pode responder esta mesma chamada com o ultimo catalogo salvo.
 let apiProductsCache = [];
 let apiLoaded = false;
+let categoriesLoaded = false;
 
 function normalizeProducts(data) {
-    return Array.isArray(data) ? data : [];
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.items)) return data.items;
+    return [];
 }
 
 function getCustomProducts() {
@@ -46,6 +49,11 @@ function getProductsByCategory(category) {
     const all = getAllProductsMerged();
     if (category === "all") return all;
     return all.filter(p => p.category === category);
+}
+
+function normalizeCategories(data) {
+    const categories = Array.isArray(data) ? data : [];
+    return categories.filter(category => category && category.id && category.name);
 }
 
 function saveCustomProducts(products) {
@@ -102,6 +110,55 @@ async function loadProductsFromAPI() {
     apiProductsCache = [];
     apiLoaded = false;
     return [];
+}
+
+async function loadProductsPageFromAPI({ page = 1, perPage = 12, category = 'all', search = '' } = {}) {
+    try {
+        const result = await API.getProducts(category, search, { page, perPage });
+        if (result.success) {
+            const items = normalizeProducts(result.data);
+            return {
+                items,
+                page: result.data.page || page,
+                perPage: result.data.per_page || perPage,
+                total: result.data.total ?? items.length,
+                totalPages: result.data.total_pages || 0,
+                hasNext: Boolean(result.data.has_next),
+                hasPrevious: Boolean(result.data.has_previous),
+            };
+        }
+    } catch (e) {
+        console.warn('[API] Falha ao carregar pagina de produtos');
+    }
+
+    return {
+        items: [],
+        page,
+        perPage,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+    };
+}
+
+async function loadCategoriesFromAPI() {
+    if (categoriesLoaded) return CATEGORIES;
+
+    try {
+        const result = await API.getCategories();
+        if (result.success) {
+            const categories = normalizeCategories(result.data);
+            if (categories.length) {
+                CATEGORIES = categories;
+                categoriesLoaded = true;
+            }
+        }
+    } catch (e) {
+        console.warn('[API] Falha ao carregar categorias; usando fallback local');
+    }
+
+    return CATEGORIES;
 }
 
 function getAllProductsMerged() {
