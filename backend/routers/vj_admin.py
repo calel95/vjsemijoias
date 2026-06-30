@@ -3,23 +3,17 @@ from io import StringIO
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.auth import admin_claims
 from backend.database import get_db
-from backend.models import Product, StockMovement, Supplier, VJAdminOrder
+from backend.models import Product, Supplier
+from backend.routers.vj_admin_common import admin_user_id
 from backend.services.common import get_or_404
 from backend.services.pricing import CALCULATED_PRICE_FIELDS, DEFAULT_MARKUP, DEFAULT_PACKAGING_COST
 from backend.services.product_media import replace_product_gallery, store_admin_gallery_images
-from backend.services.stock import create_stock_movement
-from backend.services.vj_orders import (
-    cancel_vj_admin_order,
-    confirm_vj_admin_order,
-    create_vj_admin_order,
-    update_vj_admin_order,
-)
 from backend.services.vj_products import (
     CSV_FIELDS,
     apply_product_fields,
@@ -40,18 +34,6 @@ from backend.services.vj_products import (
 router = APIRouter(prefix="/api/vj-admin", tags=["VJ Admin"])
 
 
-def admin_user_id(claims) -> int | None:
-    try:
-        return int(claims.get("sub")) if claims and claims.get("sub") else None
-    except (TypeError, ValueError):
-        return None
-
-
-def locked_order_or_404(db: Session, order_id: int) -> VJAdminOrder:
-    order = db.scalar(select(VJAdminOrder).where(VJAdminOrder.id == order_id).with_for_update())
-    if order is None:
-        raise HTTPException(status_code=404, detail="Pedido nao encontrado")
-    return order
 
 
 @router.get("/pricing/defaults")
@@ -163,183 +145,6 @@ def export_products_csv(
 
 
 
-@router.get("/estoque")
-def list_stock(
-    produto: str = Query(default=""),
-    search: str = Query(default=""),
-    categoria: str = Query(default=""),
-    fornecedor_id: int | None = Query(default=None),
-    status: str = Query(default=""),
-    _claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    try:
-        statement = products_statement(
-            search=search or produto,
-            categoria=categoria,
-            fornecedor_id=fornecedor_id,
-            status=status,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    products = db.scalars(statement).unique().all()
-    return [product.to_dict() for product in products]
-
-
-@router.get("/produtos/{product_id}/estoque")
-def get_product_stock(
-    product_id: int,
-    _claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    product = get_or_404(db, Product, product_id)
-    movements = db.scalars(
-        select(StockMovement)
-        .where(StockMovement.produto_id == product_id)
-        .order_by(StockMovement.created_at.desc(), StockMovement.id.desc())
-    ).all()
-    return {
-        "produto": product.to_dict(),
-        "movimentacoes": [movement.to_dict() for movement in movements],
-    }
-
-
-@router.post("/produtos/{product_id}/estoque/movimentar", status_code=201)
-def move_product_stock(
-    product_id: int,
-    data: dict[str, Any] = Body(default_factory=dict),
-    claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    product = db.scalar(select(Product).where(Product.id == product_id).with_for_update())
-    if product is None:
-        raise HTTPException(status_code=404, detail="Produto nao encontrado")
-    actor_id = admin_user_id(claims)
-    try:
-        movement = create_stock_movement(
-            db,
-            product,
-            tipo=data.get("tipo"),
-            quantidade=data.get("quantidade"),
-            motivo=data.get("motivo"),
-            observacoes=data.get("observacoes"),
-            created_by_id=actor_id,
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    product.updated_by_id = actor_id
-    db.flush()
-    db.commit()
-    return {
-        "produto": product.to_dict(),
-        "movimentacao": movement.to_dict(),
-    }
-
-
-@router.get("/pedidos")
-def list_orders(
-    status: str = Query(default=""),
-    search: str = Query(default=""),
-    _claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    statement = select(VJAdminOrder)
-    filters = []
-    status = status.strip().lower()
-    if status:
-        if status not in {"rascunho", "confirmado", "cancelado"}:
-            raise HTTPException(status_code=400, detail="Status de pedido invalido")
-        filters.append(VJAdminOrder.status == status)
-    search = search.strip().lower()
-    if search:
-        pattern = f"%{search}%"
-        filters.append(
-            or_(
-                func.lower(VJAdminOrder.cliente_nome).like(pattern),
-                func.lower(VJAdminOrder.cliente_whatsapp).like(pattern),
-            )
-        )
-    if filters:
-        statement = statement.where(*filters)
-    orders = db.scalars(statement.order_by(VJAdminOrder.id.desc())).unique().all()
-    return [order.to_dict() for order in orders]
-
-
-@router.get("/pedidos/{order_id}")
-def get_order(
-    order_id: int,
-    _claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    return get_or_404(db, VJAdminOrder, order_id).to_dict()
-
-
-@router.post("/pedidos", status_code=201)
-def create_order(
-    data: dict[str, Any] = Body(default_factory=dict),
-    claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    try:
-        order = create_vj_admin_order(db, data, actor_id=admin_user_id(claims))
-        db.flush()
-        db.commit()
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return order.to_dict()
-
-
-@router.put("/pedidos/{order_id}")
-def update_order(
-    order_id: int,
-    data: dict[str, Any] = Body(default_factory=dict),
-    claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    order = locked_order_or_404(db, order_id)
-    try:
-        update_vj_admin_order(db, order, data, actor_id=admin_user_id(claims))
-        db.flush()
-        db.commit()
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return order.to_dict()
-
-
-@router.post("/pedidos/{order_id}/confirmar")
-def confirm_order(
-    order_id: int,
-    claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    order = locked_order_or_404(db, order_id)
-    try:
-        confirm_vj_admin_order(db, order, actor_id=admin_user_id(claims))
-        db.flush()
-        db.commit()
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return order.to_dict()
-
-
-@router.post("/pedidos/{order_id}/cancelar")
-def cancel_order(
-    order_id: int,
-    claims=Depends(admin_claims),
-    db: Session = Depends(get_db),
-):
-    order = locked_order_or_404(db, order_id)
-    try:
-        cancel_vj_admin_order(db, order, actor_id=admin_user_id(claims))
-        db.flush()
-        db.commit()
-    except ValueError as exc:
-        db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return order.to_dict()
 
 @router.get("/produtos/{product_id}")
 def get_admin_product(

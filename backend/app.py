@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import secrets
 
 import uvicorn
@@ -20,6 +20,8 @@ from backend.routers import (
     products,
     store_settings,
     vj_admin,
+    vj_admin_orders,
+    vj_admin_stock,
 )
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
 from backend.services.csrf import csrf_middleware
@@ -78,6 +80,8 @@ def create_app():
     app.include_router(catalog_pdf.router)
     app.include_router(store_settings.router)
     app.include_router(vj_admin.router)
+    app.include_router(vj_admin_orders.router)
+    app.include_router(vj_admin_stock.router)
     app.mount("/", StaticFiles(directory=FRONTEND_ROOT, html=True), name="frontend")
     return app
 
