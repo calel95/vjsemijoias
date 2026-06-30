@@ -2,7 +2,7 @@ import csv
 from io import StringIO
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,6 +11,7 @@ from backend.auth import admin_claims
 from backend.database import get_db
 from backend.models import Product
 from backend.routers.vj_admin_common import admin_user_id
+from backend.services.admin_audit import record_vj_admin_audit
 from backend.services.common import get_or_404
 from backend.services.pricing import CALCULATED_PRICE_FIELDS, DEFAULT_MARKUP, DEFAULT_PACKAGING_COST
 from backend.services.product_media import replace_product_gallery, store_admin_gallery_images
@@ -32,8 +33,6 @@ from backend.services.vj_products import (
 router = APIRouter(prefix="/api/vj-admin", tags=["VJ Admin"])
 
 
-
-
 @router.get("/pricing/defaults")
 def pricing_defaults(_claims=Depends(admin_claims)):
     from backend.services.pricing import PAYMENT_FEES
@@ -44,7 +43,6 @@ def pricing_defaults(_claims=Depends(admin_claims)):
         "taxas": {field: float(value) for field, value in PAYMENT_FEES.items()},
         "campos_calculados": list(CALCULATED_PRICE_FIELDS),
     }
-
 
 
 @router.get("/produtos")
@@ -101,8 +99,6 @@ def export_products_csv(
     )
 
 
-
-
 @router.get("/produtos/{product_id}")
 def get_admin_product(
     product_id: int,
@@ -114,10 +110,12 @@ def get_admin_product(
 
 @router.post("/produtos", status_code=201)
 def create_product(
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
+    actor_id = admin_user_id(claims)
     try:
         cleaned = product_payload(data)
         ensure_supplier_exists(db, cleaned.get("fornecedor_id"))
@@ -125,12 +123,21 @@ def create_product(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if db.scalar(select(Product.id).where(Product.codigo == cleaned["codigo"])):
         raise HTTPException(status_code=409, detail="Codigo ja cadastrado")
-    product = build_product(cleaned, actor_id=admin_user_id(claims))
+    product = build_product(cleaned, actor_id=actor_id)
     db.add(product)
     db.flush()
     if product.image:
         images = store_admin_gallery_images(product, [product.image])
         replace_product_gallery(product, images)
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="produto_criado",
+        resource="produto",
+        resource_id=product.id,
+        metadata={"codigo": product.codigo, "nome": product.name, "status": product.status},
+    )
     try:
         db.commit()
     except IntegrityError as exc:
@@ -142,11 +149,13 @@ def create_product(
 @router.put("/produtos/{product_id}")
 def update_product(
     product_id: int,
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     product = get_or_404(db, Product, product_id)
+    actor_id = admin_user_id(claims)
     try:
         cleaned = product_payload(data, partial=True)
         ensure_supplier_exists(db, cleaned.get("fornecedor_id"))
@@ -158,12 +167,22 @@ def update_product(
         raise HTTPException(status_code=409, detail="Codigo ja cadastrado")
     cleaned.pop("stock_quantity", None)
     apply_product_fields(product, cleaned)
-    product.updated_by_id = admin_user_id(claims)
+    product.updated_by_id = actor_id
     if any(field in cleaned for field in ("custo_peca", "custo_embalagem", "markup")):
         calculate_product_prices(product, cleaned)
     if "image" in cleaned:
         images = store_admin_gallery_images(product, [product.image] if product.image else [])
         replace_product_gallery(product, images)
+    db.flush()
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="produto_atualizado",
+        resource="produto",
+        resource_id=product.id,
+        metadata={"codigo": product.codigo, "nome": product.name, "campos": sorted(cleaned.keys())},
+    )
     try:
         db.commit()
     except IntegrityError as exc:
@@ -175,11 +194,23 @@ def update_product(
 @router.post("/produtos/{product_id}/publicar")
 def publish_product(
     product_id: int,
+    request: Request,
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     product = get_or_404(db, Product, product_id)
-    publish_vj_product(product, actor_id=admin_user_id(claims))
+    actor_id = admin_user_id(claims)
+    publish_vj_product(product, actor_id=actor_id)
+    db.flush()
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="produto_publicado",
+        resource="produto",
+        resource_id=product.id,
+        metadata={"codigo": product.codigo, "nome": product.name},
+    )
     db.commit()
     return product.to_dict()
 
@@ -187,11 +218,23 @@ def publish_product(
 @router.post("/produtos/{product_id}/despublicar")
 def unpublish_product(
     product_id: int,
+    request: Request,
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     product = get_or_404(db, Product, product_id)
-    unpublish_vj_product(product, actor_id=admin_user_id(claims))
+    actor_id = admin_user_id(claims)
+    unpublish_vj_product(product, actor_id=actor_id)
+    db.flush()
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="produto_despublicado",
+        resource="produto",
+        resource_id=product.id,
+        metadata={"codigo": product.codigo, "nome": product.name},
+    )
     db.commit()
     return product.to_dict()
 
@@ -199,17 +242,26 @@ def unpublish_product(
 @router.post("/produtos/{product_id}/inativar")
 def deactivate_product(
     product_id: int,
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
 ):
     product = get_or_404(db, Product, product_id)
+    actor_id = admin_user_id(claims)
     try:
-        deactivate_vj_product(product, data.get("confirm"), actor_id=admin_user_id(claims))
+        deactivate_vj_product(product, data.get("confirm"), actor_id=actor_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    db.flush()
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="produto_inativado",
+        resource="produto",
+        resource_id=product.id,
+        metadata={"codigo": product.codigo, "nome": product.name},
+    )
     db.commit()
     return product.to_dict()
-
-
-

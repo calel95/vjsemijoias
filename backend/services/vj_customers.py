@@ -5,9 +5,9 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from backend.models import Customer, VJAdminOrder
+from backend.models import Customer, VJAdminOrder, VJAdminOrderItem
 from backend.models.base import decimal_to_float
 from backend.services.validation import clean_text, normalize_email, normalize_phone, validate_cpf
 
@@ -166,6 +166,12 @@ def customer_order_summary(orders: list[VJAdminOrder]) -> dict[str, Any]:
 def customer_orders_payload(db: Session, customer: Customer) -> dict[str, Any]:
     orders = db.scalars(
         select(VJAdminOrder)
+        .options(
+            selectinload(VJAdminOrder.items).selectinload(VJAdminOrderItem.produto),
+            selectinload(VJAdminOrder.customer),
+            selectinload(VJAdminOrder.created_by),
+            selectinload(VJAdminOrder.updated_by),
+        )
         .where(VJAdminOrder.customer_id == customer.id)
         .order_by(VJAdminOrder.id.desc())
     ).unique().all()

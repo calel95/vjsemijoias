@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,6 +8,7 @@ from backend.auth import admin_claims
 from backend.database import get_db
 from backend.models import Product, StockMovement
 from backend.routers.vj_admin_common import admin_user_id
+from backend.services.admin_audit import record_vj_admin_audit
 from backend.services.common import get_or_404
 from backend.services.stock import create_stock_movement
 from backend.services.vj_products import products_statement
@@ -60,6 +61,7 @@ def get_product_stock(
 @router.post("/produtos/{product_id}/estoque/movimentar", status_code=201)
 def move_product_stock(
     product_id: int,
+    request: Request,
     data: dict[str, Any] = Body(default_factory=dict),
     claims=Depends(admin_claims),
     db: Session = Depends(get_db),
@@ -82,6 +84,22 @@ def move_product_stock(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     product.updated_by_id = actor_id
     db.flush()
+    record_vj_admin_audit(
+        db,
+        request,
+        admin_user_id=actor_id,
+        action="estoque_movimentado",
+        resource="estoque",
+        resource_id=movement.id,
+        metadata={
+            "produto_id": product.id,
+            "codigo": product.codigo,
+            "tipo": movement.tipo,
+            "quantidade": movement.quantidade,
+            "saldo_anterior": movement.saldo_anterior,
+            "saldo_atual": movement.saldo_atual,
+        },
+    )
     db.commit()
     return {
         "produto": product.to_dict(),

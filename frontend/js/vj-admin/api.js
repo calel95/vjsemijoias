@@ -83,7 +83,11 @@
         async logout() {
             try { await request('POST', '/auth/logout', {}); } catch (_) {}
         },
-        async products(filters = {}) {
+        async auditLogs(filters = {}) {
+            return request('GET', `/vj-admin/auditoria${queryString(filters)}`);
+        },        async dashboard(filters = {}) {
+            return request('GET', `/vj-admin/dashboard${queryString(filters)}`);
+        },        async products(filters = {}) {
             return request('GET', `/vj-admin/produtos${queryString(filters)}`);
         },
         async exportProductsCsv(filters = {}) {
@@ -105,6 +109,20 @@
         },
         async customerOrders(id) {
             return request('GET', `/vj-admin/clientes/${encodeURIComponent(id)}/pedidos`);
+        },
+        async financeSummary(filters = {}) {
+            return request('GET', `/vj-admin/financeiro/resumo${queryString(filters)}`);
+        },
+        async expenses(filters = {}) {
+            return request('GET', `/vj-admin/financeiro/despesas${queryString(filters)}`);
+        },
+        async saveExpense(payload, id) {
+            return id
+                ? request('PUT', `/vj-admin/financeiro/despesas/${encodeURIComponent(id)}`, payload)
+                : request('POST', '/vj-admin/financeiro/despesas', payload);
+        },
+        async cancelExpense(id) {
+            return request('POST', `/vj-admin/financeiro/despesas/${encodeURIComponent(id)}/cancelar`, {});
         },
         async orders(filters = {}) {
             return request('GET', `/vj-admin/pedidos${queryString(filters)}`);
@@ -159,6 +177,7 @@
         },
     };
 })();
+
 
 
 

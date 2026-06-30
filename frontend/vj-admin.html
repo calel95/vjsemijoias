@@ -32,9 +32,12 @@
                 <span>VJ Admin</span>
             </a>
             <nav>
-                <button class="nav-item active" type="button" data-view="products">Produtos</button>
+                <button class="nav-item active" type="button" data-view="dashboard">Dashboard</button>
+                <button class="nav-item" type="button" data-view="audit">Auditoria</button>
+                <button class="nav-item" type="button" data-view="products">Produtos</button>
                 <button class="nav-item" type="button" data-view="orders">Pedidos</button>
                 <button class="nav-item" type="button" data-view="customers">Clientes</button>
+                <button class="nav-item" type="button" data-view="finance">Financeiro</button>
                 <button class="nav-item" type="button" data-view="stock">Estoque</button>
                 <button class="nav-item" type="button" data-view="suppliers">Fornecedores</button>
             </nav>
@@ -44,13 +47,76 @@
         <section class="workspace">
             <header class="topbar">
                 <div>
-                    <h1 id="view-title">Produtos</h1>
-                    <p id="view-subtitle">Cadastro, publicacao e precificacao</p>
+                    <h1 id="view-title">Dashboard</h1>
+                    <p id="view-subtitle">Indicadores consolidados da operacao</p>
                 </div>
                 <a href="/admin" class="legacy-link">Admin antigo</a>
             </header>
 
-            <section class="view active" id="products-view">
+            <section class="view active" id="dashboard-view">
+                <section class="filter-bar dashboard-filter-bar" aria-label="Filtros do dashboard">
+                    <label>Periodo<select id="dashboard-period"><option value="mes_atual">Mes atual</option><option value="ultimos_30_dias">Ultimos 30 dias</option><option value="personalizado">Personalizado</option></select></label>
+                    <label>Inicio<input id="dashboard-start" type="date"></label>
+                    <label>Fim<input id="dashboard-end" type="date"></label>
+                    <button class="secondary-button" id="apply-dashboard-filters-button" type="button">Filtrar</button>
+                </section>
+
+                <div class="metrics-grid dashboard-metrics" id="dashboard-main-metrics">
+                    <div><strong>R$ 0,00</strong><span>Faturamento do periodo</span></div>
+                    <div><strong>R$ 0,00</strong><span>Lucro liquido estimado</span></div>
+                    <div><strong>0</strong><span>Pedidos confirmados</span></div>
+                    <div><strong>R$ 0,00</strong><span>Ticket medio</span></div>
+                </div>
+
+                <div class="metrics-grid dashboard-metrics" id="dashboard-operation-metrics">
+                    <div><strong>0</strong><span>Clientes ativos</span></div>
+                    <div><strong>0</strong><span>Produtos publicados</span></div>
+                    <div><strong>0</strong><span>Estoque baixo</span></div>
+                    <div><strong>0</strong><span>Sem estoque</span></div>
+                </div>
+
+                <div class="metrics-grid dashboard-metrics compact" id="dashboard-finance-metrics">
+                    <div><strong>R$ 0,00</strong><span>Despesas</span></div>
+                    <div><strong>0,00%</strong><span>Margem liquida estimada</span></div>
+                </div>
+
+                <p class="form-message" id="dashboard-message"></p>
+
+                <div class="dashboard-panels">
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Top produtos</h2></div>
+                        <div class="stock-history" id="dashboard-products-ranking"></div>
+                    </section>
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Top clientes</h2></div>
+                        <div class="stock-history" id="dashboard-customers-ranking"></div>
+                    </section>
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Pagamentos</h2></div>
+                        <div class="stock-history" id="dashboard-payment-summary"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section class="view" id="audit-view">
+                <section class="filter-bar audit-filter-bar" aria-label="Filtros de auditoria">
+                    <label>Ação<input id="audit-action" maxlength="100" placeholder="pedido_confirmado"></label>
+                    <label>Recurso<select id="audit-resource"><option value="">Todos</option><option value="produto">Produto</option><option value="estoque">Estoque</option><option value="cliente">Cliente</option><option value="pedido">Pedido</option><option value="despesa">Despesa</option></select></label>
+                    <label>Inicio<input id="audit-start" type="date"></label>
+                    <label>Fim<input id="audit-end" type="date"></label>
+                    <button class="secondary-button" id="apply-audit-filters-button" type="button">Filtrar</button>
+                    <button class="secondary-button" id="clear-audit-filters-button" type="button">Limpar</button>
+                </section>
+                <p class="form-message" id="audit-message"></p>
+                <section class="panel">
+                    <div class="panel-header">
+                        <h2>Auditoria</h2>
+                        <small id="audit-count-label">0 registros</small>
+                    </div>
+                    <div class="stock-history audit-list" id="audit-list"></div>
+                </section>
+            </section>
+            <section class="view" id="products-view">
                 <div class="metrics-grid" id="product-metrics">
                     <div><strong>0</strong><span>Produtos</span></div>
                     <div><strong>0</strong><span>Publicados</span></div>
@@ -167,7 +233,67 @@
                     </section>
                 </div>
             </section>
-            <section class="view" id="orders-view">
+            <section class="view" id="finance-view">
+                <div class="metrics-grid" id="finance-metrics">
+                    <div><strong>R$ 0,00</strong><span>Faturamento</span></div>
+                    <div><strong>R$ 0,00</strong><span>Lucro bruto</span></div>
+                    <div><strong>R$ 0,00</strong><span>Despesas</span></div>
+                    <div><strong>R$ 0,00</strong><span>Lucro liquido</span></div>
+                </div>
+
+                <section class="filter-bar finance-filter-bar" aria-label="Filtros financeiros">
+                    <label>Inicio<input id="finance-start" type="date"></label>
+                    <label>Fim<input id="finance-end" type="date"></label>
+                    <button class="secondary-button" id="apply-finance-filters-button" type="button">Filtrar</button>
+                    <button class="secondary-button" id="clear-finance-filters-button" type="button">Limpar</button>
+                    <button class="secondary-button" id="new-expense-button" type="button">Nova despesa</button>
+                </section>
+
+                <div class="split-layout finance-layout">
+                    <section class="panel product-list-panel">
+                        <div class="panel-header">
+                            <h2>Despesas</h2>
+                            <small id="expense-count-label">0 encontradas</small>
+                        </div>
+                        <div class="product-list expense-list" id="expense-list"></div>
+                    </section>
+
+                    <section class="panel editor-panel expense-editor-panel">
+                        <div class="panel-header">
+                            <h2 id="expense-form-title">Nova despesa</h2>
+                            <button class="ghost-button" id="cancel-expense-button" type="button">Cancelar despesa</button>
+                        </div>
+                        <form id="expense-form" class="product-form">
+                            <input type="hidden" id="expense-id">
+                            <div class="form-grid two">
+                                <label>Descricao<input id="expense-descricao" required maxlength="200"></label>
+                                <label>Categoria<input id="expense-categoria" required maxlength="120"></label>
+                                <label>Valor<input id="expense-valor" type="number" min="0.01" step="0.01" required></label>
+                                <label>Data<input id="expense-data" type="date" required></label>
+                                <label>Status<select id="expense-status"><option value="ativo">Ativo</option><option value="cancelado">Cancelado</option></select></label>
+                            </div>
+                            <label>Observacoes<textarea id="expense-observacoes" rows="4" maxlength="2000"></textarea></label>
+                            <div class="form-actions"><button type="submit">Salvar despesa</button></div>
+                            <p class="form-message" id="expense-message"></p>
+                        </form>
+                    </section>
+                </div>
+
+                <div class="finance-panels">
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Produtos vendidos</h2></div>
+                        <div class="stock-history" id="finance-products-ranking"></div>
+                    </section>
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Clientes</h2></div>
+                        <div class="stock-history" id="finance-customers-ranking"></div>
+                    </section>
+                    <section class="panel">
+                        <div class="panel-header compact"><h2>Pagamentos</h2></div>
+                        <div class="stock-history" id="finance-payment-summary"></div>
+                    </section>
+                </div>
+            </section>            <section class="view" id="orders-view">
                 <section class="filter-bar" aria-label="Filtros de pedidos">
                     <label>Buscar<input id="order-search" type="search" placeholder="Cliente ou WhatsApp"></label>
                     <label>Status<select id="order-filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="confirmado">Confirmado</option><option value="cancelado">Cancelado</option></select></label>
@@ -306,8 +432,18 @@
 
     <script src="js/vj-admin/pricing.js"></script>
     <script src="js/vj-admin/api.js"></script>
+    <script src="js/vj-admin/audit.js"></script>
+    <script src="js/vj-admin/dashboard.js"></script>
+    <script src="js/vj-admin/finance.js"></script>
+    <script src="js/vj-admin/orders.js"></script>
+    <script src="js/vj-admin/customers.js"></script>
+    <script src="js/vj-admin/products.js"></script>
+    <script src="js/vj-admin/suppliers.js"></script>
+    <script src="js/vj-admin/stock.js"></script>
     <script src="js/vj-admin/app.js"></script>
 </body>
 </html>
+
+
 
 

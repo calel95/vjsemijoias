@@ -16,6 +16,7 @@ from .public_orders import Coupon, CouponRedemption, Newsletter, Order, OrderEve
 from .payments import Payment
 from .settings import StoreSetting
 from .audit import AdminAuditLog
+from .finance import Expense
 
 __all__ = [
     "AdminAuditLog",
@@ -23,6 +24,7 @@ __all__ = [
     "Coupon",
     "CouponRedemption",
     "Customer",
+    "Expense",
     "MONEY_COLUMN",
     "Newsletter",
     "Order",
