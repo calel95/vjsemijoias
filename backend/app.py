@@ -20,6 +20,7 @@ from backend.routers import (
     products,
     store_settings,
     vj_admin_products,
+    vj_admin_customers,
     vj_admin_orders,
     vj_admin_stock,
     vj_admin_suppliers,
@@ -81,6 +82,7 @@ def create_app():
     app.include_router(catalog_pdf.router)
     app.include_router(store_settings.router)
     app.include_router(vj_admin_products.router)
+    app.include_router(vj_admin_customers.router)
     app.include_router(vj_admin_orders.router)
     app.include_router(vj_admin_stock.router)
     app.include_router(vj_admin_suppliers.router)

@@ -89,6 +89,23 @@
         async exportProductsCsv(filters = {}) {
             return download(`/vj-admin/produtos/export.csv${queryString(filters)}`, 'vj-admin-produtos.csv');
         },
+        async customers(filters = {}) {
+            return request('GET', `/vj-admin/clientes${queryString(filters)}`);
+        },
+        async customer(id) {
+            return request('GET', `/vj-admin/clientes/${encodeURIComponent(id)}`);
+        },
+        async saveCustomer(payload, id) {
+            return id
+                ? request('PUT', `/vj-admin/clientes/${encodeURIComponent(id)}`, payload)
+                : request('POST', '/vj-admin/clientes', payload);
+        },
+        async deactivateCustomer(id) {
+            return request('POST', `/vj-admin/clientes/${encodeURIComponent(id)}/inativar`, {});
+        },
+        async customerOrders(id) {
+            return request('GET', `/vj-admin/clientes/${encodeURIComponent(id)}/pedidos`);
+        },
         async orders(filters = {}) {
             return request('GET', `/vj-admin/pedidos${queryString(filters)}`);
         },

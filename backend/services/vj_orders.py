@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from backend.models import Product, VJAdminOrder, VJAdminOrderItem
+from backend.models import Customer, Product, VJAdminOrder, VJAdminOrderItem
 from backend.services.pricing import MONEY_QUANT, PAYMENT_FEES, RATIO_QUANT, money as money_value
 from backend.services.stock import create_stock_movement, ensure_orderable_stock
 from backend.services.validation import clean_text, normalize_phone
@@ -201,11 +201,32 @@ def calculate_order_values(
     }
 
 
+
+def resolve_order_customer(db: Session, data: dict[str, Any]) -> Customer | None:
+    raw_customer_id = data.get("customer_id")
+    if raw_customer_id in (None, ""):
+        return None
+    try:
+        customer_id = int(raw_customer_id)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("customer_id invalido") from exc
+    customer = db.get(Customer, customer_id)
+    if customer is None:
+        raise ValueError("Cliente nao encontrado")
+    if customer.status != "ativo":
+        raise ValueError("Cliente inativo nao pode ser usado em novo pedido")
+    return customer
+
 def apply_order_payload(order: VJAdminOrder, db: Session, data: dict[str, Any], *, actor_id: int | None):
     if order.status != "rascunho":
         raise ValueError("Nao e permitido editar itens de pedido confirmado ou cancelado")
-    customer_name = clean_text(data.get("cliente_nome"), field="cliente_nome", max_length=200, required=True)
-    customer_whatsapp = normalize_phone(data.get("cliente_whatsapp"), required=False)
+    customer = resolve_order_customer(db, data)
+    if customer:
+        customer_name = customer.nome
+        customer_whatsapp = customer.whatsapp or ""
+    else:
+        customer_name = clean_text(data.get("cliente_nome"), field="cliente_nome", max_length=200, required=True)
+        customer_whatsapp = normalize_phone(data.get("cliente_whatsapp"), required=False)
     values = calculate_order_values(
         db,
         items=data.get("items", []),
@@ -213,6 +234,7 @@ def apply_order_payload(order: VJAdminOrder, db: Session, data: dict[str, Any], 
         parcelas=data.get("parcelas", order.parcelas or 1),
         desconto_total=data.get("desconto_total", 0),
     )
+    order.customer_id = customer.id if customer else None
     order.cliente_nome = customer_name
     order.cliente_whatsapp = customer_whatsapp
     order.forma_pagamento = values["forma_pagamento"]

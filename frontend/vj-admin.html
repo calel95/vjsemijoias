@@ -34,6 +34,7 @@
             <nav>
                 <button class="nav-item active" type="button" data-view="products">Produtos</button>
                 <button class="nav-item" type="button" data-view="orders">Pedidos</button>
+                <button class="nav-item" type="button" data-view="customers">Clientes</button>
                 <button class="nav-item" type="button" data-view="stock">Estoque</button>
                 <button class="nav-item" type="button" data-view="suppliers">Fornecedores</button>
             </nav>
@@ -116,6 +117,56 @@
                 </div>
             </section>
 
+            <section class="view" id="customers-view">
+                <section class="filter-bar" aria-label="Filtros de clientes">
+                    <label>Buscar<input id="customer-search" type="search" placeholder="Nome, WhatsApp, e-mail ou Instagram"></label>
+                    <label>Status<select id="customer-filter-status"><option value="">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                    <label>Cidade<input id="customer-filter-city" maxlength="120" placeholder="Cidade"></label>
+                    <label>Origem<input id="customer-filter-source" maxlength="120" placeholder="Origem"></label>
+                    <button class="secondary-button" id="clear-customer-filters-button" type="button">Limpar</button>
+                    <button class="secondary-button" id="new-customer-button" type="button">Novo cliente</button>
+                </section>
+
+                <div class="split-layout customers-layout">
+                    <section class="panel product-list-panel">
+                        <div class="panel-header">
+                            <h2>Clientes</h2>
+                            <small id="customer-count-label">0 encontrados</small>
+                        </div>
+                        <div class="product-list customer-list" id="customer-list"></div>
+                    </section>
+
+                    <section class="panel editor-panel customer-editor-panel">
+                        <div class="panel-header">
+                            <h2 id="customer-form-title">Novo cliente</h2>
+                            <button class="ghost-button" id="deactivate-customer-button" type="button">Inativar</button>
+                        </div>
+                        <form id="customer-form" class="product-form">
+                            <input type="hidden" id="customer-id">
+                            <div class="form-grid two">
+                                <label>Nome<input id="customer-nome" required maxlength="200"></label>
+                                <label>WhatsApp<input id="customer-whatsapp" maxlength="30"></label>
+                                <label>E-mail<input id="customer-email" type="email" maxlength="200"></label>
+                                <label>CPF<input id="customer-cpf" maxlength="14"></label>
+                                <label>Instagram<input id="customer-instagram" maxlength="120"></label>
+                                <label>Origem<input id="customer-origem" maxlength="120"></label>
+                                <label>Cidade<input id="customer-cidade" maxlength="120"></label>
+                                <label>Estado<input id="customer-estado" maxlength="2"></label>
+                                <label>Data nascimento<input id="customer-data-nascimento" type="date"></label>
+                                <label>Status<select id="customer-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                            </div>
+                            <label>Observacoes<textarea id="customer-observacoes" rows="4" maxlength="2000"></textarea></label>
+                            <div class="form-actions"><button type="submit">Salvar cliente</button></div>
+                            <p class="form-message" id="customer-message"></p>
+                        </form>
+                        <section class="stock-history-panel">
+                            <div class="panel-header compact"><h2>Detalhes</h2></div>
+                            <div class="stock-summary" id="customer-summary"></div>
+                            <div class="stock-history" id="customer-orders"></div>
+                        </section>
+                    </section>
+                </div>
+            </section>
             <section class="view" id="orders-view">
                 <section class="filter-bar" aria-label="Filtros de pedidos">
                     <label>Buscar<input id="order-search" type="search" placeholder="Cliente ou WhatsApp"></label>
@@ -141,6 +192,7 @@
                         <form id="order-form" class="product-form">
                             <input type="hidden" id="order-id">
                             <div class="form-grid two">
+                                <label>Cliente cadastrado<select id="order-customer"><option value="">Pedido avulso</option></select></label>
                                 <label>Cliente<input id="order-client-name" maxlength="200" required></label>
                                 <label>WhatsApp<input id="order-client-whatsapp" maxlength="30"></label>
                                 <label>Pagamento<select id="order-payment-method"><option value="pix">Pix</option><option value="debito">Debito</option><option value="credito">Credito</option></select></label>

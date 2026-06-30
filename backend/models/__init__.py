@@ -8,6 +8,7 @@ from .base import (
 )
 from .users import User
 from .suppliers import Supplier
+from .customers import Customer
 from .products import Product, ProductImage, ProductImport
 from .stock import StockMovement
 from .vj_orders import VJAdminOrder, VJAdminOrderItem
@@ -21,6 +22,7 @@ __all__ = [
     "Base",
     "Coupon",
     "CouponRedemption",
+    "Customer",
     "MONEY_COLUMN",
     "Newsletter",
     "Order",
