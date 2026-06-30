@@ -43,7 +43,7 @@ Após iniciar, acesse:
 | `uv --cache-dir .uv-cache run alembic current` | Verificar qual migration está atualmente aplicada |
 | `uv --cache-dir .uv-cache run alembic history` | Listar histórico de migrations |
 
-**Fluxo típico ao alterar `backend/models.py`:**
+**Fluxo típico ao alterar `backend/models/`:**
 
 ```powershell
 uv --cache-dir .uv-cache run alembic revision --autogenerate -m "descricao da alteracao"

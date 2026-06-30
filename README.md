@@ -78,7 +78,7 @@ uv --cache-dir .uv-cache run alembic stamp 20260617_0001
 uv --cache-dir .uv-cache run alembic upgrade head
 ```
 
-Quando alterar modelos em `backend/models.py`, crie uma nova migration:
+Quando alterar modelos em `backend/models/`, crie uma nova migration:
 
 ```powershell
 uv --cache-dir .uv-cache run alembic revision --autogenerate -m "descricao da alteracao"
@@ -128,7 +128,7 @@ cookie `vj_csrf_token`.
 backend/app.py       cria o FastAPI, registra middlewares, routers e arquivos estaticos
 backend/routers/     endpoints FastAPI separados por dominio
 backend/services/    regras reutilizaveis de pedido, pagamento, imagens e startup
-backend/models.py    modelos SQLAlchemy
+backend/models/     modelos SQLAlchemy separados por dominio
 backend/database.py  engine, sessao e dependencia de banco
 frontend/            HTML, CSS, JavaScript, imagens, PWA e PDFs publicos
 import_data/         arquivos-fonte usados nas importacoes
