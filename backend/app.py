@@ -17,7 +17,9 @@ from backend.routers import (
     orders,
     pages,
     payments,
-    products,
+    admin_products,
+    product_imports,
+    public_products,
     store_settings,
     vj_admin_products,
     vj_admin_audit,
@@ -77,7 +79,9 @@ def create_app():
         )
 
     app.include_router(pages.router)
-    app.include_router(products.router)
+    app.include_router(public_products.router)
+    app.include_router(admin_products.router)
+    app.include_router(product_imports.router)
     app.include_router(address.router)
     app.include_router(auth.router)
     app.include_router(payments.router)
