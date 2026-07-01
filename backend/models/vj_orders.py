@@ -13,6 +13,7 @@ class VJAdminOrder(Base):
     __tablename__ = "vj_admin_pedidos"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), index=True, nullable=True)
     cliente_nome: Mapped[str] = mapped_column(String(200))
     cliente_whatsapp: Mapped[str | None] = mapped_column(String(30), nullable=True)
     forma_pagamento: Mapped[str] = mapped_column(String(30), default="pix")
@@ -41,10 +42,12 @@ class VJAdminOrder(Base):
     )
     created_by: Mapped["User | None"] = relationship("User", foreign_keys=[created_by_id])
     updated_by: Mapped["User | None"] = relationship("User", foreign_keys=[updated_by_id])
+    customer: Mapped["Customer | None"] = relationship("Customer", back_populates="orders")
 
     def to_dict(self):
         return {
             "id": self.id,
+            "customer_id": self.customer_id,
             "cliente_nome": self.cliente_nome,
             "cliente_whatsapp": self.cliente_whatsapp,
             "forma_pagamento": self.forma_pagamento,
@@ -60,6 +63,7 @@ class VJAdminOrder(Base):
             "updated_by_id": self.updated_by_id,
             "created_by": self.created_by.to_dict() if self.created_by else None,
             "updated_by": self.updated_by.to_dict() if self.updated_by else None,
+            "customer": self.customer.to_dict() if self.customer else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
             "items": [item.to_dict() for item in self.items],

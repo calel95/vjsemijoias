@@ -1,4 +1,4 @@
-﻿from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_HALF_UP
 
 import pytest
 
@@ -72,6 +72,18 @@ def test_pricing_calculates_pix_profit_and_margin_from_formula():
     assert pricing["lucro_pix"] == expected_profit
     assert pricing["margem_pix"] == expected_margin
 
+
+def test_vj_admin_pricing_defaults_endpoint():
+    headers = admin_headers()
+
+    response = client.get("/api/vj-admin/pricing/defaults", headers=headers)
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["custo_embalagem"] == 9.34
+    assert data["markup"] == 2.0
+    assert data["taxas"]["preco_pix"] == float(PAYMENT_FEES["preco_pix"])
+    assert "preco_credito_12x" in data["campos_calculados"]
 
 def test_vj_admin_can_manage_suppliers():
     headers = admin_headers()

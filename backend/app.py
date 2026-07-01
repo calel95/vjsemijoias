@@ -19,9 +19,14 @@ from backend.routers import (
     payments,
     products,
     store_settings,
-    vj_admin,
+    vj_admin_products,
+    vj_admin_audit,
+    vj_admin_customers,
+    vj_admin_dashboard,
+    vj_admin_finance,
     vj_admin_orders,
     vj_admin_stock,
+    vj_admin_suppliers,
 )
 from backend.services.admin_security import ADMIN_LOGIN_ATTEMPTS
 from backend.services.csrf import csrf_middleware
@@ -79,9 +84,14 @@ def create_app():
     app.include_router(orders.router)
     app.include_router(catalog_pdf.router)
     app.include_router(store_settings.router)
-    app.include_router(vj_admin.router)
+    app.include_router(vj_admin_products.router)
+    app.include_router(vj_admin_audit.router)
+    app.include_router(vj_admin_customers.router)
+    app.include_router(vj_admin_dashboard.router)
+    app.include_router(vj_admin_finance.router)
     app.include_router(vj_admin_orders.router)
     app.include_router(vj_admin_stock.router)
+    app.include_router(vj_admin_suppliers.router)
     app.mount("/", StaticFiles(directory=FRONTEND_ROOT, html=True), name="frontend")
     return app
 
