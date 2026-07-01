@@ -29,7 +29,13 @@ function setText(selector, value) {
 
 function setHref(selector, value) {
     document.querySelectorAll(selector).forEach(element => {
-        element.href = value || '#';
+        if (value) {
+            element.href = value;
+            element.removeAttribute('aria-disabled');
+            return;
+        }
+        element.removeAttribute('href');
+        element.setAttribute('aria-disabled', 'true');
     });
 }
 
