@@ -80,7 +80,9 @@
             }
 
             document.getElementById('breadcrumb-product').textContent = product.name;
-            document.title = `${product.name} - VJ Semijoias`;
+            if (window.VJSEO?.applyProductSEO) {
+                window.VJSEO.applyProductSEO(product);
+            }
             window.productDetailCurrentProduct = product;
 
             const productImages = Array.isArray(product.images) && product.images.length
