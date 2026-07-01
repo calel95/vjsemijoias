@@ -71,5 +71,6 @@ Este modulo ainda nao implementa contas a pagar/receber, conciliacao bancaria ou
 - O checkout deve recalcular valores, frete e descontos no servidor antes de criar ou confirmar cobranca.
 - Dados completos de cartao nunca passam pelo backend; a cobranca acontece no checkout hospedado pela InfinitePay.
 - Movimentos de estoque devem preservar trilha de auditoria e saldo anterior/atual.
+- Baixas de pedidos publicos pagos devem passar por `deduct_stock_for_order`, que cria `StockMovement` sem misturar o fluxo publico com `VJAdminOrder`.
 - Relatorios financeiros e dashboard executivo devem usar valores historicos salvos em pedidos e itens.
 - Despesas devem ser canceladas logicamente; nao ha exclusao fisica no fluxo do VJ Admin.

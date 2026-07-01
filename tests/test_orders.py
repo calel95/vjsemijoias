@@ -1,7 +1,12 @@
+import json
 from decimal import Decimal
 
+import pytest
+from sqlalchemy import select
+
 from backend.database import SessionLocal
-from backend.models import Order, OrderEvent, Product
+from backend.models import Order, OrderEvent, Product, StockMovement
+from backend.services.stock import deduct_stock_for_order
 from tests.helpers import admin_login, client
 
 
@@ -325,6 +330,10 @@ def test_paid_order_deducts_stock_once_and_blocks_oversell():
         headers={'Authorization': f'Bearer {token}'},
     ).json()
     product = next(item for item in after_stock if item['id'] == created['id'])
+    with SessionLocal() as db:
+        movements = db.scalars(
+            select(StockMovement).where(StockMovement.produto_id == created['id'])
+        ).all()
 
     assert blocked.status_code == 400
     assert 'estoque' in blocked.json()['error'].lower()
@@ -335,3 +344,102 @@ def test_paid_order_deducts_stock_once_and_blocks_oversell():
     assert [event['status'] for event in paid_twice.json()['events']] == ['pending', 'paid']
     assert product['stock_quantity'] == 0
     assert product['stock_status'] == 'out_of_stock'
+    assert len(movements) == 1
+    assert movements[0].tipo == 'saida'
+    assert movements[0].quantidade == 1
+    assert movements[0].saldo_anterior == 1
+    assert movements[0].saldo_atual == 0
+    assert order_id in movements[0].motivo
+    assert order_id in movements[0].observacoes
+
+def test_paid_preorder_public_order_does_not_create_stock_movement():
+    token = admin_login().json()['token']
+    created = client.post(
+        '/api/products',
+        headers={'Authorization': f'Bearer {token}'},
+        json={
+            'name': 'Produto Publico Preorder Estoque',
+            'category': 'aneis',
+            'price': 120,
+            'description': 'Produto em preorder para baixa publica.',
+            'stock_quantity': 0,
+            'stock_status': 'preorder',
+        },
+    )
+    product = created.json()
+    order_response = client.post('/api/orders', json={
+        'customer_name': 'Cliente Preorder',
+        'customer_email': 'preorder-publico@example.com',
+        'customer_cpf': '12345678909',
+        'items': [{'id': product['id'], 'quantity': 2}],
+    })
+    order_id = order_response.json()['id']
+
+    paid = client.put(
+        f'/api/admin/orders/{order_id}/status',
+        headers={'Authorization': f'Bearer {token}'},
+        json={'status': 'paid'},
+    )
+    after_stock = client.get(
+        '/api/admin/products',
+        headers={'Authorization': f'Bearer {token}'},
+    ).json()
+    stored_product = next(item for item in after_stock if item['id'] == product['id'])
+    with SessionLocal() as db:
+        movements = db.scalars(
+            select(StockMovement).where(StockMovement.produto_id == product['id'])
+        ).all()
+
+    assert created.status_code == 201
+    assert order_response.status_code == 201
+    assert paid.status_code == 200
+    assert paid.json()['stock_deducted'] is True
+    assert stored_product['stock_quantity'] == 0
+    assert stored_product['stock_status'] == 'preorder'
+    assert movements == []
+
+
+def test_public_stock_deduction_blocks_insufficient_stock_without_movement():
+    with SessionLocal() as db:
+        product = Product(
+            name='Produto Publico Estoque Insuficiente Servico',
+            category='aneis',
+            categoryName='Aneis',
+            price=Decimal('50.00'),
+            description='Produto para testar baixa publica sem saldo.',
+            status='publicado',
+            publicado=True,
+            is_active=True,
+            stock_status='available',
+            stock_quantity=1,
+            low_stock_alert=1,
+        )
+        db.add(product)
+        db.flush()
+        order = Order(
+            id='VJTESTSTOCKINSUF',
+            customer_name='Cliente Sem Estoque',
+            customer_email='sem-estoque-publico@example.com',
+            customer_cpf='12345678909',
+            items=json.dumps([{'id': product.id, 'quantity': 2}]),
+            subtotal=Decimal('100.00'),
+            shipping=Decimal('0.00'),
+            discount=Decimal('0.00'),
+            total=Decimal('100.00'),
+            payment_method='manual',
+            status='pending',
+        )
+        db.add(order)
+        db.flush()
+
+        with pytest.raises(ValueError, match='estoque'):
+            deduct_stock_for_order(db, order)
+
+        movements = db.scalars(
+            select(StockMovement).where(StockMovement.produto_id == product.id)
+        ).all()
+        assert order.stock_deducted is False
+        assert product.stock_quantity == 1
+        assert product.stock_status == 'available'
+        assert movements == []
+        db.rollback()

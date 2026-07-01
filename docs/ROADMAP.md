@@ -191,7 +191,7 @@ estiver atendido:
 Ideias e evoluções futuras que ainda não fazem parte do escopo concluído:
 
 - WhatsApp.
-- Catálogo PDF.
+- Evoluir catálogo PDF.
 - Etiquetas.
 - IA para descrição de produtos.
 - IA para marketing.
