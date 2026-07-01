@@ -80,8 +80,25 @@
     <script src="js/public-layout.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/offline.js"></script>
+    <script src="js/offline.js" defer></script>
     <script>
+        function scheduleProductIdle(callback) {
+            if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(callback, { timeout: 1200 });
+                return;
+            }
+            setTimeout(callback, 120);
+        }
+
+        function renderRelatedProducts(product) {
+            const relatedContainer = document.getElementById('related-products');
+            if (!relatedContainer) return;
+            const related = getAllProductsMerged()
+                .filter(p => p.category === product.category && p.id !== product.id)
+                .slice(0, 4);
+            relatedContainer.innerHTML = related.map(p => createProductCard(p)).join('');
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProductsFromAPI();
             const urlParams = new URLSearchParams(window.location.search);
@@ -257,15 +274,18 @@
             productContent.classList.remove('product-detail-loading');
             productContent.removeAttribute('aria-busy');
             productContent.innerHTML = content;
-            if (window.refreshPublicStoreConfig) {
-                await window.refreshPublicStoreConfig();
-            }
             setupProductShippingCalculator();
 
-            const related = getAllProductsMerged()
-                .filter(p => p.category === product.category && p.id !== product.id)
-                .slice(0, 4);
-            document.getElementById('related-products').innerHTML = related.map(p => createProductCard(p)).join('');
+            if (window.__vjStoreConfig && window.applyStoreConfig) {
+                window.applyStoreConfig(window.__vjStoreConfig);
+            }
+
+            scheduleProductIdle(async () => {
+                if (!window.__vjStoreConfig && window.refreshPublicStoreConfig) {
+                    await window.refreshPublicStoreConfig();
+                }
+                renderRelatedProducts(product);
+            });
         });
 
         function changeProductImage(image, button) {
