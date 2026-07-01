@@ -144,6 +144,12 @@ na montagem da aplicacao.
 
 Mantenha na raiz apenas arquivos de configuracao e documentacao do projeto.
 
+Documentos principais:
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): arquitetura, dominios e regras criticas.
+- [docs/ROADMAP.md](docs/ROADMAP.md): visao estrategica, versoes e grandes entregas.
+- [docs/PRODUCT.md](docs/PRODUCT.md): backlog de produto, ideias e decisoes de priorizacao.
+
 ## Testes
 
 ```powershell
