@@ -3,18 +3,12 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v27';
+const CACHE_NAME = 'vj-semijoias-v28';
 const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
     '/catalogo',
     '/produto',
-    '/carrinho',
-    '/checkout',
-    '/pedido',
-    '/login',
-    '/cadastro',
-    '/admin',
     '/pdf-visualizar',
     '/politica-troca.html',
     '/politica-privacidade.html',
@@ -22,7 +16,6 @@ const urlsToCache = [
     '/garantia.html',
     '/faq.html',
     './css/style.css',
-    './css/admin.css',
     './js/api.js',
     './js/store-config.js',
     './js/public-layout.js',
@@ -30,9 +23,9 @@ const urlsToCache = [
     './js/products.js',
     './js/cart.js',
     './js/main.js',
-    './js/admin.js',
     './js/offline.js',
     './images/logo.png',
+    './images/logo-medium.png',
     './manifest.json',
     './robots.txt',
     './sitemap.xml',
@@ -48,6 +41,27 @@ const urlsToCache = [
     './images/products/pingente-estrela.svg',
     './pdf/catalogo-vj.pdf'
 ];
+
+const CACHEABLE_NAVIGATION_PATHS = new Set([
+    '/',
+    '/catalogo',
+    '/produto',
+    '/pdf-visualizar',
+    '/politica-troca.html',
+    '/politica-privacidade.html',
+    '/termos-uso.html',
+    '/garantia.html',
+    '/faq.html',
+]);
+const NETWORK_ONLY_NAVIGATION_PATHS = new Set([
+    '/carrinho',
+    '/checkout',
+    '/pedido',
+    '/login',
+    '/cadastro',
+]);
+const PRODUCT_IMAGE_CACHE_LIMIT = 24;
+const PRODUCT_IMAGE_MAX_BYTES = 300 * 1024;
 
 // Instala o service worker e faz cache dos arquivos
 self.addEventListener('install', event => {
@@ -108,12 +122,14 @@ function productsFromPayload(payload) {
 
 async function cacheProductImages(products) {
     const cache = await caches.open(CACHE_NAME);
+    const imageUrls = productImageUrls(products).slice(0, PRODUCT_IMAGE_CACHE_LIMIT);
     await Promise.allSettled(
-        productImageUrls(products).map(async url => {
+        imageUrls.map(async url => {
             const response = await fetch(url);
-            if (response.ok) {
-                await cache.put(url, response);
-            }
+            if (!response.ok) return;
+            const buffer = await response.clone().arrayBuffer();
+            if (buffer.byteLength > PRODUCT_IMAGE_MAX_BYTES) return;
+            await cache.put(url, response);
         })
     );
 }
@@ -160,14 +176,20 @@ self.addEventListener('fetch', event => {
     }
 
     if (event.request.mode === 'navigate') {
+        const shouldCacheNavigation = CACHEABLE_NAVIGATION_PATHS.has(url.pathname) && !NETWORK_ONLY_NAVIGATION_PATHS.has(url.pathname);
         event.respondWith(
             fetch(event.request)
                 .then(response => {
-                    const responseClone = response.clone();
-                    caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                    if (shouldCacheNavigation && response.ok) {
+                        const responseClone = response.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseClone));
+                    }
                     return response;
                 })
-                .catch(() => caches.match(event.request).then(response => response || caches.match('/')))
+                .catch(() => {
+                    if (!shouldCacheNavigation) return caches.match('/');
+                    return caches.match(event.request).then(response => response || caches.match('/'));
+                })
         );
         return;
     }
@@ -181,6 +203,14 @@ self.addEventListener('fetch', event => {
                     return response;
                 })
                 .catch(() => caches.match(event.request))
+        );
+        return;
+    }
+
+    if (event.request.destination === 'image') {
+        event.respondWith(
+            caches.match(event.request)
+                .then(response => response || fetch(event.request))
         );
         return;
     }

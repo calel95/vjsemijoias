@@ -45,7 +45,11 @@ function applyStoreConfig(config) {
     const contact = config.contact || {};
 
     document.querySelectorAll('.logo-img, .footer-logo, .hero-logo, .auth-logo-img').forEach(image => {
-        if (brand.logo_path) image.src = brand.logo_path;
+        let logoPath = brand.logo_path;
+        if (image.dataset.storeLogo === 'small' && (!logoPath || logoPath === 'images/logo.png' || logoPath.endsWith('/images/logo.png'))) {
+            logoPath = 'images/logo-medium.png';
+        }
+        if (logoPath) image.src = logoPath;
         if (brand.name) image.alt = brand.name;
     });
 

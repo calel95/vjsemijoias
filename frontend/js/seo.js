@@ -328,7 +328,12 @@
     }
 
     function applyPageSEO(route = currentRoute()) {
-        const page = PAGES[route] || PAGES['/'];
+        const page = { ...(PAGES[route] || PAGES['/']) };
+        const productId = route === '/produto' ? productIdFromLocation() : null;
+        if (productId) {
+            page.robots = 'index,follow';
+            page.canonical = canonicalFor('/produto', `?id=${encodeURIComponent(productId)}`);
+        }
         const result = applySEO(page);
         applyBaseSchemas(page);
         return result;
@@ -362,17 +367,44 @@
         setJsonLd('vj-schema-product', productSchema(product, seo.canonical));
         return seo;
     }
+    function normalizeProductsPayload(payload) {
+        if (Array.isArray(payload)) return payload;
+        if (payload && Array.isArray(payload.items)) return payload.items;
+        return [];
+    }
+
+    function productIdFromLocation() {
+        const id = new URLSearchParams(window.location.search || '').get('id');
+        return id ? parseInt(id, 10) : null;
+    }
+
+    async function applyProductSEOFromAPI() {
+        if (currentRoute() !== '/produto') return null;
+        const productId = productIdFromLocation();
+        if (!productId || !window.fetch) return null;
+
+        try {
+            const response = await fetch('/api/products', { credentials: 'same-origin' });
+            if (!response.ok) return null;
+            const products = normalizeProductsPayload(await response.json());
+            const product = products.find(item => Number(item.id) === productId);
+            if (!product) return null;
+            return applyProductSEO(product);
+        } catch (_) {
+            return null;
+        }
+    }
 
     window.VJSEO = {
         applyPageSEO,
         applyProductSEO,
+        applyProductSEOFromAPI,
         setJsonLd,
         absoluteUrl,
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => applyPageSEO());
-    } else {
-        applyPageSEO();
+    applyPageSEO();
+    if (currentRoute() === '/produto') {
+        applyProductSEOFromAPI();
     }
 })();
