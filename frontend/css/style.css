@@ -1128,6 +1128,89 @@ input, select, textarea {
     align-items: start;
 }
 
+.product-detail-loading {
+    min-height: 720px;
+}
+
+.product-gallery-skeleton,
+.product-info-skeleton {
+    width: 100%;
+}
+
+.product-image-skeleton {
+    min-height: 0;
+}
+
+.product-skeleton-glow,
+.product-skeleton-line,
+.product-skeleton-block,
+.product-skeleton-actions div {
+    border-radius: 12px;
+    background: linear-gradient(90deg, var(--cream), var(--gold-pale), var(--cream));
+    background-size: 200% 100%;
+    animation: productSkeletonPulse 1.4s ease-in-out infinite;
+}
+
+.product-skeleton-glow {
+    width: 72%;
+    aspect-ratio: 1;
+    opacity: 0.75;
+}
+
+.product-skeleton-line {
+    height: 1rem;
+    margin-bottom: 1rem;
+}
+
+.product-skeleton-line.short {
+    width: 32%;
+}
+
+.product-skeleton-line.title {
+    width: 88%;
+    height: 2.8rem;
+}
+
+.product-skeleton-line.price {
+    width: 44%;
+    height: 2rem;
+    margin: 1.5rem 0;
+}
+
+.product-skeleton-line.medium {
+    width: 66%;
+}
+
+.product-skeleton-block {
+    min-height: 132px;
+    margin: 1.5rem 0;
+}
+
+.product-skeleton-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.product-skeleton-actions div {
+    min-height: 48px;
+}
+
+@keyframes productSkeletonPulse {
+    0% { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .product-skeleton-glow,
+    .product-skeleton-line,
+    .product-skeleton-block,
+    .product-skeleton-actions div {
+        animation: none;
+    }
+}
+
 .product-gallery {
     position: sticky;
     top: 100px;
@@ -1144,7 +1227,8 @@ input, select, textarea {
     border-radius: 20px;
     overflow: hidden;
     background: linear-gradient(135deg, var(--cream), var(--gold-pale));
-    aspect-ratio: 1;
+    aspect-ratio: 1 / 1;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1183,6 +1267,7 @@ input, select, textarea {
 .product-detail-image img {
     width: 100%;
     height: 100%;
+    aspect-ratio: 1 / 1;
     object-fit: contain;
     padding: 1rem;
     background: var(--white);
@@ -2159,7 +2244,11 @@ input, select, textarea {
         grid-template-columns: 1fr;
         gap: 2rem;
     }
-    
+
+    .product-detail-loading {
+        min-height: 980px;
+    }
+
     .product-gallery { position: static; }
 
     .product-gallery.has-thumbnails {

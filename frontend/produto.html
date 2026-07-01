@@ -43,7 +43,26 @@
             <span id="breadcrumb-product">Produto</span>
         </div>
 
-        <div class="product-detail-grid" id="product-content"></div>
+        <div class="product-detail-grid product-detail-loading" id="product-content" aria-busy="true">
+            <div class="product-gallery product-gallery-skeleton" aria-hidden="true">
+                <div class="product-detail-image product-image-skeleton">
+                    <div class="product-skeleton-glow"></div>
+                </div>
+            </div>
+            <div class="product-detail-info product-info-skeleton" aria-hidden="true">
+                <div class="product-skeleton-line short"></div>
+                <div class="product-skeleton-line title"></div>
+                <div class="product-skeleton-line price"></div>
+                <div class="product-skeleton-line medium"></div>
+                <div class="product-skeleton-block"></div>
+                <div class="product-skeleton-line"></div>
+                <div class="product-skeleton-line medium"></div>
+                <div class="product-skeleton-actions">
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
 
         <section style="margin-top: 5rem;">
             <div class="section-header" style="margin-bottom: 2rem;">
@@ -94,6 +113,11 @@
                         id="product-main-image"
                         src="${productImages[0]}"
                         alt="${product.name}"
+                        width="720"
+                        height="720"
+                        loading="eager"
+                        fetchpriority="high"
+                        decoding="async"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
                     >
                     <div class="placeholder-large" style="display: none;">${product.icon || '💎'}</div>
@@ -110,7 +134,7 @@
                                 onclick="changeProductImage('${image}', this)"
                                 aria-label="Ver foto ${index + 1} de ${product.name}"
                             >
-                                <img src="${image}" alt="${product.name} - foto ${index + 1}">
+                                <img src="${image}" alt="${product.name} - foto ${index + 1}" width="88" height="88" loading="lazy" decoding="async">
                             </button>
                         `).join('')}
                     </div>
@@ -229,7 +253,10 @@
                 </div>
             `;
 
-            document.getElementById('product-content').innerHTML = content;
+            const productContent = document.getElementById('product-content');
+            productContent.classList.remove('product-detail-loading');
+            productContent.removeAttribute('aria-busy');
+            productContent.innerHTML = content;
             if (window.refreshPublicStoreConfig) {
                 await window.refreshPublicStoreConfig();
             }

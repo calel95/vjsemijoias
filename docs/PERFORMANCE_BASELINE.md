@@ -419,6 +419,39 @@ Repetir Lighthouse Mobile para:
 
 ---
 
+# Sprint 004.3 - Produto: LCP e CLS
+
+## Relatorios Lighthouse Mobile recebidos
+
+| Pagina | Performance | LCP | CLS | Observacoes |
+| --- | ---: | ---: | ---: | --- |
+| Home | 90 | 3,0s | 0 | Evolucao positiva apos Sprint 004.2. |
+| Catalogo | 95 | 2,3s | 0 | Dentro da meta inicial sugerida para 1.0. |
+| Produto | 61 | 4,0s | 0,585 | Prioridade da Sprint 004.3 por LCP alto e CLS critico. |
+
+## Melhorias implementadas
+
+| Area | Implementacao | Objetivo |
+| --- | --- | --- |
+| CLS do produto | `produto.html` agora renderiza um skeleton inicial dentro de `#product-content`, com a mesma estrutura de galeria/informacoes. | Reservar espaco antes da API responder e evitar deslocamento grande da pagina. |
+| Galeria principal | `style.css` reforca `aspect-ratio: 1 / 1`, largura estavel e altura reservada para a imagem principal. | Reduzir instabilidade visual durante carregamento da imagem. |
+| LCP do produto | A imagem principal dinamica recebe `loading="eager"`, `fetchpriority="high"`, `decoding="async"`, `width` e `height`. | Priorizar o recurso LCP sem aplicar lazy loading indevido na imagem principal. |
+| Miniaturas | Miniaturas recebem `loading="lazy"`, `decoding="async"`, `width` e `height`. | Carregar imagens secundarias com menor prioridade. |
+| Fetch duplicado | `seo.js` compartilha o fetch de `/api/products` com `products.js` via promessa global controlada. | Manter SEO dinamico cedo sem duplicar chamada na pagina de produto. |
+| 401 publico | `cart.js` evita chamar `/api/auth/me` quando nao existe usuario local salvo. | Evitar 401 desnecessario em visitas publicas sem quebrar login/cadastro. |
+
+## Observacao sobre relatorios
+
+O script externo do Kaspersky pode aparecer nos relatorios de navegador/Lighthouse do ambiente local. Esse recurso nao pertence ao projeto VJ Semijoias e deve ser desconsiderado como asset da aplicacao.
+
+## Medicao recomendada apos esta sprint
+
+- Repetir Lighthouse Mobile em `/produto?id=...` para confirmar CLS proximo de 0.
+- Confirmar se LCP do produto fica abaixo dos 4,0s medidos antes da sprint.
+- Revalidar Home e Catalogo para garantir ausencia de regressao.
+
+---
+
 # Conclusao
 
 O baseline inicial indica que as paginas publicas carregam rapidamente no ambiente de teste, com LCP abaixo de 1s na medicao headless local e TTFB via `curl` entre aproximadamente 213 ms e 311 ms.
