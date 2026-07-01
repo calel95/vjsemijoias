@@ -13,12 +13,12 @@ async function getStoreConfig() {
 
 function whatsappLink(number) {
     const digits = String(number || '').replace(/\D/g, '');
-    return digits ? `https://wa.me/55${digits.replace(/^55/, '')}` : '#';
+    return digits ? `https://wa.me/55${digits.replace(/^55/, '')}` : '';
 }
 
 function instagramLink(username) {
     const clean = String(username || '').replace(/^@/, '');
-    return clean ? `https://instagram.com/${clean}` : '#';
+    return clean ? `https://instagram.com/${clean}` : '';
 }
 
 function setText(selector, value) {
@@ -68,6 +68,16 @@ function applyStoreConfig(config) {
     setHref('[data-store-instagram-link]', instagramLink(contact.instagram));
 }
 
+async function refreshPublicStoreConfig() {
+    const config = await getStoreConfig();
+    applyStoreConfig(config);
+    return config;
+}
+
+window.getStoreConfig = getStoreConfig;
+window.applyStoreConfig = applyStoreConfig;
+window.refreshPublicStoreConfig = refreshPublicStoreConfig;
+
 document.addEventListener('DOMContentLoaded', async () => {
-    applyStoreConfig(await getStoreConfig());
+    await refreshPublicStoreConfig();
 });

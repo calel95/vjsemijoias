@@ -227,6 +227,9 @@
             `;
 
             document.getElementById('product-content').innerHTML = content;
+            if (window.refreshPublicStoreConfig) {
+                await window.refreshPublicStoreConfig();
+            }
             setupProductShippingCalculator();
 
             const related = getAllProductsMerged()
