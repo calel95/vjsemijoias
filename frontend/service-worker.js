@@ -3,7 +3,7 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v26';
+const CACHE_NAME = 'vj-semijoias-v27';
 const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
@@ -26,6 +26,7 @@ const urlsToCache = [
     './js/api.js',
     './js/store-config.js',
     './js/public-layout.js',
+    './js/seo.js',
     './js/products.js',
     './js/cart.js',
     './js/main.js',
@@ -33,6 +34,8 @@ const urlsToCache = [
     './js/offline.js',
     './images/logo.png',
     './manifest.json',
+    './robots.txt',
+    './sitemap.xml',
     './images/products/brinco-marguerite.svg',
     './images/products/colar-sol-dourado.svg',
     './images/products/pulseira-tennis.svg',

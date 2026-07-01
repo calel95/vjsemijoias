@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /vj-admin
+Disallow: /carrinho
+Disallow: /checkout
+Disallow: /login
+Disallow: /cadastro
+Disallow: /pedido
+
+Sitemap: https://www.vjsemijoias.com/sitemap.xml
