@@ -40,33 +40,8 @@
 
         <div id="checkout-content"></div>
     </main>
-
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-col">
-                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
-            </div>
-            <div class="footer-col">
-                <h3>Categorias</h3>
-                <ul>
-                    <li><a href="/catalogo?cat=brincos">Brincos</a></li>
-                    <li><a href="/catalogo?cat=colares">Colares</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h3>Contato</h3>
-                <ul>
-                    <li data-store-email>📧 contato@vjsemijoias.com</li>
-                    <li data-store-location>&#128205; Canoas - RS</li>
-                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
-        </div>
-    </footer>
+    <!-- FOOTER -->
+    <footer class="footer" data-public-footer data-public-footer-fields="data-store-location data-store-hours"></footer>
 
     <div class="modal-overlay" id="success-modal">
         <div class="modal" style="text-align: center;">
@@ -96,6 +71,7 @@
     <script src="js/api.js"></script>
     <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
+    <script src="js/public-layout.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
     <script src="js/offline.js"></script>
@@ -241,6 +217,9 @@
                                     <p style="margin: 0; color: var(--gray);">
                                         Você será direcionado ao checkout seguro da InfinitePay para escolher a forma de pagamento.
                                     </p>
+                                    <div class="checkout-security-note">
+                                        Seus dados de pagamento são informados no ambiente protegido da InfinitePay. A VJ Semijoias não solicita dados sensíveis de cartão por WhatsApp, telefone ou e-mail.
+                                    </div>
                                 </div>
                             </div>
                             
@@ -289,10 +268,23 @@
                                     ← Voltar ao Carrinho
                                 </a>
                                 
-                                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--white); border-radius: 8px; font-size: 0.85rem;">
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">🔒 Pagamento 100% seguro</div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">📦 Entrega garantida</div>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">🔄 30 dias para troca</div>
+                                <div class="checkout-trust-panel" aria-label="Informações de confiança do checkout">
+                                    <div class="checkout-trust-item">
+                                        <strong>Pagamento seguro</strong>
+                                        <span>Finalização em ambiente protegido da InfinitePay.</span>
+                                    </div>
+                                    <div class="checkout-trust-item">
+                                        <strong>Proteção de dados</strong>
+                                        <span>Usamos seus dados somente para pedido, entrega e atendimento.</span>
+                                    </div>
+                                    <div class="checkout-trust-item">
+                                        <strong>Acompanhamento</strong>
+                                        <span>Após a compra, acompanhe status e atualizações pela página do pedido.</span>
+                                    </div>
+                                    <div class="checkout-trust-item">
+                                        <strong>Troca e garantia</strong>
+                                        <span>30 dias para solicitar troca e garantia de 2 anos para defeitos de fabricação.</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

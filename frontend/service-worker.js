@@ -3,7 +3,7 @@
 // Permite o site funcionar offline no tablet
 // ============================================
 
-const CACHE_NAME = 'vj-semijoias-v25';
+const CACHE_NAME = 'vj-semijoias-v26';
 const API_CACHE_NAME = 'vj-semijoias-api-v1';
 const urlsToCache = [
     '/',
@@ -16,14 +16,21 @@ const urlsToCache = [
     '/cadastro',
     '/admin',
     '/pdf-visualizar',
+    '/politica-troca.html',
+    '/politica-privacidade.html',
+    '/termos-uso.html',
+    '/garantia.html',
+    '/faq.html',
     './css/style.css',
     './css/admin.css',
     './js/api.js',
     './js/store-config.js',
+    './js/public-layout.js',
     './js/products.js',
     './js/cart.js',
     './js/main.js',
     './js/admin.js',
+    './js/offline.js',
     './images/logo.png',
     './manifest.json',
     './images/products/brinco-marguerite.svg',

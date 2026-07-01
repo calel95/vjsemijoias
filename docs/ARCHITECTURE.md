@@ -14,7 +14,7 @@ O checkout publico nao depende dos pedidos internos do VJ Admin. Valores, frete 
 
 O dominio VJ Admin concentra operacoes internas do painel: catalogo, fornecedores, clientes, pedidos internos, estoque, dashboard executivo, financeiro simples, auditoria e configuracoes. Os modelos principais sao `Product`, `ProductImage`, `ProductImport`, `Supplier`, `Customer`, `VJAdminOrder`, `VJAdminOrderItem`, `StockMovement`, `Expense`, `AdminAuditLog`, `User` e `StoreSetting`.
 
-As rotas do VJ Admin ficam em routers por area (`vj_admin_products`, `vj_admin_orders`, `vj_admin_stock`, `vj_admin_suppliers`, `vj_admin_customers`, `vj_admin_finance`) e devem delegar regras para services.
+As rotas do VJ Admin ficam em routers por area (`vj_admin_products`, `vj_admin_orders`, `vj_admin_stock`, `vj_admin_suppliers`, `vj_admin_customers`, `vj_admin_finance`) e devem delegar regras para services. As rotas legadas de produto em `/api/products` e `/api/admin/products` sao mantidas por routers menores (`public_products`, `admin_products`, `product_imports`), com `backend.routers.products` apenas como compatibilidade.
 
 ### Clientes / CRM
 

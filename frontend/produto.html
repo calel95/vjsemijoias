@@ -51,42 +51,13 @@
             <div class="products-grid" id="related-products"></div>
         </section>
     </main>
-
-    <footer class="footer">
-        <div class="footer-container">
-            <div class="footer-col">
-                <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
-                <p data-store-description>Semijoias finas banhadas a ouro 18k.</p>
-                <div class="social-links">
-                    <a href="#">📷</a><a href="#">📘</a><a href="#">💬</a>
-                </div>
-            </div>
-            <div class="footer-col">
-                <h3>Categorias</h3>
-                <ul>
-                    <li><a href="/catalogo?cat=brincos">Brincos</a></li>
-                    <li><a href="/catalogo?cat=colares">Colares</a></li>
-                    <li><a href="/catalogo?cat=pulseiras">Pulseiras</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h3>Contato</h3>
-                <ul>
-                    <li data-store-email>📧 contato@vjsemijoias.com</li>
-                    <li data-store-phone>📱 (11) 99999-9999</li>
-                    <li data-store-location>&#128205; Canoas - RS</li>
-                    <li data-store-hours>&#128336; Seg-Sex: 9h as 18h</li>
-                </ul>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p data-store-copyright>&copy; 2026 VJ Semijoias. Todos os direitos reservados.</p>
-        </div>
-    </footer>
+    <!-- FOOTER -->
+    <footer class="footer" data-public-footer data-public-footer-fields="data-store-location data-store-hours"></footer>
 
     <script src="js/api.js"></script>
     <script src="js/store-config.js"></script>
     <script src="js/products.js"></script>
+    <script src="js/public-layout.js"></script>
     <script src="js/cart.js"></script>
     <script src="js/main.js"></script>
     <script src="js/offline.js"></script>
@@ -196,6 +167,29 @@
                     </div>
                     
                     <p class="product-description">${product.description}</p>
+
+                    <div class="product-trust-grid" aria-label="Informações de confiança da VJ Semijoias">
+                        <div class="product-trust-item">
+                            <strong>Garantia de 2 anos</strong>
+                            <span>Cobertura para defeitos de fabricação, conforme nossa política de garantia.</span>
+                        </div>
+                        <div class="product-trust-item">
+                            <strong>Banho Ouro 18K</strong>
+                            <span>Peças selecionadas com acabamento de semijoia e cuidado na curadoria.</span>
+                        </div>
+                        <div class="product-trust-item">
+                            <strong>Compra segura</strong>
+                            <span>Pagamento em ambiente protegido e dados tratados com responsabilidade.</span>
+                        </div>
+                        <div class="product-trust-item">
+                            <strong>Envio rápido</strong>
+                            <span>Calcule o frete pelo CEP e acompanhe seu pedido depois da compra.</span>
+                        </div>
+                        <div class="product-trust-item">
+                            <strong>Atendimento via WhatsApp</strong>
+                            <span><a data-store-whatsapp-link>Fale com a loja em caso de dúvida antes da compra.</a></span>
+                        </div>
+                    </div>
                     
                     <div class="product-features">
                         <h4>✨ Características</h4>
@@ -233,6 +227,9 @@
             `;
 
             document.getElementById('product-content').innerHTML = content;
+            if (window.refreshPublicStoreConfig) {
+                await window.refreshPublicStoreConfig();
+            }
             setupProductShippingCalculator();
 
             const related = getAllProductsMerged()
