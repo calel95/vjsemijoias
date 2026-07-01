@@ -440,3 +440,25 @@ Este documento deve servir como base para a Auditoria Comercial da versão 1.0 d
 Ele registra a estrutura atual, os fluxos existentes, os arquivos envolvidos, as rotas públicas, as APIs utilizadas e o inventário técnico de SEO, performance, dependências e organização.
 
 Este documento não altera produto, código, comportamento, frontend, backend, banco de dados ou rotas existentes.
+---
+
+# Atualização Sprint 003 — SEO Público
+
+A Sprint 003 adicionou uma camada centralizada de SEO público em `frontend/js/seo.js`.
+
+Inventário atualizado:
+
+| Item | Status |
+| --- | --- |
+| Módulo central de SEO | `frontend/js/seo.js` |
+| Canonical | Gerenciado pelo módulo de SEO por rota pública. |
+| Open Graph | Gerenciado pelo módulo de SEO por rota pública e dinamicamente em produto. |
+| Twitter Cards | Gerenciado pelo módulo de SEO por rota pública e dinamicamente em produto. |
+| JSON-LD Organization | Gerado pelo módulo de SEO. |
+| JSON-LD WebSite | Gerado pelo módulo de SEO. |
+| JSON-LD Product | Gerado dinamicamente em `frontend/produto.html` usando dados reais do produto. |
+| JSON-LD FAQPage | Gerado para `frontend/faq.html`. |
+| Robots | `frontend/robots.txt`. |
+| Sitemap | `frontend/sitemap.xml`, estrutura estática preparada para futura automação. |
+
+Observação: o sitemap estático usa o domínio público padrão da loja e deve ser automatizado futuramente a partir de `PUBLIC_BASE_URL`/`STORE_WEBSITE` e do catálogo público.

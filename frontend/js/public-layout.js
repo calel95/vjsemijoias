@@ -25,7 +25,7 @@ function renderPublicFooter() {
         footer.innerHTML = `
             <div class="footer-container">
                 <div class="footer-col">
-                    <img src="images/logo.png" alt="VJ Semijoias" class="footer-logo">
+                    <img src="images/logo-medium.png" alt="VJ Semijoias" class="footer-logo" width="90" height="90" data-store-logo="small">
                     <p data-store-description>Semijoias finas banhadas a ouro 18k, com curadoria, garantia e atendimento próximo em cada compra.</p>
                     <div class="social-links">
                         <a data-store-instagram-link aria-label="Instagram VJ Semijoias">Instagram</a>
