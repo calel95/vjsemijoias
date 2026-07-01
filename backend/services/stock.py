@@ -126,21 +126,38 @@ def deduct_stock_for_order(db: Session, order: Order) -> bool:
     except (TypeError, json.JSONDecodeError) as exc:
         raise ValueError("Itens do pedido invalidos para baixa de estoque") from exc
 
+    quantities_by_product: dict[int, int] = {}
+    ordered_product_ids: list[int] = []
     for item in items:
         product_id = int(item["id"])
         quantity = int(item.get("quantity", 1))
+        if quantity <= 0:
+            raise ValueError("Quantidade do item deve ser maior que zero")
+        if product_id not in quantities_by_product:
+            ordered_product_ids.append(product_id)
+            quantities_by_product[product_id] = 0
+        quantities_by_product[product_id] += quantity
+
+    normalized_items: list[tuple[Product, int]] = []
+    for product_id in ordered_product_ids:
         product = db.scalar(select(Product).where(Product.id == product_id).with_for_update())
         if not product:
             raise ValueError(f"Produto do pedido nao encontrado: {product_id}")
+        quantity = quantities_by_product[product_id]
         ensure_orderable_stock(product, quantity)
+        normalized_items.append((product, quantity))
 
-    for item in items:
-        product = db.get(Product, int(item["id"]))
+    for product, quantity in normalized_items:
         if product.stock_status == "preorder":
             continue
-        product.stock_quantity = max(0, (product.stock_quantity or 0) - int(item.get("quantity", 1)))
-        sync_stock_status(product)
+        create_stock_movement(
+            db,
+            product,
+            tipo="saida",
+            quantidade=quantity,
+            motivo=f"Pedido publico {order.id} pago",
+            observacoes=f"Baixa automatica do pedido publico {order.id}",
+        )
 
     order.stock_deducted = True
     return True
-
