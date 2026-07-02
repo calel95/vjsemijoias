@@ -32,9 +32,10 @@ function isSvgImageUrl(imageUrl) {
     return imagePathWithoutQuery(imageUrl).toLowerCase().endsWith('.svg');
 }
 
-function imageCardVariantUrl(imageUrl) {
+function imageVariantUrl(imageUrl, variantName) {
     const image = normalizeImageUrl(imageUrl);
-    if (!image || isExternalImageUrl(image) || isDataImageUrl(image) || isSvgImageUrl(image)) {
+    const variant = String(variantName || '').trim();
+    if (!image || !variant || isExternalImageUrl(image) || isDataImageUrl(image) || isSvgImageUrl(image)) {
         return image;
     }
 
@@ -57,7 +58,19 @@ function imageCardVariantUrl(imageUrl) {
     if (dotIndex <= 0) return image;
 
     const stem = filename.slice(0, dotIndex);
-    return `${hasLeadingSlash ? '/' : ''}images/variants/${directory}${stem}-card.webp`;
+    return `${hasLeadingSlash ? '/' : ''}images/variants/${directory}${stem}-${variant}.webp`;
+}
+
+function imageCardVariantUrl(imageUrl) {
+    return imageVariantUrl(imageUrl, 'card');
+}
+
+function imageDetailVariantUrl(imageUrl) {
+    return imageVariantUrl(imageUrl, 'detail');
+}
+
+function imageThumbnailVariantUrl(imageUrl) {
+    return imageVariantUrl(imageUrl, 'thumbnail');
 }
 
 function productMainImage(product) {
@@ -71,7 +84,7 @@ function productCardImageSrc(product) {
     return imageCardVariantUrl(image);
 }
 
-function fallbackProductCardImage(imageElement) {
+function fallbackImageToOriginal(imageElement) {
     const originalSrc = imageElement.getAttribute('data-original-src');
     const currentSrc = imageElement.getAttribute('src');
     if (originalSrc && currentSrc !== originalSrc && imageElement.dataset.originalFallbackApplied !== 'true') {
@@ -84,6 +97,10 @@ function fallbackProductCardImage(imageElement) {
     if (imageElement.nextElementSibling) {
         imageElement.nextElementSibling.style.display = 'flex';
     }
+}
+
+function fallbackProductCardImage(imageElement) {
+    fallbackImageToOriginal(imageElement);
 }
 
 function renderProductImage(product) {

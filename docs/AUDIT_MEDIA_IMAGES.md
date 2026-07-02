@@ -764,31 +764,64 @@ Como preparar variantes antes de testar catalogo:
 uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
 ```
 
-## Recomendacao para a proxima sprint
+## Sprint 020 - Uso de variantes na pagina publica de produto
 
-A proxima sprint recomendada e a Sprint 020 - Usar variantes na pagina de produto.
+Status: concluida.
 
-Motivo:
+Decisao tecnica implementada:
 
-- O catalogo ja passou a usar `card` com fallback seguro.
-- A pagina de produto concentra a imagem principal e pode se beneficiar da variante `detail`.
-- A ativacao deve preservar SEO/JSON-LD, preload da imagem principal, galeria e fallback para original.
+- A pagina publica de produto passou a tentar usar a variante `detail` na imagem principal quando a fonte e local raster.
+- As miniaturas da galeria passaram a tentar usar a variante `thumbnail` quando a fonte e local raster.
+- A URL das variantes segue o mesmo padrao da Sprint 018/Sprint 019: `images/variants/<caminho-original-sem-images>/<arquivo>-<variante>.webp`.
+- Exemplo de imagem principal: `images/catalog/produto/img_1.jpg` tenta carregar `images/variants/catalog/produto/img_1-detail.webp`.
+- Exemplo de miniatura: `images/catalog/produto/img_1.jpg` tenta carregar `images/variants/catalog/produto/img_1-thumbnail.webp`.
+- O frontend nao faz `fetch`, `HEAD` ou requisicao extra para verificar existencia da variante.
+- O fallback acontece pelo evento `onerror`, usando a imagem original registrada em `data-original-src`.
+- Se a imagem original tambem falhar, o placeholder visual existente continua sendo usado.
+- URLs externas, SVG, data URL, formatos fora do escopo e imagens vazias continuam usando o comportamento seguro original.
 
-Escopo recomendado:
+Compatibilidade preservada:
 
-- Usar variante `detail` na imagem principal da pagina de produto quando disponivel.
-- Manter fallback para original em erro de carregamento.
-- Nao alterar contrato publico nem dados de produto.
-- Preservar `loading="eager"`, `fetchpriority="high"`, `decoding="async"` e dimensoes explicitas da imagem principal.
-- Medir impacto em LCP e evitar CLS.
+- Nenhum backend de produtos foi alterado.
+- `Product.to_dict()` nao foi alterado.
+- O contrato publico `image`/`imagem_url`/`images` foi preservado.
+- A imagem salva no carrinho, pedido e demais fluxos continua sendo a imagem original do produto.
+- SEO dinamico e JSON-LD foram preservados.
+- A imagem principal manteve `loading="eager"`, `fetchpriority="high"`, `decoding="async"` e dimensoes explicitas.
+- Miniaturas continuam com `loading="lazy"` e `decoding="async"`.
+- Variantes continuam opcionais e o site publico nao depende delas existirem.
+- Nenhum banco, schema, migration, upload, galeria do VJ Admin, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro, dashboard ou service worker foi alterado.
+- Nenhuma variante e gerada automaticamente nesta sprint.
+- R2 nao e chamado.
 
-## Validacoes da Sprint 019
+Cobertura adicionada:
+
+- Imagem local `.jpg`, `.png` e `.webp` gera caminho de variante `detail`.
+- Imagem local `.jpg` gera caminho de variante `thumbnail`.
+- SVG mantem original.
+- URL externa mantem original.
+- Data URL mantem original.
+- Produto sem imagem mantem o placeholder visual atual.
+- Fallback da imagem principal troca `detail` para original uma unica vez.
+- Fallback da miniatura troca `thumbnail` para original uma unica vez.
+- Catalogo continua usando variante `card` corretamente.
+- Nao ha uso de `fetch` ou `HEAD` para descobrir variantes.
+
+Como preparar variantes antes de testar a pagina de produto:
+
+```powershell
+uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
+```
+
+## Validacoes da Sprint 020
 
 Validacoes obrigatorias desta sprint:
 
+- `node --check frontend/js/main.js`.
+- `node --check frontend/js/products.js`.
+- Parse do script inline de `frontend/produto.html`.
 - `uv run pytest`.
 - `uv run python tools/e2e_smoke.py`.
-- `node --check frontend/js/main.js`.
 - `git diff --check`.
 
 Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

@@ -158,32 +158,46 @@
                 ? `
                     <img
                         id="product-main-image"
-                        src="${productImages[0]}"
-                        alt="${product.name}"
+                        src="${productEscapeText(imageDetailVariantUrl(productImages[0]))}"
+                        data-original-src="${productEscapeText(productImages[0])}"
+                        alt="${productEscapeText(product.name)}"
                         width="720"
                         height="720"
                         loading="eager"
                         fetchpriority="high"
                         decoding="async"
-                        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+                        onerror="fallbackImageToOriginal(this)"
                     >
-                    <div class="placeholder-large" style="display: none;">${product.icon || '💎'}</div>
+                    <div class="placeholder-large" style="display: none;">${productEscapeText(product.icon || '💎')}</div>
                 `
-                : `<div class="placeholder-large">${product.icon || '💎'}</div>`;
+                : `<div class="placeholder-large">${productEscapeText(product.icon || '💎')}</div>`;
 
             const galleryThumbnails = productImages.length > 1
                 ? `
                     <div class="product-gallery-thumbnails">
-                        ${productImages.map((image, index) => `
-                            <button
-                                type="button"
-                                class="product-gallery-thumb ${index === 0 ? 'active' : ''}"
-                                onclick="changeProductImage('${image}', this)"
-                                aria-label="Ver foto ${index + 1} de ${product.name}"
-                            >
-                                <img src="${image}" alt="${product.name} - foto ${index + 1}" width="88" height="88" loading="lazy" decoding="async">
-                            </button>
-                        `).join('')}
+                        ${productImages.map((image, index) => {
+                            const thumbnailSrc = imageThumbnailVariantUrl(image);
+                            return `
+                                <button
+                                    type="button"
+                                    class="product-gallery-thumb ${index === 0 ? 'active' : ''}"
+                                    data-original-image="${productEscapeText(image)}"
+                                    onclick="changeProductImageFromButton(this)"
+                                    aria-label="Ver foto ${index + 1} de ${productEscapeText(product.name)}"
+                                >
+                                    <img
+                                        src="${productEscapeText(thumbnailSrc)}"
+                                        data-original-src="${productEscapeText(image)}"
+                                        alt="${productEscapeText(product.name)} - foto ${index + 1}"
+                                        width="88"
+                                        height="88"
+                                        loading="lazy"
+                                        decoding="async"
+                                        onerror="fallbackImageToOriginal(this)"
+                                    >
+                                </button>
+                            `;
+                        }).join('')}
                     </div>
                 `
                 : '';
@@ -335,17 +349,23 @@
             });
         });
 
+        function changeProductImageFromButton(button) {
+            changeProductImage(button.dataset.originalImage || '', button);
+        }
+
         function changeProductImage(image, button) {
             const mainImage = document.getElementById('product-main-image');
-            if (!mainImage) return;
-            mainImage.src = image;
+            if (!mainImage || !image) return;
+            mainImage.dataset.originalFallbackApplied = 'false';
+            mainImage.setAttribute('data-original-src', image);
+            mainImage.src = imageDetailVariantUrl(image);
             mainImage.style.display = 'block';
             const fallback = mainImage.nextElementSibling;
             if (fallback) fallback.style.display = 'none';
             document.querySelectorAll('.product-gallery-thumb').forEach(item => {
                 item.classList.remove('active');
             });
-            button.classList.add('active');
+            if (button) button.classList.add('active');
         }
 
         function productDigitsOnly(value) {

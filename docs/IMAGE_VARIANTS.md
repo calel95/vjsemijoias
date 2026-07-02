@@ -2,7 +2,7 @@
 
 Este documento descreve a base de variantes de imagem criada na Sprint 018.
 
-A sprint prepara a geracao de arquivos otimizados, mas ainda nao ativa o uso das variantes no site publico e nao muda o contrato `image`/`imagem_url`/`images`.
+A Sprint 018 preparou a geracao de arquivos otimizados. A Sprint 019 ativou o uso de `card` no catalogo publico e a Sprint 020 ativou `detail`/`thumbnail` na pagina publica de produto, sempre sem mudar o contrato `image`/`imagem_url`/`images`.
 
 ## Objetivo
 
@@ -114,6 +114,35 @@ Para preparar variantes antes de testar o catalogo:
 uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
 ```
 
+## Uso na pagina publica de produto
+
+Desde a Sprint 020, a pagina publica de produto tenta usar variantes quando a imagem original e local raster:
+
+- imagem principal: variante `detail`;
+- miniaturas da galeria: variante `thumbnail`.
+
+Exemplos:
+
+- Original: `images/catalog/produto/img_1.jpg`
+- Principal tentada: `images/variants/catalog/produto/img_1-detail.webp`
+- Miniatura tentada: `images/variants/catalog/produto/img_1-thumbnail.webp`
+
+A pagina de produto nao faz `fetch` ou `HEAD` para verificar existencia. Ela define a variante como `src` e guarda a imagem original em `data-original-src`.
+
+Se a variante nao existir ou falhar, o `onerror` troca a imagem para a original uma unica vez. Se a original tambem falhar, o fallback visual existente continua funcionando.
+
+A imagem principal preserva os atributos de performance da pagina de produto: `loading="eager"`, `fetchpriority="high"`, `decoding="async"`, largura e altura explicitas. As miniaturas preservam `loading="lazy"` e `decoding="async"`.
+
+Fontes que nao tentam variante:
+
+- URL externa `http/https`.
+- SVG.
+- Data URL.
+- Caminho vazio.
+- Formato local fora de `.jpg`, `.jpeg`, `.png` ou `.webp`.
+
+O SEO dinamico e o JSON-LD continuam usando o contrato publico original do produto.
+
 ## Como validar
 
 Antes de usar variantes em producao:
@@ -123,11 +152,11 @@ Antes de usar variantes em producao:
 3. Conferir arquivos em `frontend/images/variants`.
 4. Validar dimensoes e qualidade visual.
 5. Rodar `uv run pytest` e smoke E2E.
-6. So em sprint futura alterar catalogo/produto para consumir variantes.
+6. Validar catalogo e pagina de produto, que consomem variantes de forma opcional com fallback para original.
 
 ## O que nao fazer
 
-- Nao apontar o site publico para variantes nesta sprint.
+- Nao tornar variantes obrigatorias no site publico.
 - Nao apagar originais.
 - Nao mover arquivos antigos.
 - Nao alterar `Product.to_dict()` para retornar variantes ainda.
@@ -136,4 +165,4 @@ Antes de usar variantes em producao:
 
 ## Proximos passos
 
-A proxima sprint recomendada e usar a variante `detail` na pagina de produto, mantendo preload, SEO/JSON-LD, galeria e fallback para original. Depois disso, avaliar geracao automatica de variantes no upload do VJ Admin modular.
+Avaliar geracao automatica de variantes no upload do VJ Admin modular e revisar cache/CDN antes de producao. Antes de lotes maiores, rodar dry-run, aplicar em lote pequeno, conferir qualidade visual e validar catalogo/produto com fallback para original.

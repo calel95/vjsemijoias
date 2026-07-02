@@ -1,10 +1,11 @@
-﻿import json
+import json
 import subprocess
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MAIN_JS = PROJECT_ROOT / "frontend" / "js" / "main.js"
+PRODUCT_HTML = PROJECT_ROOT / "frontend" / "produto.html"
 
 
 def run_main_js_assertions(assertions):
@@ -37,13 +38,34 @@ assert.strictEqual(context.imageCardVariantUrl('/images/catalog/produto/img_1.jp
     )
 
 
+def test_product_detail_variant_url_for_local_raster_images():
+    run_main_js_assertions(
+        """
+assert.strictEqual(context.imageDetailVariantUrl('images/catalog/produto/img_1.jpg'), 'images/variants/catalog/produto/img_1-detail.webp');
+assert.strictEqual(context.imageDetailVariantUrl('images/catalog/produto/img_1.png'), 'images/variants/catalog/produto/img_1-detail.webp');
+assert.strictEqual(context.imageDetailVariantUrl('images/catalog/produto/img_1.webp'), 'images/variants/catalog/produto/img_1-detail.webp');
+"""
+    )
+
+
+def test_product_thumbnail_variant_url_for_local_jpg_images():
+    run_main_js_assertions(
+        """
+assert.strictEqual(context.imageThumbnailVariantUrl('images/catalog/produto/img_1.jpg'), 'images/variants/catalog/produto/img_1-thumbnail.webp');
+assert.strictEqual(context.imageThumbnailVariantUrl('/images/catalog/produto/img_1.jpg'), '/images/variants/catalog/produto/img_1-thumbnail.webp');
+"""
+    )
+
+
 def test_catalog_card_variant_keeps_non_variant_sources():
     run_main_js_assertions(
         """
-assert.strictEqual(context.imageCardVariantUrl('images/products/anel.svg'), 'images/products/anel.svg');
-assert.strictEqual(context.imageCardVariantUrl('https://cdn.example.com/produto.jpg'), 'https://cdn.example.com/produto.jpg');
-assert.strictEqual(context.imageCardVariantUrl('data:image/png;base64,abc'), 'data:image/png;base64,abc');
-assert.strictEqual(context.imageCardVariantUrl(''), '');
+for (const helper of [context.imageCardVariantUrl, context.imageDetailVariantUrl, context.imageThumbnailVariantUrl]) {
+  assert.strictEqual(helper('images/products/anel.svg'), 'images/products/anel.svg');
+  assert.strictEqual(helper('https://cdn.example.com/produto.jpg'), 'https://cdn.example.com/produto.jpg');
+  assert.strictEqual(helper('data:image/png;base64,abc'), 'data:image/png;base64,abc');
+  assert.strictEqual(helper(''), '');
+}
 """
     )
 
@@ -112,7 +134,56 @@ assert.strictEqual(placeholder.style.display, 'flex');
     )
 
 
-def test_catalog_variant_logic_does_not_use_fetch_or_head():
-    source = MAIN_JS.read_text(encoding="utf-8")
-    assert "fetch(" not in source
-    assert "HEAD" not in source
+def test_product_detail_and_thumbnail_fallback_switch_to_original_once():
+    run_main_js_assertions(
+        """
+for (const variant of ['detail', 'thumbnail']) {
+  const attrs = {
+    src: `images/variants/catalog/produto/img_1-${variant}.webp`,
+    'data-original-src': 'images/catalog/produto/img_1.jpg',
+  };
+  const placeholder = { style: { display: 'none' } };
+  const image = {
+    dataset: {},
+    style: { display: '' },
+    nextElementSibling: placeholder,
+    getAttribute(name) { return attrs[name] || ''; },
+    setAttribute(name, value) { attrs[name] = value; },
+  };
+  context.fallbackImageToOriginal(image);
+  assert.strictEqual(attrs.src, 'images/catalog/produto/img_1.jpg');
+  assert.strictEqual(image.style.display, '');
+  context.fallbackImageToOriginal(image);
+  assert.strictEqual(image.style.display, 'none');
+  assert.strictEqual(placeholder.style.display, 'flex');
+}
+"""
+    )
+
+
+
+def test_product_page_uses_detail_and_thumbnail_variants_without_changing_contract():
+    source = PRODUCT_HTML.read_text(encoding="utf-8")
+    assert 'imageDetailVariantUrl(productImages[0])' in source
+    assert 'imageThumbnailVariantUrl(image)' in source
+    assert 'data-original-src="${productEscapeText(productImages[0])}"' in source
+    assert 'data-original-src="${productEscapeText(image)}"' in source
+    assert 'onerror="fallbackImageToOriginal(this)"' in source
+    assert 'loading="eager"' in source
+    assert 'fetchpriority="high"' in source
+    assert 'loading="lazy"' in source
+    assert 'const productImages = Array.isArray(product.images) && product.images.length' in source
+    assert ': (product.image ? [product.image] : [])' in source
+
+
+def test_product_page_keeps_empty_image_placeholder():
+    source = PRODUCT_HTML.read_text(encoding="utf-8")
+    assert ': `<div class="placeholder-large">${productEscapeText(product.icon || ' in source
+
+
+def test_variant_logic_does_not_use_fetch_or_head():
+    main_source = MAIN_JS.read_text(encoding="utf-8")
+    product_source = PRODUCT_HTML.read_text(encoding="utf-8")
+    assert "fetch(" not in main_source
+    assert "HEAD" not in main_source
+    assert "HEAD" not in product_source
