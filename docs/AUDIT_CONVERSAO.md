@@ -12,7 +12,7 @@ O objetivo desta auditoria e identificar oportunidades para aumentar conversao, 
 
 A analise observa a jornada comercial real: descoberta da marca, avaliacao do catalogo, decisao no produto, revisao do carrinho, preenchimento do checkout, pagamento e acompanhamento do pedido. O foco e responder uma pergunta simples: o que hoje ajuda ou atrapalha uma cliente a comprar com seguranca?
 
-Esta auditoria nao implementa melhorias, nao altera frontend, nao altera backend e nao substitui `ROADMAP.md`, `PRODUCT.md` ou `ARCHITECTURE.md`. Ela organiza o backlog futuro do Epico 3.
+Esta auditoria organiza o backlog futuro do Epico 3 e tambem registra a evolucao das sprints comerciais implementadas, mantendo como referencia `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md`.
 
 ## Jornada da cliente
 
@@ -405,7 +405,37 @@ Melhorias implementadas nesta sprint:
 - Produtos relacionados mantidos por categoria, com titulo/copy comercial `Complete o look` e `Combine com outras pecas`.
 - Estilos responsivos adicionados para painel de decisao, cuidados, links, atendimento, CTAs e relacionados.
 
-### Sprint 007 — Catalogo
+### Sprint 007 — Carrinho Comercial
+
+Objetivo: reduzir abandono no carrinho, aumentando clareza, confianca e continuidade para o checkout.
+
+Impacto esperado: maior continuidade para checkout e reducao de abandono do carrinho.
+
+Escopo sugerido:
+
+- Comunicacao amigavel do frete obrigatorio.
+- Resumo do pedido com subtotal, desconto, frete, total e quantidade de itens.
+- CTA de checkout com foco em seguranca.
+- Bloco de confianca no carrinho.
+- Continuar comprando visivel.
+- Microcopy de cupom.
+- Carrinho vazio mais comercial.
+- UX mobile.
+
+Status: concluida.
+
+Melhorias implementadas nesta sprint:
+
+- Comunicacao do frete obrigatorio revisada para orientar a cliente a informar CEP, escolher uma opcao e seguir para checkout seguro.
+- Resumo do pedido reorganizado visualmente com quantidade de itens, subtotal, frete, desconto quando houver e total em destaque.
+- CTA principal atualizado para `Finalizar Compra com Segurança`, preservando a rota e a regra de bloqueio sem frete.
+- Bloco de confianca adicionado com compra segura, garantia, politica de troca, FAQ e atendimento via WhatsApp configurado pela loja.
+- Opcao `Continuar Comprando` reforcada e mantida apontando para `/catalogo`.
+- Area de cupom recebeu microcopy explicando que o desconto sera aplicado quando o cupom for valido.
+- Estado de carrinho vazio ganhou mensagem comercial e CTA para o catalogo.
+- Estilos responsivos adicionados para resumo, frete, cupom, CTA, itens e blocos de confianca.
+
+### Sprint 008 — Catalogo
 
 Objetivo: facilitar descoberta de produtos.
 
@@ -419,20 +449,6 @@ Escopo sugerido:
 - Destaques.
 - Comparacao.
 - Descoberta.
-
-### Sprint 008 — Carrinho
-
-Objetivo: reduzir abandono.
-
-Impacto esperado: maior continuidade para checkout.
-
-Escopo sugerido:
-
-- Clareza.
-- Frete.
-- Comunicacao.
-- Resumo.
-- Seguranca.
 
 ### Sprint 009 — Checkout
 
@@ -472,8 +488,8 @@ Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar prior
 |---------|---------------|
 | Sprint 005 | Cliques para Catalogo |
 | Sprint 006 | Adicoes ao Carrinho |
-| Sprint 007 | Visualizacoes de Produto |
-| Sprint 008 | Reducao de Abandono do Carrinho |
+| Sprint 007 | Reducao de Abandono do Carrinho |
+| Sprint 008 | Visualizacoes de Produto |
 | Sprint 009 | Pedidos Concluidos |
 | Sprint 010 | Recompra |
 
@@ -481,24 +497,19 @@ No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por 
 
 ## Restricoes observadas
 
-- Nenhuma melhoria foi implementada.
-- Apenas `docs/AUDIT_CONVERSAO.md` foi alterado.
-- Nenhum outro documento foi alterado.
-- O frontend nao foi modificado.
-- O backend nao foi modificado.
-- O banco de dados nao foi modificado.
-- As APIs nao foram modificadas.
-- `ROADMAP.md` nao foi modificado.
-- `PRODUCT.md` nao foi modificado.
-- `ARCHITECTURE.md` nao foi modificado.
+- Melhorias da Sprint 007 foram limitadas ao frontend publico do carrinho e a este registro documental.
+- Backend, banco de dados, APIs, models, migrations, checkout, VJ Admin e autenticacao nao foram modificados.
+- Regras de estoque, preco, frete e cupom foram preservadas.
+- `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados.
 
 ## Validacoes
 
-Esta tarefa foi exclusivamente documental. Por isso, nao foram executados:
+Validacoes executadas para a Sprint 007:
 
-- `pytest`
-- smoke tests
-- `node --check`
-- Alembic
+- `node --check` nos scripts carregados pelo carrinho.
+- Parse do script inline de `frontend/carrinho.html` com Node.
+- `uv run pytest`.
+- `uv run python tools\e2e_smoke.py`.
+- `git diff --check`.
 
-A validacao realizada foi de auditoria comercial/documental. Testes automatizados nao seriam proporcionais ao escopo, pois nao houve alteracao de codigo, frontend, backend, banco de dados, APIs ou comportamento.
+Alembic nao foi executado porque nao houve alteracao de schema, banco ou migrations.
