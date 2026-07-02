@@ -47,10 +47,10 @@ function renderPublicFooter() {
                 <div class="footer-col">
                     <h3>Atendimento</h3>
                     <ul>
-                        <li data-store-email>e-mail: [E-MAIL DA LOJA]</li>
-                        <li data-store-phone>telefone: [TELEFONE DA LOJA]</li>
-                        <li data-store-whatsapp>WhatsApp: [TELEFONE DA LOJA]</li>
-                        <li data-store-location>[ENDEREÇO DA LOJA]</li>
+                        <li data-store-email></li>
+                        <li data-store-phone></li>
+                        <li data-store-whatsapp></li>
+                        <li data-store-location></li>
                         <li data-store-hours>Segunda a sexta, 9h às 18h</li>
                     </ul>
                 </div>

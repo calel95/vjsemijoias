@@ -533,18 +533,54 @@ Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar prior
 
 No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por ferramentas como Google Analytics, PostHog, Plausible ou outra solucao de analytics.
 
+## Fechamento do Epico 3
+
+Status: concluido.
+
+Sprints concluidas:
+
+- Sprint 005 — Home Comercial.
+- Sprint 006 — Pagina de Produto Premium.
+- Sprint 007 — Carrinho Comercial.
+- Sprint 008 — Checkout Comercial.
+- Sprint 009 — Catalogo / Descoberta de Produtos.
+- Sprint 010 — Pos-compra.
+- Sprint 011 — Revisao Final do Epico 3.
+
+Principais melhorias entregues:
+
+- Home reposicionada como entrada comercial para catalogo, categorias, produtos em destaque, beneficios e prova de confianca.
+- Pagina de produto reforcada com decisao premium, descricao comercial, cuidados, garantia, links de apoio e produtos relacionados.
+- Carrinho revisado para clareza de frete, cupom, total, continuidade para checkout e seguranca percebida.
+- Checkout revisado para reduzir duvidas antes do pagamento, com fluxo mais claro, microcopy e resumo confiavel.
+- Catalogo reorganizado para descoberta por categoria, filtros/ordenacao mais claros, cards sem afirmacoes nao confiaveis e bloco institucional de confianca.
+- Pos-compra fortalecida com acompanhamento do pedido, proximos passos, cuidados, atendimento e convite discreto para recompra.
+- Revisao final removeu placeholders institucionais visiveis, manteve contatos publicos dependentes da configuracao da loja e reforcou acessibilidade basica do menu nas paginas principais.
+
+Restricoes preservadas:
+
+- Backend, banco, APIs, models, migrations, VJ Admin, autenticacao, pedidos, estoque, pagamento, InfinitePay, regras de frete, regras de cupom, payloads e rotas existentes foram preservados.
+- Nao foram criados endpoints, campos de banco, regras comerciais, descontos, urgencia falsa, pop-ups, timers ou promessas nao garantidas.
+- `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados nesta revisao final.
+
+Proximos epicos sugeridos:
+
+- Epico 4 — Medicao comercial e analytics: instrumentar funil, KPIs e eventos de conversao.
+- Epico 5 — Conteudo, marca e prova social: evoluir storytelling, imagens, depoimentos reais e guias de compra.
+- Epico 6 — Relacionamento e recompra: estruturar comunicacao pos-compra, CRM leve e campanhas futuras sem alterar regras comerciais sem planejamento.
+
 ## Restricoes observadas
 
-- Melhorias da Sprint 010 foram limitadas ao frontend publico da pagina de pedido/acompanhamento e a este registro documental.
-- Backend, banco, APIs, models, migrations, VJ Admin, financeiro, estoque, pagamento, InfinitePay, regras de status, regras de pedido, payloads, rotas existentes e contratos foram preservados.
-- `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados.
+- Melhorias da Sprint 011 foram limitadas ao frontend publico e a este registro documental.
+- Nenhum contrato de API, regra de negocio, fluxo de pagamento ou estrutura de dados foi alterado.
+- Os links e textos institucionais foram ajustados apenas para consistencia, configurabilidade e ausencia de placeholders publicos.
 
 ## Validacoes
 
-Validacoes executadas para a Sprint 010:
+Validacoes executadas para a Sprint 011:
 
-- `node --check` nos scripts carregados pela pagina de pedido.
-- Parse do script inline de `frontend/pedido.html` com Node.
+- `node --check` nos scripts publicos principais e nos JS alterados.
+- Parse dos scripts inline das paginas publicas principais e institucionais revisadas.
 - `uv run pytest`.
 - `uv run python tools\e2e_smoke.py`.
 - `git diff --check`.
