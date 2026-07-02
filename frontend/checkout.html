@@ -32,11 +32,11 @@
 
     <div class="offline-notice" id="offline-notice"></div>
 
-    <main class="checkout-page">
-        <div style="text-align: center; margin-bottom: 1rem;">
-            <h1 class="section-title" style="font-size: 2.5rem;">Finalizar <span
-                    style="color: var(--gold-dark); font-style: italic;">Compra</span></h1>
-            <p class="section-subtitle">Preencha seus dados para concluir o pedido com segurança</p>
+    <main class="checkout-page checkout-commercial-page">
+        <div class="checkout-commercial-hero">
+            <span>Checkout seguro</span>
+            <h1>Revise sua compra</h1>
+            <p>Confira seus dados antes de finalizar. Após confirmar o pedido, você poderá ser direcionada para um ambiente seguro de pagamento.</p>
         </div>
 
         <div id="checkout-content"></div>
@@ -110,10 +110,10 @@
 
             if (Cart.items.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-cart">
-                        <div class="empty-cart-icon">🛒</div>
+                    <div class="empty-cart empty-cart-commercial checkout-empty-state">
+                        <div class="empty-cart-icon">Carrinho</div>
                         <h2>Seu carrinho está vazio</h2>
-                        <p>Adicione produtos antes de finalizar a compra</p>
+                        <p>Escolha suas semijoias favoritas e volte para finalizar o pedido com segurança.</p>
                         <a href="/catalogo" class="btn btn-primary">Ver Catálogo</a>
                     </div>`;
                 return;
@@ -129,17 +129,21 @@
 
             container.innerHTML = `
                 <div id="checkout-form">
-                    <div class="checkout-grid">
-                        <div class="checkout-form">
-                            <div class="checkout-section">
-                                <h3>👤 Dados Pessoais</h3>
+                    <div class="checkout-grid checkout-commercial-grid">
+                        <div class="checkout-form checkout-form-commercial">
+                            <div class="checkout-section checkout-section-commercial">
+                                <div class="checkout-section-head">
+                                    <span>Etapa 1</span>
+                                    <h3>Dados pessoais</h3>
+                                    <p>Use informações corretas para receber atualizações do pedido e facilitar o atendimento.</p>
+                                </div>
                                 ${user ? `
-                                    <div style="background: var(--cream); padding: 1rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                                    <div class="checkout-account-card">
                                         <div>
                                             <strong>Olá, ${user.name}!</strong>
-                                            <p style="color: var(--gray); font-size: 0.9rem; margin: 0;">${user.email}</p>
+                                            <p>${user.email}</p>
                                         </div>
-                                        <a href="/login" onclick="logoutCheckoutAccount(event)" style="color: var(--gold-dark); font-size: 0.9rem;">Não é você? Sair</a>
+                                        <a href="/login" onclick="logoutCheckoutAccount(event)">Não é você? Sair</a>
                                     </div>
                                 ` : ''}
                                 <div class="form-group" style="margin-top: 1rem;">
@@ -150,16 +154,19 @@
                                     <div class="form-group">
                                         <label>E-mail <span class="required">*</span></label>
                                         <input type="email" name="email" required value="${escapeAttribute(user?.email)}">
+                                        <small class="form-help">Informe um e-mail válido para receber atualizações do pedido.</small>
                                     </div>
                                     <div class="form-group">
                                         <label>CPF <span class="required">*</span></label>
                                         <input type="text" name="cpf" data-mask="cpf" required placeholder="000.000.000-00" value="${escapeAttribute(user?.cpf)}">
+                                        <small class="form-help">Usado apenas para emissão e identificação do pedido.</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>Telefone <span class="required">*</span></label>
                                         <input type="text" name="phone" data-mask="phone" required placeholder="(00) 00000-0000" value="${escapeAttribute(user?.phone)}">
+                                        <small class="form-help">Use um telefone com WhatsApp para facilitar o atendimento.</small>
                                     </div>
                                     <div class="form-group">
                                         <label>Data de Nascimento</label>
@@ -168,22 +175,29 @@
                                 </div>
                             </div>
                             
-                            <div class="checkout-section">
-                                <h3>📦 Endereço de Entrega</h3>
+                            <div class="checkout-section checkout-section-commercial">
+                                <div class="checkout-section-head">
+                                    <span>Etapa 2</span>
+                                    <h3>Endereço de entrega</h3>
+                                    <p>Confira o endereço antes de confirmar o pedido. O frete selecionado no carrinho será preservado.</p>
+                                </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>CEP <span class="required">*</span></label>
                                         <input type="text" name="cep" data-mask="cep" required placeholder="00000-000" value="${escapeAttribute(typeof maskCEP === 'function' ? maskCEP(Cart.getShippingZipCode()) : Cart.getShippingZipCode())}">
+                                        <small class="form-help">Use o mesmo CEP informado no carrinho para manter o frete selecionado.</small>
                                     </div>
                                     <div class="form-group" style="flex: 2;">
                                         <label>Endereço <span class="required">*</span></label>
                                         <input type="text" name="address" required>
+                                        <small class="form-help">Confira rua, avenida ou condomínio antes de avançar.</small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>Número <span class="required">*</span></label>
                                         <input type="text" name="number" required>
+                                        <small class="form-help">Informe o número para evitar atraso na entrega.</small>
                                     </div>
                                     <div class="form-group">
                                         <label>Complemento</label>
@@ -209,23 +223,33 @@
                                 </div>
                             </div>
                             
-                            <div class="checkout-section">
-                                <h3>💳 Pagamento com InfinitePay</h3>
-                                <div style="background: var(--cream); padding: 1.5rem; border-radius: 12px;">
-                                    <strong style="display: block; margin-bottom: 0.5rem;">
-                                        Pix ou cartão de crédito em até 12x
-                                    </strong>
-                                    <p style="margin: 0; color: var(--gray);">
-                                        Você será direcionado ao checkout seguro da InfinitePay para escolher a forma de pagamento.
-                                    </p>
+                            <div class="checkout-section checkout-section-commercial">
+                                <div class="checkout-section-head">
+                                    <span>Etapa 3</span>
+                                    <h3>Pagamento seguro</h3>
+                                    <p>O pagamento é finalizado em ambiente protegido após a confirmação do pedido.</p>
+                                </div>
+                                <div class="checkout-payment-flow">
+                                    <strong>Como funciona</strong>
+                                    <ol>
+                                        <li>Você revisa dados, itens, frete e total.</li>
+                                        <li>Confirma o pedido com segurança.</li>
+                                        <li>Quando aplicável, finaliza o pagamento em ambiente seguro.</li>
+                                        <li>Recebe o acompanhamento do pedido após a confirmação.</li>
+                                    </ol>
+                                    <p>Após confirmar o pedido, você poderá ser direcionada para um ambiente seguro de pagamento.</p>
                                     <div class="checkout-security-note">
-                                        Seus dados de pagamento são informados no ambiente protegido da InfinitePay. A VJ Semijoias não solicita dados sensíveis de cartão por WhatsApp, telefone ou e-mail.
+                                        A VJ Semijoias não solicita dados sensíveis de cartão por WhatsApp, telefone ou e-mail.
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="checkout-section">
-                                <h3>📝 Observações</h3>
+                            <div class="checkout-section checkout-section-commercial">
+                                <div class="checkout-section-head">
+                                    <span>Opcional</span>
+                                    <h3>Observações</h3>
+                                    <p>Inclua apenas informações úteis para entrega ou atendimento.</p>
+                                </div>
                                 <div class="form-group">
                                     <textarea name="notes" rows="3" placeholder="Alguma observação sobre o pedido? (opcional)"></textarea>
                                 </div>
@@ -233,16 +257,20 @@
                         </div>
                         
                         <div>
-                            <div class="order-summary">
-                                <h3>Resumo do Pedido</h3>
-                                <div class="order-items">
+                            <div class="order-summary order-summary-commercial">
+                                <div class="order-summary-head">
+                                    <span>Resumo seguro</span>
+                                    <h3>Resumo do Pedido</h3>
+                                    <p>${Cart.getCount()} ${Cart.getCount() === 1 ? 'item selecionado' : 'itens selecionados'}</p>
+                                </div>
+                                <div class="order-items checkout-order-items">
                                     ${Cart.items.map(item => `
                                         <div class="order-item">
                                             <div class="order-item-image">
                                                 ${item.image
                                                     ? `<img src="${item.image}" alt="${item.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                       <span class="order-item-placeholder" style="display: none;">${item.icon || '💎'}</span>`
-                                                    : `<span class="order-item-placeholder">${item.icon || '💎'}</span>`}
+                                                       <span class="order-item-placeholder" style="display: none;">${item.icon || 'VJ'}</span>`
+                                                    : `<span class="order-item-placeholder">${item.icon || 'VJ'}</span>`}
                                             </div>
                                             <div class="order-item-info">
                                                 <h5>${item.name}</h5>
@@ -252,39 +280,48 @@
                                         </div>
                                     `).join('')}
                                 </div>
+                                <div class="summary-row summary-row-muted"><span>Itens:</span><span>${Cart.getCount()}</span></div>
                                 <div class="summary-row"><span>Subtotal:</span><span id="checkout-subtotal-price">${formatPrice(subtotal)}</span></div>
-                                <div class="checkout-shipping-summary">
+                                <div class="checkout-shipping-summary checkout-shipping-summary-commercial">
                                     <strong>Frete selecionado</strong>
                                     <span>${Cart.pricing.shippingOption ? escapeText(shippingOptionLabel(Cart.pricing.shippingOption)) : 'Escolha o frete no carrinho antes de finalizar.'}</span>
                                 </div>
-                                <div class="summary-row"><span>Frete:</span><span id="checkout-shipping-price">${Cart.pricing.shippingOption ? (shipping === 0 ? 'Gratis' : formatPrice(shipping)) : 'Pendente'}</span></div>
-                                ${discount > 0 ? `<div class="summary-row" style="color: var(--success);"><span>Desconto:</span><span id="checkout-discount-price">-${formatPrice(discount)}</span></div>` : ''}
-                                <div class="summary-row total"><span>Total:</span><span id="checkout-total-price" class="price">${formatPrice(total)}</span></div>
+                                <div class="summary-row summary-row-shipping"><span>Frete:</span><span id="checkout-shipping-price">${Cart.pricing.shippingOption ? (shipping === 0 ? 'Gratis' : formatPrice(shipping)) : 'Pendente'}</span></div>
+                                ${discount > 0 ? `<div class="summary-row summary-row-discount"><span>Desconto:</span><span id="checkout-discount-price">-${formatPrice(discount)}</span></div>` : ''}
+                                <div class="summary-row total checkout-total-highlight"><span>Total:</span><span id="checkout-total-price" class="price">${formatPrice(total)}</span></div>
                                 
-                                <button id="checkout-submit" type="button" class="btn btn-primary btn-block" style="margin-top: 1.5rem;" onclick="processInfinitePayCheckout()">
-                                    Ir para o pagamento seguro
+                                <button id="checkout-submit" type="button" class="btn btn-primary btn-block checkout-submit-commercial" onclick="processInfinitePayCheckout()">
+                                    Confirmar Pedido com Segurança
                                 </button>
                                 
-                                <a href="/carrinho" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
-                                    ← Voltar ao Carrinho
+                                <a href="/carrinho" class="btn btn-secondary btn-block checkout-back-button">
+                                    Voltar ao Carrinho
                                 </a>
                                 
-                                <div class="checkout-trust-panel" aria-label="Informações de confiança do checkout">
+                                <div class="checkout-trust-panel checkout-trust-panel-commercial" aria-label="Informações de confiança do checkout">
                                     <div class="checkout-trust-item">
-                                        <strong>Pagamento seguro</strong>
-                                        <span>Finalização em ambiente protegido da InfinitePay.</span>
+                                        <strong>Compra segura</strong>
+                                        <span>Pedido e pagamento conduzidos em fluxo protegido.</span>
                                     </div>
                                     <div class="checkout-trust-item">
-                                        <strong>Proteção de dados</strong>
+                                        <strong>Dados protegidos</strong>
                                         <span>Usamos seus dados somente para pedido, entrega e atendimento.</span>
                                     </div>
                                     <div class="checkout-trust-item">
-                                        <strong>Acompanhamento</strong>
-                                        <span>Após a compra, acompanhe status e atualizações pela página do pedido.</span>
+                                        <strong>Garantia de 2 anos</strong>
+                                        <a href="/garantia.html">Ver garantia</a>
                                     </div>
                                     <div class="checkout-trust-item">
-                                        <strong>Troca e garantia</strong>
-                                        <span>30 dias para solicitar troca e garantia de 2 anos para defeitos de fabricação.</span>
+                                        <strong>Troca conforme política</strong>
+                                        <a href="/politica-troca.html">Ver política</a>
+                                    </div>
+                                    <div class="checkout-trust-item">
+                                        <strong>Atendimento</strong>
+                                        <a data-store-whatsapp-link target="_blank" rel="noopener">WhatsApp VJ</a>
+                                    </div>
+                                    <div class="checkout-trust-item">
+                                        <strong>Dúvidas frequentes</strong>
+                                        <a href="/faq.html">Abrir FAQ</a>
                                     </div>
                                 </div>
                             </div>
@@ -296,6 +333,11 @@
             applyInputMasks();
             setupCepAutofill();
             initializePayments();
+            if (window.__vjStoreConfig && window.applyStoreConfig) {
+                window.applyStoreConfig(window.__vjStoreConfig);
+            } else if (window.refreshPublicStoreConfig) {
+                await window.refreshPublicStoreConfig();
+            }
         }
 
         function digitsOnly(value) {
@@ -393,7 +435,7 @@
             const firstField = document.querySelector(`#checkout-form [name="${fields[0]}"]`);
             firstField?.focus();
             firstField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            showToast(`Preencha: ${names}`, 'error', title);
+            showToast(`Revise os campos obrigatórios: ${names}. Eles são necessários para criar seu pedido com segurança.`, 'error', title);
         }
 
         function buildOrderData() {
@@ -429,7 +471,7 @@
             const deliveryCep = digitsOnly(data.cep);
             const shippingCep = digitsOnly(Cart.getShippingZipCode());
             if (!Cart.pricing.shippingOption) {
-                showToast('Escolha o frete no carrinho antes de continuar', 'error', 'Frete pendente');
+                showToast('Escolha o frete no carrinho antes de continuar para confirmar o pedido com segurança.', 'error', 'Frete pendente');
                 window.location.href = '/carrinho';
                 return null;
             }
@@ -476,16 +518,16 @@
             checkoutBusy = true;
             const button = document.getElementById('checkout-submit');
             button.disabled = true;
-            button.textContent = 'Abrindo InfinitePay...';
+            button.textContent = 'Criando pedido seguro...';
 
             const result = await API.createInfinitePayCheckout(orderData);
             checkoutBusy = false;
 
             if (!result.success || !result.data.checkout_url) {
                 button.disabled = false;
-                button.textContent = 'Ir para o pagamento seguro';
+                button.textContent = 'Confirmar Pedido com Segurança';
                 showToast(
-                    result.error || 'Não foi possível abrir o checkout da InfinitePay',
+                    result.error || 'Não foi possível iniciar o pagamento seguro. Revise seus dados e tente novamente.',
                     'error',
                     'Pagamento não iniciado'
                 );

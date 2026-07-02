@@ -450,6 +450,19 @@ Escopo sugerido:
 - Campos.
 - UX mobile.
 
+Status: concluida.
+
+Melhorias implementadas nesta sprint:
+
+- Cabecalho do checkout revisado para comunicar checkout seguro, revisao dos dados e proximo passo de pagamento.
+- Resumo do pedido reforcado com itens, subtotal, frete selecionado, desconto quando houver e total em destaque.
+- Bloco de fluxo de pagamento adicionado explicando revisao, confirmacao, ambiente seguro e acompanhamento do pedido.
+- Bloco de confianca ampliado com compra segura, dados protegidos, garantia, politica de troca, FAQ e atendimento via WhatsApp configurado pela loja.
+- Microcopy adicionada aos campos de e-mail, CPF, telefone, CEP, endereco e numero sem alterar obrigatoriedade ou validacoes.
+- Mensagens de campos obrigatorios, frete pendente, carregamento e erro de pagamento revisadas para serem mais claras.
+- CTA final atualizado para `Confirmar Pedido com Segurança`, preservando comportamento, rota e payload de criacao do pedido.
+- Estilos responsivos adicionados para cabecalho, formulario, resumo, fluxo de pagamento, CTAs e blocos de confianca.
+
 ### Sprint 009 — Catalogo / Descoberta de Produtos
 
 Objetivo: facilitar descoberta de produtos.
@@ -497,17 +510,17 @@ No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por 
 
 ## Restricoes observadas
 
-- Melhorias da Sprint 007 foram limitadas ao frontend publico do carrinho e a este registro documental.
-- Backend, banco de dados, APIs, models, migrations, checkout, VJ Admin e autenticacao nao foram modificados.
-- Regras de estoque, preco, frete e cupom foram preservadas.
+- Melhorias da Sprint 008 foram limitadas ao frontend publico do checkout e a este registro documental.
+- Backend, banco de dados, APIs, models, migrations, VJ Admin e autenticacao nao foram modificados.
+- Regras de pedido, estoque, preco, frete, cupom, pagamento, integracao InfinitePay e contrato do payload de pedido foram preservados.
 - `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados.
 
 ## Validacoes
 
-Validacoes executadas para a Sprint 007:
+Validacoes executadas para a Sprint 008:
 
-- `node --check` nos scripts carregados pelo carrinho.
-- Parse do script inline de `frontend/carrinho.html` com Node.
+- `node --check` nos scripts carregados pelo checkout.
+- Parse do script inline de `frontend/checkout.html` com Node.
 - `uv run pytest`.
 - `uv run python tools\e2e_smoke.py`.
 - `git diff --check`.

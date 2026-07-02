@@ -3972,3 +3972,268 @@ input, select, textarea {
         font-size: 1.35rem;
     }
 }
+
+/* ========== CHECKOUT COMMERCIAL - EPICO 3 ========== */
+.checkout-commercial-page {
+    padding-top: 2.25rem;
+}
+
+.checkout-commercial-hero {
+    background: linear-gradient(135deg, var(--cream), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(201, 168, 106, 0.3);
+    border-radius: 18px;
+    box-shadow: 0 16px 46px rgba(166, 124, 61, 0.08);
+    margin: 0 auto 2rem;
+    max-width: 980px;
+    padding: 2rem;
+    text-align: center;
+}
+
+.checkout-commercial-hero span,
+.checkout-section-head span,
+.order-summary-head span {
+    color: var(--gold-dark);
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 1.6px;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.checkout-commercial-hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin: 0 0 0.65rem;
+}
+
+.checkout-commercial-hero p {
+    color: var(--gray);
+    line-height: 1.65;
+    margin: 0 auto;
+    max-width: 720px;
+}
+
+.checkout-form-commercial,
+.order-summary-commercial {
+    border: 1px solid rgba(201, 168, 106, 0.28);
+    box-shadow: 0 16px 46px rgba(166, 124, 61, 0.09);
+}
+
+.checkout-section-commercial {
+    border-bottom-color: var(--gold-pale);
+}
+
+.checkout-section-head {
+    margin-bottom: 1.25rem;
+}
+
+.checkout-section-head h3,
+.order-summary-head h3 {
+    color: var(--dark);
+    font-size: 1.35rem;
+    margin: 0 0 0.35rem;
+}
+
+.checkout-section-head p,
+.order-summary-head p {
+    color: var(--gray);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.checkout-account-card {
+    align-items: center;
+    background: var(--cream);
+    border: 1px solid var(--gold-pale);
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1rem;
+}
+
+.checkout-account-card p {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.checkout-account-card a,
+.checkout-trust-panel-commercial a {
+    color: var(--gold-dark);
+    font-weight: 800;
+}
+
+.form-help {
+    color: var(--gray);
+    display: block;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin-top: 0.4rem;
+}
+
+.checkout-payment-flow {
+    background: var(--cream);
+    border: 1px solid rgba(201, 168, 106, 0.35);
+    border-radius: 14px;
+    padding: 1.25rem;
+}
+
+.checkout-payment-flow strong {
+    color: var(--dark);
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.checkout-payment-flow ol {
+    color: var(--gray-dark);
+    display: grid;
+    gap: 0.55rem;
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+}
+
+.checkout-payment-flow p {
+    color: var(--gray);
+    line-height: 1.55;
+    margin: 0;
+}
+
+.order-summary-commercial {
+    background: linear-gradient(180deg, var(--cream), rgba(255, 255, 255, 0.98));
+}
+
+.order-summary-head {
+    border-bottom: 1px solid var(--gold-pale);
+    margin-bottom: 1.2rem;
+    padding-bottom: 1rem;
+}
+
+.checkout-order-items {
+    border-bottom: 1px solid var(--gold-pale);
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.35rem;
+}
+
+.checkout-shipping-summary-commercial {
+    border: 1px solid rgba(201, 168, 106, 0.38);
+    margin: 1rem 0;
+}
+
+.checkout-total-highlight {
+    background: var(--white);
+    border: 1px solid rgba(201, 168, 106, 0.44);
+    border-radius: 12px;
+    margin-top: 1.1rem;
+    padding: 1rem;
+}
+
+.checkout-total-highlight .price {
+    font-size: 1.55rem;
+}
+
+.checkout-submit-commercial {
+    box-shadow: 0 10px 28px rgba(166, 124, 61, 0.22);
+    margin-top: 1.35rem;
+    min-height: 52px;
+}
+
+.checkout-back-button {
+    margin-top: 0.65rem;
+    min-height: 48px;
+}
+
+.checkout-trust-panel-commercial {
+    grid-template-columns: 1fr;
+}
+
+.checkout-trust-panel-commercial .checkout-trust-item {
+    border-color: var(--gold-pale);
+    display: grid;
+    gap: 0.2rem;
+}
+
+.checkout-trust-panel-commercial a:hover,
+.checkout-trust-panel-commercial a:focus-visible,
+.checkout-account-card a:focus-visible,
+.checkout-submit-commercial:focus-visible,
+.checkout-back-button:focus-visible,
+.checkout-form-commercial input:focus-visible,
+.checkout-form-commercial select:focus-visible,
+.checkout-form-commercial textarea:focus-visible {
+    outline: 3px solid rgba(166, 124, 61, 0.32);
+    outline-offset: 3px;
+}
+
+.checkout-trust-panel-commercial a[aria-disabled='true'] {
+    color: var(--gray);
+    cursor: not-allowed;
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.checkout-empty-state {
+    max-width: 720px;
+}
+
+@media (max-width: 1024px) {
+    .order-summary-commercial {
+        position: static;
+    }
+}
+
+@media (max-width: 768px) {
+    .checkout-commercial-page {
+        padding: 2rem 1rem;
+    }
+
+    .checkout-commercial-hero,
+    .checkout-form-commercial,
+    .order-summary-commercial {
+        padding: 1.25rem;
+    }
+
+    .checkout-commercial-grid {
+        gap: 1.5rem;
+        margin-top: 1.25rem;
+    }
+
+    .checkout-account-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .checkout-submit-commercial,
+    .checkout-back-button {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .checkout-total-highlight {
+        align-items: flex-start;
+        display: grid;
+        gap: 0.35rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .checkout-section-head h3,
+    .order-summary-head h3 {
+        font-size: 1.15rem;
+    }
+
+    .order-item {
+        grid-template-columns: 54px 1fr;
+    }
+
+    .order-item-price {
+        grid-column: 2;
+    }
+
+    .checkout-total-highlight .price {
+        font-size: 1.35rem;
+    }
+}
