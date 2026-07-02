@@ -377,7 +377,35 @@ Melhorias implementadas nesta sprint:
 - Ajustes responsivos adicionados para preservar leitura, CTAs e cards no mobile.
 - Correcao visual aplicada aos estilos comerciais da Home, reforcando hero, categorias, vitrine, CTA intermediario, beneficios, Sobre, estados de foco e responsividade.
 
-### Sprint 006 — Catalogo
+### Sprint 006 — Pagina de Produto Premium
+
+Objetivo: tornar a pagina de produto mais premium, persuasiva e confiavel, reforcando valor, seguranca e apoio a decisao antes do carrinho.
+
+Impacto esperado: maior conversao produto -> carrinho.
+
+Escopo sugerido:
+
+- Bloco de decisao premium.
+- Descricao comercial sem substituir dados reais.
+- Cuidados com a semijoia.
+- Garantia, troca e duvidas como links contextuais.
+- WhatsApp contextual.
+- Produtos relacionados por categoria com comunicacao comercial.
+- UX mobile.
+
+Status: concluida.
+
+Melhorias implementadas nesta sprint:
+
+- Bloco de decisao premium adicionado proximo a preco e CTAs com garantia de 2 anos, banho Ouro 18K, compra segura, envio por CEP e parcelamento em ate 12x.
+- Descricao do produto passou a ter apresentacao comercial, preservando a descricao real e adicionando complemento generico seguro quando ela for curta.
+- Bloco institucional de cuidados com a semijoia adicionado sem tom alarmista.
+- Links contextuais para garantia, politica de troca e FAQ adicionados no apoio a decisao.
+- Chamada discreta para WhatsApp adicionada usando a configuracao publica existente, sem `href="#"`.
+- Produtos relacionados mantidos por categoria, com titulo/copy comercial `Complete o look` e `Combine com outras pecas`.
+- Estilos responsivos adicionados para painel de decisao, cuidados, links, atendimento, CTAs e relacionados.
+
+### Sprint 007 — Catalogo
 
 Objetivo: facilitar descoberta de produtos.
 
@@ -391,23 +419,6 @@ Escopo sugerido:
 - Destaques.
 - Comparacao.
 - Descoberta.
-
-### Sprint 007 — Pagina de Produto
-
-Objetivo: aumentar taxa de adicionar ao carrinho.
-
-Impacto esperado: maior conversao produto -> carrinho.
-
-Escopo sugerido:
-
-- Descricao comercial.
-- Informacoes tecnicas.
-- Garantia.
-- Cuidados.
-- Medidas.
-- Combinacoes.
-- Produtos relacionados.
-- Prova social.
 
 ### Sprint 008 — Carrinho
 
@@ -460,8 +471,8 @@ Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar prior
 | Sprint | KPI principal |
 |---------|---------------|
 | Sprint 005 | Cliques para Catalogo |
-| Sprint 006 | Visualizacoes de Produto |
-| Sprint 007 | Adicoes ao Carrinho |
+| Sprint 006 | Adicoes ao Carrinho |
+| Sprint 007 | Visualizacoes de Produto |
 | Sprint 008 | Reducao de Abandono do Carrinho |
 | Sprint 009 | Pedidos Concluidos |
 | Sprint 010 | Recompra |

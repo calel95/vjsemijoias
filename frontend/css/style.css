@@ -3380,3 +3380,286 @@ input, select, textarea {
         border-radius: 10px;
     }
 }
+
+/* ========== PRODUCT DETAIL PREMIUM - EPICO 3 ========== */
+.product-detail-info {
+    min-width: 0;
+}
+
+.product-detail-eyebrow {
+    color: var(--gold-dark);
+    display: inline-flex;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+    margin-bottom: 0.55rem;
+    text-transform: uppercase;
+}
+
+.product-decision-panel {
+    background: linear-gradient(135deg, rgba(251, 246, 238, 0.98), rgba(255, 255, 255, 0.96));
+    border: 1px solid rgba(201, 168, 106, 0.42);
+    border-radius: 14px;
+    box-shadow: 0 16px 42px rgba(166, 124, 61, 0.09);
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 1.25rem 0;
+    padding: 1.15rem;
+}
+
+.product-decision-item {
+    background: var(--white);
+    border: 1px solid var(--gold-pale);
+    border-radius: 10px;
+    display: grid;
+    gap: 0.2rem;
+    min-height: 86px;
+    padding: 0.85rem;
+}
+
+.product-decision-item:first-child {
+    grid-column: 1 / -1;
+}
+
+.product-decision-item strong {
+    color: var(--dark);
+    font-size: 0.94rem;
+}
+
+.product-decision-item span {
+    color: var(--gray);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.premium-shipping-quote {
+    border-color: rgba(201, 168, 106, 0.42);
+    box-shadow: 0 10px 30px rgba(166, 124, 61, 0.08);
+    max-width: none;
+}
+
+.product-description-panel,
+.product-care-card,
+.product-support-card {
+    border: 1px solid var(--gold-pale);
+    border-radius: 12px;
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+}
+
+.product-description-panel {
+    background: var(--white);
+}
+
+.product-description-panel p {
+    color: var(--gray-dark);
+    font-size: 1.02rem;
+    line-height: 1.8;
+    margin: 0;
+}
+
+.product-description-panel p + p {
+    margin-top: 0.75rem;
+}
+
+.product-care-card {
+    background: var(--cream);
+}
+
+.product-care-card h3 {
+    font-size: 1.18rem;
+    margin-bottom: 0.85rem;
+}
+
+.product-care-card ul {
+    display: grid;
+    gap: 0.55rem;
+    list-style: none;
+}
+
+.product-care-card li {
+    color: var(--gray-dark);
+    display: flex;
+    gap: 0.55rem;
+    line-height: 1.55;
+}
+
+.product-care-card li::before {
+    color: var(--gold-dark);
+    content: '•';
+    font-weight: 900;
+    line-height: 1.4;
+}
+
+.product-policy-links {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 1.4rem 0;
+}
+
+.product-policy-links a,
+.product-support-link {
+    border: 1px solid rgba(201, 168, 106, 0.42);
+    border-radius: 999px;
+    color: var(--gold-dark);
+    font-size: 0.86rem;
+    font-weight: 800;
+    padding: 0.7rem 0.85rem;
+    text-align: center;
+}
+
+.product-policy-links a:hover,
+.product-policy-links a:focus-visible,
+.product-support-link:hover,
+.product-support-link:focus-visible {
+    background: var(--gold-pale);
+    color: var(--dark);
+    outline: 3px solid rgba(201, 168, 106, 0.32);
+    outline-offset: 3px;
+}
+
+.product-support-card {
+    align-items: center;
+    background: linear-gradient(135deg, var(--dark), var(--gray-dark));
+    color: var(--white);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.product-support-card strong {
+    color: var(--white);
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+}
+
+.product-support-link {
+    background: var(--white);
+    color: var(--dark);
+    flex: 0 0 auto;
+}
+
+.product-support-link[aria-disabled='true'] {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.7);
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.premium-quantity-selector {
+    background: var(--white);
+    border-top: 1px solid var(--gold-pale);
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+}
+
+.product-actions {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 1.5rem;
+}
+
+.product-actions .btn {
+    min-height: 52px;
+    width: 100%;
+}
+
+.product-actions .btn:focus-visible,
+.product-gallery-thumb:focus-visible,
+.product-shipping-form input:focus-visible,
+.product-shipping-form .btn:focus-visible {
+    outline: 3px solid var(--gold-dark);
+    outline-offset: 3px;
+}
+
+.product-secure-note {
+    align-items: center;
+    background: var(--cream);
+    border: 1px solid var(--gold-pale);
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding: 1rem;
+}
+
+.product-secure-note > span {
+    align-items: center;
+    background: var(--white);
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 1.2rem;
+    height: 44px;
+    justify-content: center;
+    width: 44px;
+}
+
+.product-secure-note p {
+    color: var(--gray);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.product-related-section .section-header {
+    margin-bottom: 2.25rem;
+}
+
+.product-related-section .section-subtitle {
+    margin-top: 0.35rem;
+}
+
+.product-related-section .products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1024px) {
+    .product-related-section .products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .product-decision-panel,
+    .product-policy-links,
+    .product-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .product-decision-item:first-child {
+        grid-column: auto;
+    }
+
+    .product-support-card {
+        align-items: stretch;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .product-support-link {
+        width: 100%;
+    }
+
+    .product-description-panel,
+    .product-care-card,
+    .product-support-card {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .product-related-section .products-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .product-decision-panel {
+        padding: 0.85rem;
+    }
+
+    .product-decision-item {
+        min-height: 0;
+    }
+}

@@ -64,9 +64,11 @@
             </div>
         </div>
 
-        <section style="margin-top: 5rem;">
+        <section class="product-related-section" style="margin-top: 5rem;">
             <div class="section-header" style="margin-bottom: 2rem;">
-                <h2 class="section-title">Você também vai <span>amar</span></h2>
+                <span class="section-tag">Complete o look</span>
+                <h2 class="section-title">Combine com <span>outras peças</span></h2>
+                <p class="section-subtitle">Sugestões da mesma categoria para continuar explorando a curadoria VJ.</p>
             </div>
             <div class="products-grid" id="related-products"></div>
         </section>
@@ -97,6 +99,34 @@
                 .filter(p => p.category === product.category && p.id !== product.id)
                 .slice(0, 4);
             relatedContainer.innerHTML = related.map(p => createProductCard(p)).join('');
+        }
+
+        function productDescriptionHTML(product) {
+            const description = String(product.description || product.descricao || '').trim();
+            const complement = 'Peça selecionada pela curadoria da VJ Semijoias para compor looks elegantes no dia a dia ou em ocasiões especiais.';
+            const normalizedDescription = description.toLowerCase();
+            const normalizedName = String(product.name || product.nome || '').trim().toLowerCase();
+            const shouldAddComplement = !description || description.length < 90 || normalizedDescription === normalizedName;
+            return `
+                <div class="product-description-panel">
+                    <span class="product-detail-eyebrow">Descrição da peça</span>
+                    ${description ? `<p>${productEscapeText(description)}</p>` : ''}
+                    ${shouldAddComplement ? `<p>${complement}</p>` : ''}
+                </div>
+            `;
+        }
+
+        function productFeaturesHTML(product) {
+            const features = Array.isArray(product.features) ? product.features.filter(Boolean) : [];
+            if (!features.length) return '';
+            return `
+                <div class="product-features">
+                    <h4>Características</h4>
+                    <ul>
+                        ${features.map(f => `<li>${productEscapeText(f)}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -185,7 +215,30 @@
                     <p class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</p>
                     ${stockHTML}
 
-                    <div class="product-shipping-quote">
+                    <div class="product-decision-panel" aria-label="Benefícios para decisão de compra">
+                        <div class="product-decision-item">
+                            <strong>Garantia de 2 anos</strong>
+                            <span>Proteção para defeitos de fabricação.</span>
+                        </div>
+                        <div class="product-decision-item">
+                            <strong>Banho Ouro 18K</strong>
+                            <span>Curadoria com acabamento premium.</span>
+                        </div>
+                        <div class="product-decision-item">
+                            <strong>Compra segura</strong>
+                            <span>Pagamento em ambiente protegido.</span>
+                        </div>
+                        <div class="product-decision-item">
+                            <strong>Envio por CEP</strong>
+                            <span>Calcule frete e prazo antes de pagar.</span>
+                        </div>
+                        <div class="product-decision-item">
+                            <strong>Até 12x</strong>
+                            <span>Parcelamento no cartão de crédito.</span>
+                        </div>
+                    </div>
+
+                    <div class="product-shipping-quote premium-shipping-quote">
                         <div class="product-shipping-head">
                             <strong>Calcule o frete</strong>
                             <span>Informe seu CEP para ver as opcoes deste produto.</span>
@@ -210,39 +263,33 @@
                         </div>
                     </div>
                     
-                    <p class="product-description">${product.description}</p>
+                    ${productDescriptionHTML(product)}
 
-                    <div class="product-trust-grid" aria-label="Informações de confiança da VJ Semijoias">
-                        <div class="product-trust-item">
-                            <strong>Garantia de 2 anos</strong>
-                            <span>Cobertura para defeitos de fabricação, conforme nossa política de garantia.</span>
-                        </div>
-                        <div class="product-trust-item">
-                            <strong>Banho Ouro 18K</strong>
-                            <span>Peças selecionadas com acabamento de semijoia e cuidado na curadoria.</span>
-                        </div>
-                        <div class="product-trust-item">
-                            <strong>Compra segura</strong>
-                            <span>Pagamento em ambiente protegido e dados tratados com responsabilidade.</span>
-                        </div>
-                        <div class="product-trust-item">
-                            <strong>Envio rápido</strong>
-                            <span>Calcule o frete pelo CEP e acompanhe seu pedido depois da compra.</span>
-                        </div>
-                        <div class="product-trust-item">
-                            <strong>Atendimento via WhatsApp</strong>
-                            <span><a data-store-whatsapp-link>Fale com a loja em caso de dúvida antes da compra.</a></span>
-                        </div>
-                    </div>
-                    
-                    <div class="product-features">
-                        <h4>✨ Características</h4>
+                    ${productFeaturesHTML(product)}
+
+                    <div class="product-care-card">
+                        <span class="product-detail-eyebrow">Cuidados com sua semijoia</span>
+                        <h3>Para preservar brilho e acabamento</h3>
                         <ul>
-                            ${product.features.map(f => `<li>${f}</li>`).join('')}
+                            <li>Evite contato com perfumes, cremes e produtos químicos.</li>
+                            <li>Retire antes do banho, piscina ou mar.</li>
+                            <li>Guarde separadamente para evitar atritos.</li>
+                            <li>Limpe com flanela seca e macia.</li>
                         </ul>
                     </div>
+
+                    <div class="product-policy-links" aria-label="Informações de apoio à decisão de compra">
+                        <a href="/garantia.html">Garantia</a>
+                        <a href="/politica-troca.html">Troca e devolução</a>
+                        <a href="/faq.html">Dúvidas frequentes</a>
+                    </div>
+
+                    <div class="product-support-card">
+                        <strong>Tem dúvida sobre essa peça?</strong>
+                        <a data-store-whatsapp-link target="_blank" rel="noopener" class="product-support-link">Fale com a VJ pelo WhatsApp</a>
+                    </div>
                     
-                    <div class="quantity-selector">
+                    <div class="quantity-selector premium-quantity-selector">
                         <label>Quantidade:</label>
                         <div class="quantity-controls">
                             <button type="button" onclick="changeQuantity(-1)">−</button>
@@ -251,20 +298,20 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="addProductToCart()" style="flex: 1; min-width: 200px;" ${isOutOfStock ? 'disabled' : ''}>
+                    <div class="product-actions">
+                        <button class="btn btn-primary" onclick="addProductToCart()" ${isOutOfStock ? 'disabled' : ''}>
                             🛒 Adicionar ao Carrinho
                         </button>
-                        <button class="btn btn-secondary" onclick="buyNow()" style="flex: 1; min-width: 200px;" ${isOutOfStock ? 'disabled' : ''}>
+                        <button class="btn btn-secondary" onclick="buyNow()" ${isOutOfStock ? 'disabled' : ''}>
                             ⚡ Comprar Agora
                         </button>
                     </div>
                     
-                    <div style="margin-top: 2rem; padding: 1rem; background: var(--cream); border-radius: 12px; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                        <span style="font-size: 1.5rem;">🔒</span>
+                    <div class="product-secure-note">
+                        <span>🔒</span>
                         <div>
                             <strong>Compra 100% segura</strong>
-                            <p style="font-size: 0.85rem; color: var(--gray); margin: 0;">Dados criptografados e protegidos</p>
+                            <p>Dados criptografados e protegidos</p>
                         </div>
                     </div>
                 </div>
