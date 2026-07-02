@@ -813,6 +813,35 @@ Como preparar variantes antes de testar a pagina de produto:
 uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
 ```
 
+## Correcao pos Sprint 016/019 - Upload no VJ Admin modular
+
+Status: concluida.
+
+Problema corrigido:
+
+- O VJ Admin modular podia enviar a primeira imagem selecionada como data URL em `imagem_url`.
+- Como `imagem_url` e validado como URL/caminho curto com limite de 2000 caracteres, uploads reais em base64 podiam falhar antes de chegar ao fluxo de storage.
+
+Decisao mantida:
+
+- `imagem_url` continua representando URL manual/caminho curto de compatibilidade.
+- `images` continua sendo a lista ordenada da galeria e pode transportar data URL temporaria.
+- Data URL nao deve ser persistida no banco.
+- O limite de 2000 caracteres de `imagem_url` nao foi aumentado.
+
+Ajustes implementados:
+
+- `frontend/js/vj-admin/products.js` passou a montar `imagem_url` apenas quando a primeira imagem da galeria nao e data URL.
+- Quando a primeira imagem e upload em data URL, o payload envia `imagem_url: ""` e preserva a data URL apenas em `images`.
+- O backend preserva compatibilidade com o fluxo legado de `imagem_url` em data URL como transporte temporario ate o storage, sem persistir base64.
+- URL manual longa acima de 2000 caracteres continua retornando erro 400.
+- Cadastro, edicao, multiplos uploads, remocao total da galeria e falha segura de R2 permanecem cobertos por testes.
+
+Compatibilidade preservada:
+
+- Nenhum schema, banco ou migration foi alterado.
+- `Product.to_dict()` e o contrato publico `image`/`imagem_url`/`images` foram preservados.
+- Site publico, catalogo, pagina de produto, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro, dashboard e service worker nao foram alterados.
 ## Validacoes da Sprint 020
 
 Validacoes obrigatorias desta sprint:

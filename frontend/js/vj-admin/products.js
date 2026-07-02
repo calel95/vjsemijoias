@@ -160,6 +160,11 @@
             return galleryImages.map(cleanGalleryImage).filter(Boolean);
         }
 
+        function payloadMainImage(images) {
+            const firstImage = cleanGalleryImage(Array.isArray(images) ? images[0] : '');
+            return firstImage && !isDataImage(firstImage) ? firstImage : '';
+        }
+
         function syncMainImageInput() {
             const firstImage = currentGalleryImages()[0] || '';
             $('#product-imagem').value = firstImage && !isDataImage(firstImage) ? firstImage : '';
@@ -350,7 +355,7 @@
                 custo_peca: $('#product-custo-peca').value,
                 custo_embalagem: $('#product-custo-embalagem').value || 9.34,
                 markup: $('#product-markup').value || 2,
-                imagem_url: images[0] || '',
+                imagem_url: payloadMainImage(images),
                 images,
                 status: $('#product-status').value,
                 publicado: $('#product-publicado').checked,

@@ -812,6 +812,160 @@ def test_vj_admin_creates_product_with_multiple_data_url_images(monkeypatch):
         cleanup_admin_gallery_folders(folders)
 
 
+def test_vj_admin_creates_product_with_upload_images_and_empty_imagem_url(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    folders = set()
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-GAL-UPLOAD-EMPTY-001",
+                "nome": "Produto Upload Imagem Sem URL",
+                "categoria": "aneis",
+                "descricao": "Produto com upload transportado por images.",
+                "custo_peca": 44,
+                "imagem_url": "",
+                "images": [TINY_GIF_DATA_URL],
+            },
+        )
+
+        assert created.status_code == 201, created.text
+        data = created.json()
+        assert data["image"] == data["imagem_url"] == data["images"][0]
+        assert data["image"].startswith("images/catalog/admin/")
+        assert data["image"].endswith("/img_1.gif")
+        assert not data["image"].startswith("data:image/")
+        assert (FRONTEND_ROOT / Path(data["image"])).is_file()
+
+        with SessionLocal() as db:
+            product = db.get(Product, data["id"])
+            assert product.image == data["image"]
+            assert not product.image.startswith("data:image/")
+            assert [item.path for item in product.gallery_images] == data["images"]
+            assert all(not item.path.startswith("data:image/") for item in product.gallery_images)
+
+        folders = admin_gallery_folders(data["images"])
+    finally:
+        cleanup_admin_gallery_folders(folders)
+
+
+def test_vj_admin_creates_product_with_multiple_upload_images_and_empty_imagem_url(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    folders = set()
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-GAL-UPLOAD-EMPTY-002",
+                "nome": "Produto Multiplos Uploads Sem URL",
+                "categoria": "aneis",
+                "descricao": "Produto com multiplos uploads transportados por images.",
+                "custo_peca": 46,
+                "imagem_url": "",
+                "images": [TINY_GIF_DATA_URL, TINY_GIF_DATA_URL],
+            },
+        )
+
+        assert created.status_code == 201, created.text
+        data = created.json()
+        assert data["image"] == data["images"][0]
+        assert data["imagem_url"] == data["images"][0]
+        assert len(data["images"]) == 2
+        assert data["images"][0].endswith("/img_1.gif")
+        assert data["images"][1].endswith("/img_2.gif")
+        assert all(not image.startswith("data:image/") for image in data["images"])
+
+        with SessionLocal() as db:
+            product = db.get(Product, data["id"])
+            assert product.image == data["images"][0]
+            assert [item.path for item in product.gallery_images] == data["images"]
+            assert all(not item.path.startswith("data:image/") for item in product.gallery_images)
+
+        folders = admin_gallery_folders(data["images"])
+    finally:
+        cleanup_admin_gallery_folders(folders)
+
+
+def test_vj_admin_rejects_manual_image_url_above_limit():
+    headers = admin_headers()
+    long_url = "images/" + "a" * 2001 + ".jpg"
+
+    response = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-LONG-URL-001",
+            "nome": "Produto URL Manual Longa",
+            "categoria": "aneis",
+            "descricao": "Produto com URL manual acima do limite.",
+            "custo_peca": 30,
+            "imagem_url": long_url,
+            "images": [long_url],
+        },
+    )
+
+    assert response.status_code == 400
+    assert "imagem_url deve ter no maximo 2000 caracteres" in response.json()["error"]
+
+
+def test_vj_admin_updates_product_with_upload_images_and_empty_imagem_url(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    folders = set()
+
+    created = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-UPLOAD-EDIT-EMPTY-001",
+            "nome": "Produto Edicao Upload Sem URL",
+            "categoria": "aneis",
+            "descricao": "Produto para editar upload por images.",
+            "custo_peca": 42,
+            "imagem_url": "images/products/anel.svg",
+            "images": ["images/products/anel.svg"],
+        },
+    )
+    assert created.status_code == 201, created.text
+    product_id = created.json()["id"]
+
+    try:
+        updated = client.put(
+            f"/api/vj-admin/produtos/{product_id}",
+            headers=headers,
+            json={"imagem_url": "", "images": [TINY_GIF_DATA_URL]},
+        )
+
+        assert updated.status_code == 200, updated.text
+        data = updated.json()
+        assert data["image"] == data["imagem_url"] == data["images"][0]
+        assert data["image"].startswith("images/catalog/admin/")
+        assert not data["image"].startswith("data:image/")
+
+        with SessionLocal() as db:
+            product = db.get(Product, product_id)
+            assert product.image == data["image"]
+            assert [item.path for item in product.gallery_images] == data["images"]
+            assert all(not item.path.startswith("data:image/") for item in product.gallery_images)
+
+        folders = admin_gallery_folders(data["images"])
+    finally:
+        cleanup_admin_gallery_folders(folders)
+
+
+def test_vj_admin_frontend_payload_does_not_put_data_url_in_imagem_url():
+    source = (Path(__file__).resolve().parents[1] / "frontend" / "js" / "vj-admin" / "products.js").read_text(encoding="utf-8")
+
+    assert "function payloadMainImage(images)" in source
+    assert "return firstImage && !isDataImage(firstImage) ? firstImage : '';" in source
+    assert "imagem_url: payloadMainImage(images)" in source
+    assert "imagem_url: images[0] || ''" not in source
 def test_vj_admin_creates_product_with_mixed_url_and_data_url_gallery(monkeypatch):
     monkeypatch.setenv("STORAGE_BACKEND", "local")
     headers = admin_headers()

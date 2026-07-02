@@ -61,6 +61,10 @@ def normalize_optional_text(value, *, field, max_length=200):
     return clean_text(value, field=field, max_length=max_length, required=False) or None
 
 
+def is_data_image(value: Any) -> bool:
+    return str(value or "").strip().lower().startswith("data:image/")
+
+
 def normalize_category_filter(value: str):
     category = clean_text(value, field="categoria", max_length=50, required=False)
     return category.lower().replace(" ", "-") if category else ""
@@ -144,10 +148,11 @@ def product_payload(data: dict[str, Any], *, partial=False):
             allow_newlines=True,
         )
     if "imagem_url" in data or "image" in data:
-        cleaned["image"] = normalize_optional_text(
-            data.get("imagem_url", data.get("image")),
-            field="imagem_url",
-            max_length=2000,
+        raw_image = data.get("imagem_url", data.get("image"))
+        cleaned["image"] = (
+            str(raw_image).strip()
+            if is_data_image(raw_image)
+            else normalize_optional_text(raw_image, field="imagem_url", max_length=2000)
         )
     if "estoque" in data or "stock_quantity" in data or not partial:
         cleaned["stock_quantity"] = normalize_stock_quantity(
