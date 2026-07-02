@@ -393,30 +393,108 @@ Cobertura adicionada:
 - Upload/importacao no admin nao quebra autenticacao nem auditoria.
 - Fluxo de pedido continua sem mudanca de payload comercial.
 
+## Sprint 015 — Upload de imagens no VJ Admin modular
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- O VJ Admin modular passou a oferecer upload de imagem de produto no formulario de criacao/edicao, reutilizando os services de midia e storage existentes.
+- O campo `Imagem URL` foi mantido por compatibilidade. O usuario pode usar URL manual ou upload de arquivo.
+- O upload usa `FileReader` apenas para gerar uma data URL temporaria como transporte no payload. A data URL nunca e persistida no banco.
+- O backend reutiliza `product_payload()`, `store_admin_gallery_images()`, `replace_product_gallery()` e `validate_image_bytes()` para validar, armazenar e reconstruir a galeria.
+- O preview da imagem e exibido no formulario, tanto para imagem cadastrada quanto para imagem selecionada antes de salvar.
+- O botao "Remover imagem" permite limpar a selecao antes de salvar. Na edicao, enviar `imagem_url` vazio remove a imagem e limpa a galeria.
+- A validacao frontend verifica extensao, tipo MIME e tamanho antes de enviar, mas o backend continua validando com Pillow e rejeitando formatos nao suportados (incluindo SVG).
+- Nenhum schema, migration, endpoint novo, site publico, carrinho, checkout, pedido, pagamento, estoque, preco ou frete foi alterado.
+- R2 nao se tornou obrigatorio. O modo local continua funcionando com `STORAGE_BACKEND=local`.
+- R2 incompleto gera erro 500 sem expor credenciais.
+
+Fluxo de upload no VJ Admin modular:
+
+1. Usuario seleciona arquivo via input `product-imagem-file`.
+2. Frontend valida extensao (`.jpg`, `.jpeg`, `.png`, `.webp`, `.gif`), tipo MIME e tamanho (ate 8 MB).
+3. `FileReader.readAsDataURL()` gera data URL temporaria para preview e transporte.
+4. Ao salvar, o payload envia `imagem_url` com a data URL (ou URL manual, se nao houver arquivo).
+5. Backend detecta data URL em `save_admin_image()`, valida com Pillow, armazena localmente ou em R2, e retorna caminho/URL final.
+6. `replace_product_gallery()` reconstrui a galeria com a imagem final.
+7. A resposta retorna `image`, `imagem_url` e `images` com o caminho final, nunca com data URL.
+
+Compatibilidade com URL manual:
+
+- Se o usuario digitar uma URL manual e nao selecionar arquivo, o payload envia a URL diretamente.
+- Se o usuario selecionar arquivo, o campo de URL e limpo e a data URL tem prioridade no payload.
+- Se o usuario comecar a digitar uma URL apos selecionar arquivo, a selecao de arquivo e descartada e a URL manual passa a ser usada.
+
+Comportamento local/R2:
+
+| Cenario | Resultado |
+|---|---|
+| `STORAGE_BACKEND=local` (padrao) | Imagem e gravada em `frontend/images/catalog/admin/<id>-<slug>/img_N.ext` |
+| `STORAGE_BACKEND=r2` completo | Imagem e enviada para R2 e URL publica e retornada |
+| `STORAGE_BACKEND=r2` incompleto | Erro 500 sem expor secrets |
+| Sem `STORAGE_BACKEND` | Usa local por padrao |
+
+Restricoes preservadas:
+
+- Nenhum site publico, carrinho, checkout, pedido, pagamento, estoque, preco ou frete foi alterado.
+- Nenhuma migration ou alteracao de schema foi executada.
+- `Product.to_dict()` nao foi alterado.
+- O contrato publico `image`/`imagem_url`/`images` foi preservado.
+- Nenhuma imagem antiga foi migrada.
+- Nenhuma imagem local foi removida.
+- R2 nao foi ativado automaticamente.
+- Nenhuma dependencia nova foi instalada.
+- SVG e arquivos nao-imagem continuam rejeitados pelo backend.
+
+Cobertura adicionada:
+
+- Criacao de produto com URL manual continua funcionando.
+- Criacao de produto com imagem data URL valida.
+- Edicao de produto alterando imagem (URL manual para upload).
+- Edicao de produto removendo imagem (envio de `imagem_url` vazio).
+- Imagem invalida (SVG) gera erro 400 claro.
+- Imagem com tipo MIME divergente gera erro 400 claro.
+- `ProductImage` e criado corretamente com `path` e `position`.
+- `product.image`, `imagem_url` e `images` continuam consistentes.
+- Modo local nao exige R2.
+- R2 incompleto gera erro 500 sem expor `R2_ACCESS_KEY_ID` ou `R2_SECRET_ACCESS_KEY`.
+
+Arquivos alterados:
+
+- `frontend/vj-admin.html`: adicionado input de arquivo, preview, hint e botao remover.
+- `frontend/css/vj-admin.css`: adicionados estilos para area de upload e preview.
+- `frontend/js/vj-admin/products.js`: adicionada logica de selecao, validacao, preview e transporte de imagem.
+- `tests/test_vj_admin.py`: adicionados testes de upload, edicao, remocao, formato invalido, tipo divergente, consistencia, local e R2 incompleto.
+- `docs/AUDIT_MEDIA_IMAGES.md`: atualizado com Sprint 015.
+
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 015 — Upload de imagens no VJ Admin modular.
+A proxima sprint recomendada e a Sprint 016 — Multiplas imagens/galeria no VJ Admin modular.
 
 Motivo:
 
-- O contrato de midia ja esta centralizado desde a Sprint 013.
-- A configuracao local/R2 ja esta validavel desde a Sprint 014.
-- O VJ Admin modular ainda trabalha com uma `Imagem URL` unica, enquanto o backend ja suporta persistencia via service e galeria.
+- O upload de imagem unica ja esta operacional no VJ Admin modular desde a Sprint 015.
+- O backend ja suporta galeria com `ProductImage` ordenada por `position`.
+- O admin legado ja trabalha com multiplas imagens, mas o VJ Admin modular ainda envia uma imagem por vez.
+- A migracao gradual de imagens antigas para R2 pode ser feita em sprint posterior sem bloquear a evolucao da galeria.
 
 Escopo recomendado:
 
-- Criar upload no VJ Admin modular sem alterar o site publico.
-- Reutilizar validacoes e storage existentes.
-- Manter data URL apenas como transporte temporario, nunca como dado final persistido.
+- Permitir selecao e preview de multiplas imagens no VJ Admin modular.
+- Reordenar imagens da galeria no formulario.
+- Manter primeira imagem como principal.
+- Reutilizar `store_admin_gallery_images()` e `replace_product_gallery()` com lista de imagens.
 - Preservar compatibilidade com `image`, `imagem_url`, `images` e `ProductImage`.
 - Deixar migracao gradual de imagens antigas para uma sprint posterior.
 
-## Validacoes da Sprint 014
+## Validacoes da Sprint 015
 
 Validacoes obrigatorias desta sprint:
 
 - `uv run pytest`.
-- `uv run python tools\e2e_smoke.py`.
+- `uv run python tools/e2e_smoke.py`.
+- `node --check` em `frontend/js/vj-admin/products.js` e `frontend/js/vj-admin/api.js`.
 - `git diff --check`.
 
-`node --check` nao e necessario porque nenhum JavaScript foi alterado. Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.
+Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

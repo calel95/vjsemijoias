@@ -15,6 +15,11 @@
             renderStockFilterOptions,
         } = ctx;
 
+        const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+        const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+        let selectedImageDataUrl = null;
+
         function productFilters() {
             return {
                 search: $('#product-search').value.trim(),
@@ -134,6 +139,71 @@
                 <label class="readonly-field"><span>${label}</span><input value="${escapeHTML(value)}" readonly tabindex="-1"></label>
             `).join('')}</div>`;
         }
+        function renderImagePreview(src) {
+            const box = $('#product-imagem-preview');
+            if (!src) {
+                box.innerHTML = '<span>Sem imagem</span>';
+                return;
+            }
+            box.innerHTML = `<img src="${escapeHTML(src)}" alt="Preview da imagem do produto">`;
+        }
+
+        function updateClearButtonVisibility() {
+            const hasImage = Boolean(selectedImageDataUrl || $('#product-imagem').value.trim());
+            $('#product-imagem-clear').classList.toggle('hidden', !hasImage);
+        }
+
+        function clearSelectedImage() {
+            selectedImageDataUrl = null;
+            $('#product-imagem-file').value = '';
+            $('#product-imagem').value = '';
+            renderImagePreview(null);
+            updateClearButtonVisibility();
+        }
+
+        function validateImageFile(file) {
+            if (!file) return 'Nenhum arquivo selecionado.';
+            const fileName = (file.name || '').toLowerCase();
+            const extension = fileName.slice(fileName.lastIndexOf('.'));
+            if (!ALLOWED_IMAGE_EXTENSIONS.includes(extension)) {
+                return `Formato nao suportado: ${extension}. Use JPG, PNG, WebP ou GIF.`;
+            }
+            if (file.size > IMAGE_MAX_BYTES) {
+                const maxMb = IMAGE_MAX_BYTES / (1024 * 1024);
+                return `Imagem maior que ${maxMb} MB.`;
+            }
+            if (file.type && !ALLOWED_IMAGE_TYPES.includes(file.type)) {
+                return `Tipo de arquivo nao suportado: ${file.type}.`;
+            }
+            return null;
+        }
+
+        function handleImageFileSelect(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            const error = validateImageFile(file);
+            if (error) {
+                setMessage('#product-message', error, 'error');
+                $('#product-imagem-file').value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                selectedImageDataUrl = reader.result;
+                $('#product-imagem').value = '';
+                renderImagePreview(selectedImageDataUrl);
+                updateClearButtonVisibility();
+                setMessage('#product-message', 'Imagem selecionada. Salve para enviar.', 'success');
+            };
+            reader.onerror = () => {
+                setMessage('#product-message', 'Falha ao ler o arquivo selecionado.', 'error');
+                selectedImageDataUrl = null;
+                $('#product-imagem-file').value = '';
+                updateClearButtonVisibility();
+            };
+            reader.readAsDataURL(file);
+        }
+
         function resetProductForm() {
             state.currentProductId = null;
             $('#product-form').reset();
@@ -145,6 +215,10 @@
             $('#product-status').value = 'rascunho';
             $('#product-publicado').checked = false;
             $('#product-form-title').textContent = 'Novo produto';
+            selectedImageDataUrl = null;
+            $('#product-imagem-file').value = '';
+            renderImagePreview(null);
+            updateClearButtonVisibility();
             setMessage('#product-message', '');
             renderPricing();
             renderProducts();
@@ -172,6 +246,10 @@
             $('#product-imagem').value = product.imagem_url || product.image || '';
             $('#product-descricao').value = product.descricao || product.description || '';
             $('#product-form-title').textContent = `Editar ${product.codigo || product.nome || product.id}`;
+            selectedImageDataUrl = null;
+            $('#product-imagem-file').value = '';
+            renderImagePreview(product.imagem_url || product.image || null);
+            updateClearButtonVisibility();
             const audit = [
                 product.created_by?.email ? `Criado por ${product.created_by.email}` : '',
                 product.updated_by?.email ? `Atualizado por ${product.updated_by.email}` : '',
@@ -194,7 +272,7 @@
                 custo_peca: $('#product-custo-peca').value,
                 custo_embalagem: $('#product-custo-embalagem').value || 9.34,
                 markup: $('#product-markup').value || 2,
-                imagem_url: $('#product-imagem').value.trim(),
+                imagem_url: selectedImageDataUrl || $('#product-imagem').value.trim(),
                 status: $('#product-status').value,
                 publicado: $('#product-publicado').checked,
             };
@@ -207,6 +285,8 @@
             const id = $('#product-id').value;
             try {
                 const saved = await api.saveProduct(productPayload(), id || null);
+                selectedImageDataUrl = null;
+                $('#product-imagem-file').value = '';
                 await loadProducts();
                 editProduct(saved.id);
                 setMessage('#product-message', 'Produto salvo.', 'success');
@@ -253,8 +333,9 @@
             const payload = productPayload();
             const pricingValues = currentPricingInput();
             const image = payload.imagem_url;
+            const safeImage = image && image.startsWith('data:') ? image : escapeHTML(image);
             $('#product-preview-card').innerHTML = `
-                <div class="preview-image-box">${image ? `<img src="${escapeHTML(image)}" alt="${escapeHTML(payload.nome || 'Produto')}">` : '<span>Sem imagem</span>'}</div>
+                <div class="preview-image-box">${image ? `<img src="${safeImage}" alt="${escapeHTML(payload.nome || 'Produto')}">` : '<span>Sem imagem</span>'}</div>
                 <div class="preview-info">
                     <span class="status-badge ${payload.publicado ? 'publicado' : payload.status}">${escapeHTML(payload.publicado ? 'publicado' : payload.status)}</span>
                     <h3>${escapeHTML(payload.nome || 'Produto sem nome')}</h3>
@@ -324,6 +405,16 @@
             });
             $('#product-status').addEventListener('change', () => {
                 $('#product-publicado').checked = $('#product-status').value === 'publicado';
+            });
+            $('#product-imagem-file').addEventListener('change', handleImageFileSelect);
+            $('#product-imagem-clear').addEventListener('click', clearSelectedImage);
+            $('#product-imagem').addEventListener('input', () => {
+                if (selectedImageDataUrl) {
+                    selectedImageDataUrl = null;
+                    $('#product-imagem-file').value = '';
+                }
+                renderImagePreview($('#product-imagem').value.trim() || null);
+                updateClearButtonVisibility();
             });
         }
 

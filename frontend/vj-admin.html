@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="css/vj-admin.css">
     <link rel="icon" type="image/png" href="images/logo.png">
 </head>
+
 <body>
     <main class="login-view" id="login-view">
         <form class="login-panel" id="login-form">
@@ -55,7 +57,11 @@
 
             <section class="view active" id="dashboard-view">
                 <section class="filter-bar dashboard-filter-bar" aria-label="Filtros do dashboard">
-                    <label>Periodo<select id="dashboard-period"><option value="mes_atual">Mes atual</option><option value="ultimos_30_dias">Ultimos 30 dias</option><option value="personalizado">Personalizado</option></select></label>
+                    <label>Periodo<select id="dashboard-period">
+                            <option value="mes_atual">Mes atual</option>
+                            <option value="ultimos_30_dias">Ultimos 30 dias</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select></label>
                     <label>Inicio<input id="dashboard-start" type="date"></label>
                     <label>Fim<input id="dashboard-end" type="date"></label>
                     <button class="secondary-button" id="apply-dashboard-filters-button" type="button">Filtrar</button>
@@ -84,15 +90,21 @@
 
                 <div class="dashboard-panels">
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Top produtos</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Top produtos</h2>
+                        </div>
                         <div class="stock-history" id="dashboard-products-ranking"></div>
                     </section>
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Top clientes</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Top clientes</h2>
+                        </div>
                         <div class="stock-history" id="dashboard-customers-ranking"></div>
                     </section>
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Pagamentos</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Pagamentos</h2>
+                        </div>
                         <div class="stock-history" id="dashboard-payment-summary"></div>
                     </section>
                 </div>
@@ -101,7 +113,14 @@
             <section class="view" id="audit-view">
                 <section class="filter-bar audit-filter-bar" aria-label="Filtros de auditoria">
                     <label>Ação<input id="audit-action" maxlength="100" placeholder="pedido_confirmado"></label>
-                    <label>Recurso<select id="audit-resource"><option value="">Todos</option><option value="produto">Produto</option><option value="estoque">Estoque</option><option value="cliente">Cliente</option><option value="pedido">Pedido</option><option value="despesa">Despesa</option></select></label>
+                    <label>Recurso<select id="audit-resource">
+                            <option value="">Todos</option>
+                            <option value="produto">Produto</option>
+                            <option value="estoque">Estoque</option>
+                            <option value="cliente">Cliente</option>
+                            <option value="pedido">Pedido</option>
+                            <option value="despesa">Despesa</option>
+                        </select></label>
                     <label>Inicio<input id="audit-start" type="date"></label>
                     <label>Fim<input id="audit-end" type="date"></label>
                     <button class="secondary-button" id="apply-audit-filters-button" type="button">Filtrar</button>
@@ -126,9 +145,18 @@
 
                 <section class="filter-bar" aria-label="Filtros de produtos">
                     <label>Buscar<input id="product-search" type="search" placeholder="Nome ou codigo"></label>
-                    <label>Categoria<select id="filter-category"><option value="">Todas</option></select></label>
-                    <label>Fornecedor<select id="filter-supplier"><option value="">Todos</option></select></label>
-                    <label>Status<select id="filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                    <label>Categoria<select id="filter-category">
+                            <option value="">Todas</option>
+                        </select></label>
+                    <label>Fornecedor<select id="filter-supplier">
+                            <option value="">Todos</option>
+                        </select></label>
+                    <label>Status<select id="filter-status">
+                            <option value="">Todos</option>
+                            <option value="rascunho">Rascunho</option>
+                            <option value="publicado">Publicado</option>
+                            <option value="inativo">Inativo</option>
+                        </select></label>
                     <button class="secondary-button" id="clear-filters-button" type="button">Limpar</button>
                     <button class="secondary-button" id="export-products-button" type="button">Exportar CSV</button>
                 </section>
@@ -152,28 +180,56 @@
                             <div class="form-grid two">
                                 <label>Codigo<input id="product-codigo" required maxlength="80"></label>
                                 <label>Nome<input id="product-nome" required maxlength="200"></label>
-                                <label>Categoria<input id="product-categoria" required maxlength="50" placeholder="brincos"></label>
-                                <label>Fornecedor<select id="product-fornecedor"><option value="">Sem fornecedor</option></select></label>
+                                <label>Categoria<input id="product-categoria" required maxlength="50"
+                                        placeholder="brincos"></label>
+                                <label>Fornecedor<select id="product-fornecedor">
+                                        <option value="">Sem fornecedor</option>
+                                    </select></label>
                                 <label>Material<input id="product-material" maxlength="120"></label>
                                 <label>Banho<input id="product-banho" maxlength="120"></label>
                                 <label>Cor<input id="product-cor" maxlength="80"></label>
-                                <label>Estoque inicial<input id="product-estoque" type="number" min="0" step="1" value="0"></label>
-                                <label>Custo da peca<input id="product-custo-peca" type="number" min="0" step="0.01" required></label>
-                                <label>Custo embalagem<input id="product-custo-embalagem" type="number" min="0" step="0.01" value="9.34"></label>
-                                <label>Markup<input id="product-markup" type="number" min="0.01" step="0.01" value="2.00"></label>
-                                <label>Status<select id="product-status"><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                                <label>Estoque inicial<input id="product-estoque" type="number" min="0" step="1"
+                                        value="0"></label>
+                                <label>Custo da peca<input id="product-custo-peca" type="number" min="0" step="0.01"
+                                        required></label>
+                                <label>Custo embalagem<input id="product-custo-embalagem" type="number" min="0"
+                                        step="0.01" value="9.34"></label>
+                                <label>Markup<input id="product-markup" type="number" min="0.01" step="0.01"
+                                        value="2.00"></label>
+                                <label>Status<select id="product-status">
+                                        <option value="rascunho">Rascunho</option>
+                                        <option value="publicado">Publicado</option>
+                                        <option value="inativo">Inativo</option>
+                                    </select></label>
                             </div>
-                            <label>Imagem URL<input id="product-imagem" maxlength="2000" placeholder="images/catalog/admin/produto.jpg"></label>
-                            <label>Descricao<textarea id="product-descricao" rows="3" maxlength="2000"></textarea></label>
-                            <label class="check-row"><input id="product-publicado" type="checkbox"> Publicar no site</label>
+                            <div class="image-field-group">
+                                <label>Imagem URL<input id="product-imagem" maxlength="2000"
+                                        placeholder="images/catalog/admin/produto.jpg"></label>
+                                <div class="image-upload-row">
+                                    <label class="image-upload-label">Enviar imagem<input id="product-imagem-file"
+                                            type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
+                                    <small class="image-upload-hint">JPG, PNG, WebP ou GIF. Ate 8 MB.</small>
+                                    <button class="secondary-button hidden" id="product-imagem-clear"
+                                        type="button">Remover imagem</button>
+                                </div>
+                                <div class="image-preview-box" id="product-imagem-preview" aria-live="polite"><span>Sem
+                                        imagem</span></div>
+                            </div>
+                            <label>Descricao<textarea id="product-descricao" rows="3"
+                                    maxlength="2000"></textarea></label>
+                            <label class="check-row"><input id="product-publicado" type="checkbox"> Publicar no
+                                site</label>
 
-                            <div class="pricing-panel" id="pricing-preview" aria-label="Campos calculados somente leitura"></div>
+                            <div class="pricing-panel" id="pricing-preview"
+                                aria-label="Campos calculados somente leitura"></div>
 
                             <div class="form-actions">
-                                <button class="secondary-button" id="recalculate-button" type="button">Recalcular precos</button>
+                                <button class="secondary-button" id="recalculate-button" type="button">Recalcular
+                                    precos</button>
                                 <button class="secondary-button" id="preview-button" type="button">Preview</button>
                                 <button class="secondary-button" id="publish-button" type="button">Publicar</button>
-                                <button class="secondary-button" id="unpublish-button" type="button">Despublicar</button>
+                                <button class="secondary-button" id="unpublish-button"
+                                    type="button">Despublicar</button>
                                 <button class="danger-button" id="deactivate-button" type="button">Inativar</button>
                                 <button type="submit">Salvar produto</button>
                             </div>
@@ -185,8 +241,13 @@
 
             <section class="view" id="customers-view">
                 <section class="filter-bar" aria-label="Filtros de clientes">
-                    <label>Buscar<input id="customer-search" type="search" placeholder="Nome, WhatsApp, e-mail ou Instagram"></label>
-                    <label>Status<select id="customer-filter-status"><option value="">Todos</option><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                    <label>Buscar<input id="customer-search" type="search"
+                            placeholder="Nome, WhatsApp, e-mail ou Instagram"></label>
+                    <label>Status<select id="customer-filter-status">
+                            <option value="">Todos</option>
+                            <option value="ativo">Ativo</option>
+                            <option value="inativo">Inativo</option>
+                        </select></label>
                     <label>Cidade<input id="customer-filter-city" maxlength="120" placeholder="Cidade"></label>
                     <label>Origem<input id="customer-filter-source" maxlength="120" placeholder="Origem"></label>
                     <button class="secondary-button" id="clear-customer-filters-button" type="button">Limpar</button>
@@ -219,14 +280,20 @@
                                 <label>Cidade<input id="customer-cidade" maxlength="120"></label>
                                 <label>Estado<input id="customer-estado" maxlength="2"></label>
                                 <label>Data nascimento<input id="customer-data-nascimento" type="date"></label>
-                                <label>Status<select id="customer-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
+                                <label>Status<select id="customer-status">
+                                        <option value="ativo">Ativo</option>
+                                        <option value="inativo">Inativo</option>
+                                    </select></label>
                             </div>
-                            <label>Observacoes<textarea id="customer-observacoes" rows="4" maxlength="2000"></textarea></label>
+                            <label>Observacoes<textarea id="customer-observacoes" rows="4"
+                                    maxlength="2000"></textarea></label>
                             <div class="form-actions"><button type="submit">Salvar cliente</button></div>
                             <p class="form-message" id="customer-message"></p>
                         </form>
                         <section class="stock-history-panel">
-                            <div class="panel-header compact"><h2>Detalhes</h2></div>
+                            <div class="panel-header compact">
+                                <h2>Detalhes</h2>
+                            </div>
                             <div class="stock-summary" id="customer-summary"></div>
                             <div class="stock-history" id="customer-orders"></div>
                         </section>
@@ -261,18 +328,24 @@
                     <section class="panel editor-panel expense-editor-panel">
                         <div class="panel-header">
                             <h2 id="expense-form-title">Nova despesa</h2>
-                            <button class="ghost-button" id="cancel-expense-button" type="button">Cancelar despesa</button>
+                            <button class="ghost-button" id="cancel-expense-button" type="button">Cancelar
+                                despesa</button>
                         </div>
                         <form id="expense-form" class="product-form">
                             <input type="hidden" id="expense-id">
                             <div class="form-grid two">
                                 <label>Descricao<input id="expense-descricao" required maxlength="200"></label>
                                 <label>Categoria<input id="expense-categoria" required maxlength="120"></label>
-                                <label>Valor<input id="expense-valor" type="number" min="0.01" step="0.01" required></label>
+                                <label>Valor<input id="expense-valor" type="number" min="0.01" step="0.01"
+                                        required></label>
                                 <label>Data<input id="expense-data" type="date" required></label>
-                                <label>Status<select id="expense-status"><option value="ativo">Ativo</option><option value="cancelado">Cancelado</option></select></label>
+                                <label>Status<select id="expense-status">
+                                        <option value="ativo">Ativo</option>
+                                        <option value="cancelado">Cancelado</option>
+                                    </select></label>
                             </div>
-                            <label>Observacoes<textarea id="expense-observacoes" rows="4" maxlength="2000"></textarea></label>
+                            <label>Observacoes<textarea id="expense-observacoes" rows="4"
+                                    maxlength="2000"></textarea></label>
                             <div class="form-actions"><button type="submit">Salvar despesa</button></div>
                             <p class="form-message" id="expense-message"></p>
                         </form>
@@ -281,22 +354,34 @@
 
                 <div class="finance-panels">
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Produtos vendidos</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Produtos vendidos</h2>
+                        </div>
                         <div class="stock-history" id="finance-products-ranking"></div>
                     </section>
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Clientes</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Clientes</h2>
+                        </div>
                         <div class="stock-history" id="finance-customers-ranking"></div>
                     </section>
                     <section class="panel">
-                        <div class="panel-header compact"><h2>Pagamentos</h2></div>
+                        <div class="panel-header compact">
+                            <h2>Pagamentos</h2>
+                        </div>
                         <div class="stock-history" id="finance-payment-summary"></div>
                     </section>
                 </div>
-            </section>            <section class="view" id="orders-view">
+            </section>
+            <section class="view" id="orders-view">
                 <section class="filter-bar" aria-label="Filtros de pedidos">
                     <label>Buscar<input id="order-search" type="search" placeholder="Cliente ou WhatsApp"></label>
-                    <label>Status<select id="order-filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="confirmado">Confirmado</option><option value="cancelado">Cancelado</option></select></label>
+                    <label>Status<select id="order-filter-status">
+                            <option value="">Todos</option>
+                            <option value="rascunho">Rascunho</option>
+                            <option value="confirmado">Confirmado</option>
+                            <option value="cancelado">Cancelado</option>
+                        </select></label>
                     <button class="secondary-button" id="clear-order-filters-button" type="button">Limpar</button>
                     <button class="secondary-button" id="new-order-button" type="button">Novo pedido</button>
                 </section>
@@ -318,27 +403,40 @@
                         <form id="order-form" class="product-form">
                             <input type="hidden" id="order-id">
                             <div class="form-grid two">
-                                <label>Cliente cadastrado<select id="order-customer"><option value="">Pedido avulso</option></select></label>
+                                <label>Cliente cadastrado<select id="order-customer">
+                                        <option value="">Pedido avulso</option>
+                                    </select></label>
                                 <label>Cliente<input id="order-client-name" maxlength="200" required></label>
                                 <label>WhatsApp<input id="order-client-whatsapp" maxlength="30"></label>
-                                <label>Pagamento<select id="order-payment-method"><option value="pix">Pix</option><option value="debito">Debito</option><option value="credito">Credito</option></select></label>
-                                <label>Parcelas<input id="order-installments" type="number" min="1" max="12" step="1" value="1"></label>
-                                <label>Desconto total<input id="order-discount" type="number" min="0" step="0.01" value="0"></label>
+                                <label>Pagamento<select id="order-payment-method">
+                                        <option value="pix">Pix</option>
+                                        <option value="debito">Debito</option>
+                                        <option value="credito">Credito</option>
+                                    </select></label>
+                                <label>Parcelas<input id="order-installments" type="number" min="1" max="12" step="1"
+                                        value="1"></label>
+                                <label>Desconto total<input id="order-discount" type="number" min="0" step="0.01"
+                                        value="0"></label>
                             </div>
 
                             <section class="order-item-builder">
                                 <div class="form-grid two">
-                                    <label>Produto<select id="order-product"><option value="">Selecione</option></select></label>
-                                    <label>Quantidade<input id="order-quantity" type="number" min="1" step="1" value="1"></label>
+                                    <label>Produto<select id="order-product">
+                                            <option value="">Selecione</option>
+                                        </select></label>
+                                    <label>Quantidade<input id="order-quantity" type="number" min="1" step="1"
+                                            value="1"></label>
                                 </div>
-                                <button class="secondary-button" id="add-order-item-button" type="button">Adicionar item</button>
+                                <button class="secondary-button" id="add-order-item-button" type="button">Adicionar
+                                    item</button>
                             </section>
 
                             <div class="order-items-list" id="order-items-list"></div>
                             <div class="pricing-panel" id="order-totals"></div>
 
                             <div class="form-actions">
-                                <button class="secondary-button" id="confirm-order-button" type="button">Confirmar</button>
+                                <button class="secondary-button" id="confirm-order-button"
+                                    type="button">Confirmar</button>
                                 <button class="danger-button" id="cancel-order-button" type="button">Cancelar</button>
                                 <button id="save-order-button" type="submit">Salvar pedido</button>
                             </div>
@@ -350,9 +448,18 @@
             <section class="view" id="stock-view">
                 <section class="filter-bar" aria-label="Filtros de estoque">
                     <label>Produto<input id="stock-search" type="search" placeholder="Nome ou codigo"></label>
-                    <label>Categoria<select id="stock-filter-category"><option value="">Todas</option></select></label>
-                    <label>Fornecedor<select id="stock-filter-supplier"><option value="">Todos</option></select></label>
-                    <label>Status<select id="stock-filter-status"><option value="">Todos</option><option value="rascunho">Rascunho</option><option value="publicado">Publicado</option><option value="inativo">Inativo</option></select></label>
+                    <label>Categoria<select id="stock-filter-category">
+                            <option value="">Todas</option>
+                        </select></label>
+                    <label>Fornecedor<select id="stock-filter-supplier">
+                            <option value="">Todos</option>
+                        </select></label>
+                    <label>Status<select id="stock-filter-status">
+                            <option value="">Todos</option>
+                            <option value="rascunho">Rascunho</option>
+                            <option value="publicado">Publicado</option>
+                            <option value="inativo">Inativo</option>
+                        </select></label>
                     <button class="secondary-button" id="clear-stock-filters-button" type="button">Limpar</button>
                 </section>
 
@@ -374,11 +481,18 @@
                             <input type="hidden" id="stock-product-id">
                             <div class="stock-summary" id="stock-summary"></div>
                             <div class="form-grid two">
-                                <label>Tipo<select id="stock-movement-type" required><option value="entrada">Entrada</option><option value="saida">Saida</option><option value="ajuste">Ajuste</option></select></label>
-                                <label>Quantidade<input id="stock-movement-quantity" type="number" min="0" step="1" required></label>
+                                <label>Tipo<select id="stock-movement-type" required>
+                                        <option value="entrada">Entrada</option>
+                                        <option value="saida">Saida</option>
+                                        <option value="ajuste">Ajuste</option>
+                                    </select></label>
+                                <label>Quantidade<input id="stock-movement-quantity" type="number" min="0" step="1"
+                                        required></label>
                             </div>
-                            <label>Motivo<input id="stock-movement-reason" maxlength="200" required placeholder="Compra, venda manual, conferencia"></label>
-                            <label>Observacoes<textarea id="stock-movement-notes" rows="3" maxlength="2000"></textarea></label>
+                            <label>Motivo<input id="stock-movement-reason" maxlength="200" required
+                                    placeholder="Compra, venda manual, conferencia"></label>
+                            <label>Observacoes<textarea id="stock-movement-notes" rows="3"
+                                    maxlength="2000"></textarea></label>
                             <div class="form-actions"><button type="submit">Registrar movimentacao</button></div>
                             <p class="form-message" id="stock-message"></p>
                         </form>
@@ -410,7 +524,8 @@
                             <label>WhatsApp<input id="supplier-whatsapp" maxlength="30"></label>
                             <label>Instagram<input id="supplier-instagram" maxlength="120"></label>
                             <label>Site<input id="supplier-site" maxlength="255"></label>
-                            <label>Observacoes<textarea id="supplier-observacoes" rows="5" maxlength="2000"></textarea></label>
+                            <label>Observacoes<textarea id="supplier-observacoes" rows="5"
+                                    maxlength="2000"></textarea></label>
                             <div class="form-actions"><button type="submit">Salvar fornecedor</button></div>
                             <p class="form-message" id="supplier-message"></p>
                         </form>
@@ -420,7 +535,8 @@
         </section>
     </main>
 
-    <div class="modal hidden" id="product-preview-modal" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+    <div class="modal hidden" id="product-preview-modal" role="dialog" aria-modal="true"
+        aria-labelledby="preview-title">
         <div class="modal-panel">
             <div class="panel-header">
                 <h2 id="preview-title">Preview do produto</h2>
@@ -442,8 +558,5 @@
     <script src="js/vj-admin/stock.js"></script>
     <script src="js/vj-admin/app.js"></script>
 </body>
+
 </html>
-
-
-
-
