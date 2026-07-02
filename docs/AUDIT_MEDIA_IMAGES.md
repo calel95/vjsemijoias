@@ -214,6 +214,43 @@ Recomendacoes:
 - Revalidar `/api/products`, catalogo, produto, carrinho, checkout, pedido e SEO apos cada lote.
 - Remover imagens antigas do Git somente com plano explicito e backup confirmado.
 
+## Sprint 013 — Abstracao e contrato de midia
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- `backend/services/product_media.py` passou a centralizar a resolucao de midia publica de produto.
+- `Product.to_dict()` passou a usar `serialize_product_media(product)` para preencher `image`, `imagem_url` e `images`.
+- O contrato publico foi preservado: os mesmos campos continuam sendo retornados pelas APIs existentes.
+- Nenhum caminho local foi alterado e nenhuma URL absoluta nova foi montada.
+- Nenhum schema, migration, endpoint, frontend visual, carrinho, checkout, pedido, estoque, preco, frete ou pagamento foi alterado.
+
+Regra de resolucao adotada:
+
+1. Se `Product.gallery_images` possuir imagens validas, `images` vem da galeria ordenada por `position` e sem duplicidade.
+2. Quando a galeria existe, `image` e `imagem_url` passam a ser a primeira imagem valida da galeria.
+3. Se a galeria estiver vazia e `Product.image` existir, `image` e `imagem_url` usam `Product.image`, e `images` retorna uma lista com esse valor.
+4. Se nao houver imagem valida, `image` e `imagem_url` ficam `None`, `images` retorna lista vazia e `icon` continua como fallback visual do frontend.
+
+Impacto arquitetural:
+
+- A logica de compatibilidade entre `image`, `imagem_url`, `images` e `ProductImage` deixou de ficar embutida diretamente no modelo.
+- Produtos antigos com apenas `Product.image` continuam funcionando.
+- Produtos com galeria passam a ter origem de midia previsivel, evitando divergencia entre imagem principal e primeira imagem da galeria.
+- Entradas duplicadas de galeria sao normalizadas antes de serializar e antes de substituir a galeria em fluxos admin existentes.
+
+Cobertura adicionada:
+
+- Produto com apenas `Product.image`.
+- Produto com `Product.image` e galeria.
+- Produto com galeria e `Product.image` vazio.
+- Produto sem imagem.
+- Consistencia entre `image`, `imagem_url` e `images`.
+- Galeria ordenada por `position`.
+- Ausencia de duplicidade quando a mesma imagem aparece mais de uma vez.
+- Compatibilidade com `icon` como fallback visual.
+
 ## Arquivos candidatos para futuras alteracoes
 
 ### Backend
@@ -307,24 +344,25 @@ Recomendacoes:
 
 ## Recomendacao para a proxima sprint
 
-A proxima sprint deve ser a Fase 1: abstracao e contrato de midia.
+A proxima sprint recomendada e a Sprint 014 — Preparacao e validacao de storage externo R2.
 
 Escopo recomendado:
 
-- Nao iniciar upload novo ainda.
-- Nao migrar imagens ainda.
-- Criar uma camada unica para resolver midia de produto.
-- Garantir compatibilidade total com `image`, `imagem_url`, `images` e `ProductImage`.
-- Adicionar testes de fallback e serializacao.
-- Preparar o VJ Admin modular para receber upload em uma sprint posterior.
+- Nao criar upload novo no VJ Admin ainda.
+- Validar configuracao R2 por ambiente sem ativar automaticamente em producao.
+- Testar `storage_status()`, variaveis obrigatorias e erros de configuracao incompleta.
+- Definir politica de fallback para caminhos locais antigos.
+- Preparar checklist de migracao gradual das imagens de `frontend/images/catalog/` para URL publica.
+- Manter compatibilidade com o contrato de midia consolidado na Sprint 013.
 
-Essa fase reduz risco antes de ligar Cloudflare R2 como dependencia operacional do catalogo.
+Apos essa preparacao, uma sprint posterior pode implementar upload no VJ Admin modular com menor risco.
 
-## Validacoes desta sprint documental
+## Validacoes da Sprint 013
 
-Como esta sprint nao altera codigo de producao, as validacoes obrigatorias sao:
+Validacoes obrigatorias desta sprint:
 
+- `uv run pytest`.
+- `uv run python tools\e2e_smoke.py`.
 - `git diff --check`.
-- `uv run pytest`, se nao houver impedimento.
 
 `node --check` nao e necessario porque nenhum JavaScript foi alterado. Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

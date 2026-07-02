@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 import backend.services.shipping as shipping_service
 
 from backend.database import SessionLocal
+from backend.models import Product, ProductImage
 from backend.services.orders import (
     calculate_order,
     configured_shipping,
@@ -16,6 +18,9 @@ from backend.services.payments import cents, public_url, update_infinitepay_paym
 from backend.services.product_media import (
     normalize_stock_status,
     product_image_list,
+    resolve_product_images,
+    resolve_product_main_image,
+    serialize_product_media,
     store_admin_gallery_images,
     storage_slug,
 )
@@ -532,6 +537,103 @@ def test_product_media_helpers_normalize_inputs():
         normalize_stock_status('vendido')
     assert getattr(exc_info.value, 'status_code', None) == 400
 
+
+def product_for_media(*, image=None, gallery=None, icon=None):
+    product = Product(
+        name='Produto Midia',
+        category='brincos',
+        categoryName='Brincos',
+        price=Decimal('99.90'),
+        image=image,
+        icon=icon,
+        status='publicado',
+        publicado=True,
+        is_active=True,
+        stock_status='available',
+        stock_quantity=1,
+        description='Produto para teste de midia.',
+    )
+    product.gallery_images = [
+        ProductImage(path=path, position=position)
+        for position, path in (gallery or [])
+    ]
+    return product
+
+
+def test_product_media_uses_single_product_image_without_gallery():
+    product = product_for_media(image='images/catalog/produto/img_1.jpg')
+
+    assert resolve_product_main_image(product) == 'images/catalog/produto/img_1.jpg'
+    assert resolve_product_images(product) == ['images/catalog/produto/img_1.jpg']
+    assert serialize_product_media(product) == {
+        'image': 'images/catalog/produto/img_1.jpg',
+        'imagem_url': 'images/catalog/produto/img_1.jpg',
+        'images': ['images/catalog/produto/img_1.jpg'],
+    }
+
+
+def test_product_media_prefers_ordered_gallery_over_legacy_image():
+    product = product_for_media(
+        image='images/catalog/produto/legacy.jpg',
+        gallery=[
+            (2, 'images/catalog/produto/img_2.jpg'),
+            (1, 'images/catalog/produto/img_1.jpg'),
+        ],
+    )
+
+    assert serialize_product_media(product) == {
+        'image': 'images/catalog/produto/img_1.jpg',
+        'imagem_url': 'images/catalog/produto/img_1.jpg',
+        'images': [
+            'images/catalog/produto/img_1.jpg',
+            'images/catalog/produto/img_2.jpg',
+        ],
+    }
+
+
+def test_product_media_uses_gallery_when_product_image_is_empty():
+    product = product_for_media(
+        gallery=[
+            (1, 'images/catalog/produto/img_1.jpg'),
+            (2, 'images/catalog/produto/img_2.jpg'),
+        ],
+    )
+
+    assert resolve_product_main_image(product) == 'images/catalog/produto/img_1.jpg'
+    assert resolve_product_images(product) == [
+        'images/catalog/produto/img_1.jpg',
+        'images/catalog/produto/img_2.jpg',
+    ]
+
+
+def test_product_media_returns_empty_media_without_image_and_preserves_icon_fallback():
+    product = product_for_media(icon='VJ')
+    data = product.to_dict()
+
+    assert data['image'] is None
+    assert data['imagem_url'] is None
+    assert data['images'] == []
+    assert data['icon'] == 'VJ'
+
+
+def test_product_media_deduplicates_gallery_and_product_to_dict_contract():
+    product = product_for_media(
+        image='images/catalog/produto/img_1.jpg',
+        gallery=[
+            (3, 'images/catalog/produto/img_2.jpg'),
+            (1, 'images/catalog/produto/img_1.jpg'),
+            (2, 'images/catalog/produto/img_1.jpg'),
+            (4, ''),
+        ],
+    )
+    data = product.to_dict()
+
+    assert data['image'] == 'images/catalog/produto/img_1.jpg'
+    assert data['imagem_url'] == data['image']
+    assert data['images'] == [
+        'images/catalog/produto/img_1.jpg',
+        'images/catalog/produto/img_2.jpg',
+    ]
 
 def test_validation_helpers_normalize_and_reject_bad_customer_data():
     assert normalize_email(' CLIENTE@Example.COM ') == 'cliente@example.com'
