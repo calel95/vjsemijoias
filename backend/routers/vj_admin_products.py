@@ -14,7 +14,11 @@ from backend.routers.vj_admin_common import admin_user_id
 from backend.services.admin_audit import record_vj_admin_audit
 from backend.services.common import get_or_404
 from backend.services.pricing import CALCULATED_PRICE_FIELDS, DEFAULT_MARKUP, DEFAULT_PACKAGING_COST
-from backend.services.product_media import replace_product_gallery, store_admin_gallery_images
+from backend.services.product_media import (
+    product_image_list,
+    replace_product_gallery,
+    store_admin_gallery_images,
+)
 from backend.services.vj_products import (
     CSV_FIELDS,
     apply_product_fields,
@@ -31,6 +35,26 @@ from backend.services.vj_products import (
 
 
 router = APIRouter(prefix="/api/vj-admin", tags=["VJ Admin"])
+
+
+def safe_storage_error(exc: RuntimeError) -> HTTPException:
+    """Converte RuntimeError de storage em HTTPException segura sem expor secrets."""
+    message = str(exc)
+    if "R2" in message or "r2" in message.lower():
+        detail = "Storage de imagens indisponivel: configuracao R2 incompleta. Verifique as variaveis obrigatorias."
+    else:
+        detail = "Storage de imagens indisponivel. Tente novamente ou contate o suporte."
+    return HTTPException(status_code=503, detail=detail)
+
+
+def requested_gallery_images(data: dict[str, Any], cleaned: dict[str, Any]) -> list[str] | None:
+    """Normaliza galeria enviada pelo VJ Admin preservando compatibilidade com imagem unica."""
+    if "images" in data:
+        return product_image_list(data)
+    if "imagem_url" in data or "image" in data:
+        image = cleaned.get("image")
+        return [image] if image else []
+    return None
 
 
 @router.get("/pricing/defaults")
@@ -126,9 +150,14 @@ def create_product(
     product = build_product(cleaned, actor_id=actor_id)
     db.add(product)
     db.flush()
-    if product.image:
-        images = store_admin_gallery_images(product, [product.image])
-        replace_product_gallery(product, images)
+    requested_images = requested_gallery_images(data, cleaned)
+    if requested_images is not None:
+        try:
+            images = store_admin_gallery_images(product, requested_images)
+            replace_product_gallery(product, images)
+        except RuntimeError as exc:
+            db.rollback()
+            raise safe_storage_error(exc) from exc
     record_vj_admin_audit(
         db,
         request,
@@ -166,13 +195,18 @@ def update_product(
     ):
         raise HTTPException(status_code=409, detail="Codigo ja cadastrado")
     cleaned.pop("stock_quantity", None)
+    requested_images = requested_gallery_images(data, cleaned)
     apply_product_fields(product, cleaned)
     product.updated_by_id = actor_id
     if any(field in cleaned for field in ("custo_peca", "custo_embalagem", "markup")):
         calculate_product_prices(product, cleaned)
-    if "image" in cleaned:
-        images = store_admin_gallery_images(product, [product.image] if product.image else [])
-        replace_product_gallery(product, images)
+    if requested_images is not None:
+        try:
+            images = store_admin_gallery_images(product, requested_images)
+            replace_product_gallery(product, images)
+        except RuntimeError as exc:
+            db.rollback()
+            raise safe_storage_error(exc) from exc
     db.flush()
     record_vj_admin_audit(
         db,
@@ -181,7 +215,11 @@ def update_product(
         action="produto_atualizado",
         resource="produto",
         resource_id=product.id,
-        metadata={"codigo": product.codigo, "nome": product.name, "campos": sorted(cleaned.keys())},
+        metadata={
+            "codigo": product.codigo,
+            "nome": product.name,
+            "campos": sorted([*cleaned.keys(), *(["images"] if "images" in data else [])]),
+        },
     )
     try:
         db.commit()

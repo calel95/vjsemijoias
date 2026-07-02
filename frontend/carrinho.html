@@ -29,7 +29,7 @@
                 <a href="/carrinho" class="nav-icon" style="background: var(--gold-pale); color: var(--gold-dark);">
                     <span>🛒</span><span class="cart-badge">0</span>
                 </a>
-                <button class="hamburger"><span></span><span></span><span></span></button>
+                <button class="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
             </div>
         </div>
     </nav>
@@ -99,11 +99,12 @@
 
             const options = Cart.getShippingOptions();
             if (!options.length) {
-                return '<div class="cart-shipping-message">Informe o CEP para ver as opcoes de frete.</div>';
+                return '<div class="cart-shipping-message pending"><strong>Frete pendente</strong><span>Informe seu CEP, escolha uma opção de entrega e depois finalize a compra com segurança.</span></div>';
             }
 
             const selectedId = Cart.pricing.shippingOption?.id || '';
             return `
+                ${!selectedId ? '<div class="cart-shipping-message pending"><strong>Escolha uma opção de frete</strong><span>Selecione uma entrega para liberar o checkout seguro.</span></div>' : ''}
                 <div class="cart-shipping-options">
                     ${options.map(option => {
                         const selected = option.id === selectedId;
@@ -130,11 +131,11 @@
 
             if (Cart.items.length === 0) {
                 container.innerHTML = `
-                    <div class="empty-cart">
+                    <div class="empty-cart empty-cart-commercial">
                         <div class="empty-cart-icon">Carrinho</div>
-                        <h2>Seu carrinho esta vazio</h2>
-                        <p>Adicione produtos para continuar comprando</p>
-                        <a href="/catalogo" class="btn btn-primary">Ver Catalogo</a>
+                        <h2>Seu carrinho ainda está vazio</h2>
+                        <p>Explore nossas semijoias e encontre sua próxima peça favorita.</p>
+                        <a href="/catalogo" class="btn btn-primary">Ver Catálogo</a>
                     </div>`;
                 return;
             }
@@ -177,28 +178,40 @@
 
             container.innerHTML = `
                 <div class="cart-grid">
-                    <div class="cart-items">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--gold-primary); flex-wrap: wrap; gap: 1rem;">
-                            <h3 style="font-size: 1.3rem;">Itens do Carrinho (${Cart.getCount()})</h3>
-                            <button onclick="clearCartConfirm()" style="color: var(--error); font-size: 0.9rem; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid var(--error);">
+                    <div class="cart-items cart-items-commercial">
+                        <div class="cart-items-head">
+                            <div>
+                                <span>Produtos escolhidos</span>
+                                <h3>Seu carrinho (${Cart.getCount()} ${Cart.getCount() === 1 ? 'item' : 'itens'})</h3>
+                            </div>
+                            <button class="cart-clear-button" onclick="clearCartConfirm()">
                                 Limpar Carrinho
                             </button>
                         </div>
                         ${itemsHTML}
+                        <a href="/catalogo" class="cart-continue-inline">Continuar comprando</a>
                     </div>
                     
-                    <div class="cart-summary">
-                        <h3>Resumo do Pedido</h3>
+                    <div class="cart-summary cart-summary-commercial">
+                        <div class="cart-summary-head">
+                            <span>Resumo seguro</span>
+                            <h3>Resumo do Pedido</h3>
+                            <p>${Cart.getCount()} ${Cart.getCount() === 1 ? 'item selecionado' : 'itens selecionados'}</p>
+                        </div>
                         
+                        <div class="summary-row summary-row-muted">
+                            <span>Itens:</span>
+                            <span>${Cart.getCount()}</span>
+                        </div>
                         <div class="summary-row">
                             <span>Subtotal:</span>
                             <span>${formatPrice(subtotal)}</span>
                         </div>
 
-                        <div class="cart-shipping-box">
+                        <div class="cart-shipping-box cart-shipping-commercial">
                             <div class="cart-shipping-title">
-                                <strong>Calcule o frete</strong>
-                                <span>Informe seu CEP para ver as opcoes do carrinho.</span>
+                                <strong>Frete obrigatório antes do checkout</strong>
+                                <span>Informe o CEP, escolha uma opção de entrega e siga para o checkout seguro.</span>
                             </div>
                             <div class="cart-shipping-form">
                                 <input type="text" id="cart-shipping-cep" data-mask="cep" inputmode="numeric" maxlength="9" placeholder="00000-000" value="${cartEscapeText(savedCep)}" onkeydown="handleCartShippingCepKey(event)">
@@ -207,24 +220,28 @@
                             <div id="cart-shipping-options">${renderCartShippingOptionsHTML()}</div>
                         </div>
                         
-                        <div class="summary-row">
+                        <div class="summary-row summary-row-shipping">
                             <span>Frete:</span>
                             <span>${cartShippingPriceLabel()}</span>
                         </div>
                         
                         ${discount > 0 ? `
-                            <div class="summary-row" style="color: var(--success);">
+                            <div class="summary-row summary-row-discount">
                                 <span>Desconto (${couponCode}):</span>
                                 <span>-${formatPrice(discount)}</span>
                             </div>
                         ` : ''}
                         
-                        <div class="coupon-input">
-                            <input type="text" id="coupon-input" placeholder="Cupom de desconto" value="${localStorage.getItem('vj_coupon') || ''}">
-                            <button onclick="applyCoupon()">Aplicar</button>
+                        <div class="cart-coupon-box">
+                            <label for="coupon-input">Cupom de desconto</label>
+                            <p>Quando válido, o cupom será aplicado ao resumo do pedido.</p>
+                            <div class="coupon-input">
+                                <input type="text" id="coupon-input" placeholder="Digite seu cupom" value="${localStorage.getItem('vj_coupon') || ''}">
+                                <button onclick="applyCoupon()">Aplicar</button>
+                            </div>
                         </div>
                         
-                        <div class="summary-row total">
+                        <div class="summary-row total cart-total-highlight">
                             <span>Total:</span>
                             <span class="price">${formatPrice(total)}</span>
                         </div>
@@ -233,18 +250,20 @@
                             ${Cart.getShippingMessage()}
                         </div>
                         
-                        <a href="/checkout" class="btn btn-primary btn-block" style="margin-top: 1rem;" onclick="goToCheckoutFromCart(event)">
-                            Finalizar Compra
+                        <a href="/checkout" class="btn btn-primary btn-block cart-checkout-button" onclick="goToCheckoutFromCart(event)">
+                            Finalizar Compra com Segurança
                         </a>
                         
-                        <a href="/catalogo" class="btn btn-secondary btn-block" style="margin-top: 0.5rem;">
+                        <a href="/catalogo" class="btn btn-secondary btn-block cart-continue-button">
                             Continuar Comprando
                         </a>
                         
-                        <div style="margin-top: 1.5rem; padding: 1rem; background: var(--white); border-radius: 8px; font-size: 0.85rem;">
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">Compra 100% segura</div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">12x sem juros</div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem;">Troca em 30 dias</div>
+                        <div class="cart-trust-panel" aria-label="Informações de confiança do carrinho">
+                            <div><strong>Compra segura</strong><span>Checkout e pagamento protegidos.</span></div>
+                            <div><strong>Garantia de 2 anos</strong><a href="/garantia.html">Ver garantia</a></div>
+                            <div><strong>Troca conforme política</strong><a href="/politica-troca.html">Ver política</a></div>
+                            <div><strong>Atendimento</strong><a data-store-whatsapp-link target="_blank" rel="noopener">WhatsApp VJ</a></div>
+                            <div><strong>Dúvidas frequentes</strong><a href="/faq.html">Abrir FAQ</a></div>
                         </div>
                     </div>
                 </div>
@@ -252,6 +271,11 @@
 
             if (typeof applyInputMasks === 'function') {
                 applyInputMasks();
+            }
+            if (window.__vjStoreConfig && window.applyStoreConfig) {
+                window.applyStoreConfig(window.__vjStoreConfig);
+            } else if (window.refreshPublicStoreConfig) {
+                await window.refreshPublicStoreConfig();
             }
         }
 
@@ -319,7 +343,7 @@
         function goToCheckoutFromCart(event) {
             if (Cart.pricing.shippingOption) return;
             event.preventDefault();
-            showToast('Calcule e selecione o frete antes de finalizar', 'error', 'Frete pendente');
+            showToast('Informe o CEP e selecione uma opção de frete para continuar para o checkout seguro.', 'error', 'Frete pendente');
             document.getElementById('cart-shipping-cep')?.focus();
         }
 
@@ -348,14 +372,14 @@
             if (result.success && result.data.valid) {
                 localStorage.setItem('vj_coupon', result.data.code);
                 localStorage.setItem('vj_coupon_percent', String(result.data.discount_percent || 0));
-                showToast(result.data.message, 'success', 'Cupom aplicado');
+                showToast(result.data.message || 'Cupom aplicado ao resumo do pedido.', 'success', 'Cupom aplicado');
                 await renderCart();
                 return;
             }
 
             localStorage.removeItem('vj_coupon');
             localStorage.removeItem('vj_coupon_percent');
-            showToast(result.error || result.data?.message || 'Cupom invalido', 'error', 'Ops!');
+            showToast(result.error || result.data?.message || 'Confira o código e tente novamente.', 'error', 'Cupom não aplicado');
         }
 
         document.addEventListener('DOMContentLoaded', async () => {

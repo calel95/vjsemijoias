@@ -408,6 +408,28 @@ curl.exe -L -s "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=h
 - Nenhuma alteracao de backend, banco, APIs ou checkout.
 - Nenhuma alteracao de upload/R2.
 
+## Objetivos e resultados esperados
+
+- Produto com CLS proximo de zero por reserva de espaco da galeria e skeleton inicial.
+- Produto com LCP inferior ao relatorio anterior por priorizacao da imagem principal.
+- SEO do produto preservado em 100, mantendo metadados centralizados em `seo.js`.
+- Ausencia de regressao em Home e Catalogo.
+- Nenhuma alteracao funcional em checkout, backend, banco, APIs ou regras de negocio.
+
+## Compatibilidade
+
+- A chamada compartilhada de produtos mantem `seo.js` como responsavel pelo SEO dinamico e `products.js` como fonte usada pela pagina.
+- O skeleton usa a mesma estrutura visual da pagina e e removido quando o produto real e renderizado.
+- Conteudo secundario abaixo da dobra e adiado para idle com fallback seguro.
+- Checkout e VJ Admin nao foram alterados.
+
+## Validacoes obrigatorias
+
+- `node --check` em todos os JS alterados.
+- `uv run pytest`.
+- `uv run python tools/e2e_smoke.py`.
+- Alembic nao deve ser executado porque nao houve alteracao de schema.
+
 ## Medicao recomendada apos esta sprint
 
 Repetir Lighthouse Mobile para:
@@ -416,6 +438,41 @@ Repetir Lighthouse Mobile para:
 - Catalogo: repetir porque o relatorio anterior teve `PROTOCOL_TIMEOUT`.
 - Produto: confirmar se a meta description dinamica passou a ser detectada.
 
+
+---
+
+# Sprint 004.3 - Produto: LCP e CLS
+
+## Relatorios Lighthouse Mobile recebidos
+
+| Pagina | Performance | LCP | CLS | Observacoes |
+| --- | ---: | ---: | ---: | --- |
+| Home | 90 | 3,0s | 0 | Evolucao positiva apos Sprint 004.2. |
+| Catalogo | 95 | 2,3s | 0 | Dentro da meta inicial sugerida para 1.0. |
+| Produto | 61 | 4,0s | 0,585 | Prioridade da Sprint 004.3 por LCP alto e CLS critico. |
+
+## Melhorias implementadas
+
+| Area | Implementacao | Objetivo |
+| --- | --- | --- |
+| CLS do produto | `produto.html` agora renderiza um skeleton inicial dentro de `#product-content`, com a mesma estrutura de galeria/informacoes. | Reservar espaco antes da API responder e evitar deslocamento grande da pagina. |
+| Galeria principal | `style.css` reforca `aspect-ratio: 1 / 1`, largura estavel e altura reservada para a imagem principal. | Reduzir instabilidade visual durante carregamento da imagem. |
+| LCP do produto | A imagem principal dinamica recebe `loading="eager"`, `fetchpriority="high"`, `decoding="async"`, `width` e `height`. | Priorizar o recurso LCP sem aplicar lazy loading indevido na imagem principal. |
+| Miniaturas | Miniaturas recebem `loading="lazy"`, `decoding="async"`, `width` e `height`. | Carregar imagens secundarias com menor prioridade. |
+| Fetch duplicado | `seo.js` compartilha o fetch de `/api/products` com `products.js` via promessa global controlada. | Manter SEO dinamico cedo sem duplicar chamada na pagina de produto. |
+| 401 publico | `cart.js` evita chamar `/api/auth/me` quando nao existe usuario local salvo. | Evitar 401 desnecessario em visitas publicas sem quebrar login/cadastro. |
+| Inicializacao secundaria | `produto.html` usa `requestIdleCallback()` com fallback para `setTimeout()` para renderizar produtos relacionados e buscar configuracao publica apenas quando ela ainda nao estiver em memoria. | Priorizar imagem, nome, preco e botoes antes de conteudo abaixo da dobra. |
+| Scripts da pagina | Os scripts criticos da pagina foram mantidos por dependencia direta; `offline.js` passou a carregar com `defer` na pagina de produto. | Reduzir trabalho inicial sem remover suporte offline. |
+
+## Observacao sobre relatorios
+
+O script externo do Kaspersky pode aparecer nos relatorios de navegador/Lighthouse do ambiente local. Esse recurso nao pertence ao projeto VJ Semijoias e deve ser desconsiderado como asset da aplicacao.
+
+## Medicao recomendada apos esta sprint
+
+- Repetir Lighthouse Mobile em `/produto?id=...` para confirmar CLS proximo de 0.
+- Confirmar se LCP do produto fica abaixo dos 4,0s medidos antes da sprint.
+- Revalidar Home e Catalogo para garantir ausencia de regressao.
 
 ---
 

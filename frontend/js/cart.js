@@ -336,6 +336,11 @@ const Auth = {
         this.user = stored ? JSON.parse(stored) : null;
         this.updateUI();
 
+        if (!this.user) {
+            API.authenticated = false;
+            return;
+        }
+
         API.getMe().then(result => {
             if (result.success) {
                 if (result.data?.is_admin && API.hasAdminToken()) {

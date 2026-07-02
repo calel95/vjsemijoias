@@ -25,12 +25,65 @@ IMAGE_EXTENSIONS = {
 STOCK_STATUSES = {"available", "out_of_stock", "preorder"}
 
 
+def clean_image_path(value):
+    path = str(value or "").strip()
+    return path or None
+
+
+def unique_image_paths(values):
+    images = []
+    seen = set()
+    for value in values or []:
+        image = clean_image_path(value)
+        if not image or image in seen:
+            continue
+        images.append(image)
+        seen.add(image)
+    return images
+
+
+def gallery_image_paths(product):
+    gallery = getattr(product, "gallery_images", None) or []
+    ordered = sorted(
+        gallery,
+        key=lambda item: (
+            getattr(item, "position", 0) if getattr(item, "position", None) is not None else 0,
+            getattr(item, "id", 0) if getattr(item, "id", None) is not None else 0,
+        ),
+    )
+    return unique_image_paths(getattr(item, "path", None) for item in ordered)
+
+
+def resolve_product_images(product):
+    gallery_images = gallery_image_paths(product)
+    if gallery_images:
+        return gallery_images
+
+    image = clean_image_path(getattr(product, "image", None))
+    return [image] if image else []
+
+
+def resolve_product_main_image(product):
+    images = resolve_product_images(product)
+    return images[0] if images else None
+
+
+def serialize_product_media(product):
+    image = resolve_product_main_image(product)
+    images = resolve_product_images(product)
+    return {
+        "image": image,
+        "imagem_url": image,
+        "images": images,
+    }
+
+
 def product_image_list(data):
     images = data.get("images")
     if isinstance(images, list):
-        return [str(image).strip() for image in images if str(image).strip()]
-    image = data.get("image")
-    return [str(image).strip()] if image else []
+        return [image for image in (clean_image_path(item) for item in images) if image]
+    image = clean_image_path(data.get("image"))
+    return [image] if image else []
 
 
 def normalize_stock_status(value):
@@ -93,6 +146,7 @@ def store_admin_gallery_images(product, images):
 
 
 def replace_product_gallery(product, images):
+    images = unique_image_paths(images)
     product.image = images[0] if images else None
     product.gallery_images.clear()
     for position, image in enumerate(images):

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -5,6 +6,7 @@ import pytest
 import backend.services.shipping as shipping_service
 
 from backend.database import SessionLocal
+from backend.models import Product, ProductImage
 from backend.services.orders import (
     calculate_order,
     configured_shipping,
@@ -16,6 +18,9 @@ from backend.services.payments import cents, public_url, update_infinitepay_paym
 from backend.services.product_media import (
     normalize_stock_status,
     product_image_list,
+    resolve_product_images,
+    resolve_product_main_image,
+    serialize_product_media,
     store_admin_gallery_images,
     storage_slug,
 )
@@ -24,7 +29,15 @@ from backend.services.shipping import (
     calculate_shipping_options,
     normalize_zip,
 )
-from backend.services.storage import upload_r2_object
+from backend.services.storage import (
+    public_asset_url,
+    r2_enabled,
+    storage_backend,
+    storage_status,
+    store_public_file,
+    upload_r2_object,
+    validate_storage_config,
+)
 from backend.services.validation import (
     clean_text,
     normalize_email,
@@ -533,6 +546,103 @@ def test_product_media_helpers_normalize_inputs():
     assert getattr(exc_info.value, 'status_code', None) == 400
 
 
+def product_for_media(*, image=None, gallery=None, icon=None):
+    product = Product(
+        name='Produto Midia',
+        category='brincos',
+        categoryName='Brincos',
+        price=Decimal('99.90'),
+        image=image,
+        icon=icon,
+        status='publicado',
+        publicado=True,
+        is_active=True,
+        stock_status='available',
+        stock_quantity=1,
+        description='Produto para teste de midia.',
+    )
+    product.gallery_images = [
+        ProductImage(path=path, position=position)
+        for position, path in (gallery or [])
+    ]
+    return product
+
+
+def test_product_media_uses_single_product_image_without_gallery():
+    product = product_for_media(image='images/catalog/produto/img_1.jpg')
+
+    assert resolve_product_main_image(product) == 'images/catalog/produto/img_1.jpg'
+    assert resolve_product_images(product) == ['images/catalog/produto/img_1.jpg']
+    assert serialize_product_media(product) == {
+        'image': 'images/catalog/produto/img_1.jpg',
+        'imagem_url': 'images/catalog/produto/img_1.jpg',
+        'images': ['images/catalog/produto/img_1.jpg'],
+    }
+
+
+def test_product_media_prefers_ordered_gallery_over_legacy_image():
+    product = product_for_media(
+        image='images/catalog/produto/legacy.jpg',
+        gallery=[
+            (2, 'images/catalog/produto/img_2.jpg'),
+            (1, 'images/catalog/produto/img_1.jpg'),
+        ],
+    )
+
+    assert serialize_product_media(product) == {
+        'image': 'images/catalog/produto/img_1.jpg',
+        'imagem_url': 'images/catalog/produto/img_1.jpg',
+        'images': [
+            'images/catalog/produto/img_1.jpg',
+            'images/catalog/produto/img_2.jpg',
+        ],
+    }
+
+
+def test_product_media_uses_gallery_when_product_image_is_empty():
+    product = product_for_media(
+        gallery=[
+            (1, 'images/catalog/produto/img_1.jpg'),
+            (2, 'images/catalog/produto/img_2.jpg'),
+        ],
+    )
+
+    assert resolve_product_main_image(product) == 'images/catalog/produto/img_1.jpg'
+    assert resolve_product_images(product) == [
+        'images/catalog/produto/img_1.jpg',
+        'images/catalog/produto/img_2.jpg',
+    ]
+
+
+def test_product_media_returns_empty_media_without_image_and_preserves_icon_fallback():
+    product = product_for_media(icon='VJ')
+    data = product.to_dict()
+
+    assert data['image'] is None
+    assert data['imagem_url'] is None
+    assert data['images'] == []
+    assert data['icon'] == 'VJ'
+
+
+def test_product_media_deduplicates_gallery_and_product_to_dict_contract():
+    product = product_for_media(
+        image='images/catalog/produto/img_1.jpg',
+        gallery=[
+            (3, 'images/catalog/produto/img_2.jpg'),
+            (1, 'images/catalog/produto/img_1.jpg'),
+            (2, 'images/catalog/produto/img_1.jpg'),
+            (4, ''),
+        ],
+    )
+    data = product.to_dict()
+
+    assert data['image'] == 'images/catalog/produto/img_1.jpg'
+    assert data['imagem_url'] == data['image']
+    assert data['images'] == [
+        'images/catalog/produto/img_1.jpg',
+        'images/catalog/produto/img_2.jpg',
+    ]
+
 def test_validation_helpers_normalize_and_reject_bad_customer_data():
     assert normalize_email(' CLIENTE@Example.COM ') == 'cliente@example.com'
     assert validate_cpf('123.456.789-09') == '12345678909'
@@ -564,6 +674,118 @@ def test_validate_image_bytes_checks_real_content_and_size():
     with pytest.raises(ValueError, match='maior'):
         validate_image_bytes(TINY_GIF, 'image/gif', filename='produto.gif', max_bytes=1)
 
+
+def clear_storage_env(monkeypatch):
+    for key in [
+        'STORAGE_BACKEND',
+        'R2_ACCOUNT_ID',
+        'R2_BUCKET',
+        'R2_ACCESS_KEY_ID',
+        'R2_SECRET_ACCESS_KEY',
+        'R2_PUBLIC_BASE_URL',
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+
+def configure_r2_env(monkeypatch):
+    monkeypatch.setenv('STORAGE_BACKEND', 'r2')
+    monkeypatch.setenv('R2_ACCOUNT_ID', 'account123')
+    monkeypatch.setenv('R2_BUCKET', 'vjsemijoias-dev')
+    monkeypatch.setenv('R2_ACCESS_KEY_ID', 'access123')
+    monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'secret123')
+    monkeypatch.setenv('R2_PUBLIC_BASE_URL', 'https://assets-dev.example.com')
+
+
+def test_storage_local_is_default_and_does_not_require_r2(monkeypatch):
+    clear_storage_env(monkeypatch)
+
+    status = storage_status()
+
+    assert storage_backend() == 'local'
+    assert r2_enabled() is False
+    assert validate_storage_config() == {'backend': 'local', 'ready': True, 'r2_enabled': False}
+    assert status['backend'] == 'local'
+    assert status['ready'] is True
+    assert status['r2']['enabled'] is False
+    assert status['r2']['ready'] is False
+    assert status['errors'] == []
+
+
+def test_storage_r2_complete_configuration_is_ready_without_exposing_secrets(monkeypatch):
+    configure_r2_env(monkeypatch)
+
+    status = storage_status()
+
+    assert storage_backend() == 'r2'
+    assert r2_enabled() is True
+    assert validate_storage_config() == {'backend': 'r2', 'ready': True, 'r2_enabled': True}
+    assert status['backend'] == 'r2'
+    assert status['ready'] is True
+    assert status['r2']['enabled'] is True
+    assert status['r2']['ready'] is True
+    assert status['r2']['bucket'] == 'vjsemijoias-dev'
+    assert status['r2']['public_base_url'] == 'https://assets-dev.example.com'
+    serialized = str(status)
+    assert 'secret123' not in serialized
+    assert 'access123' not in serialized
+    assert 'secret_access_key' not in status['r2']
+    assert 'access_key_id' not in status['r2']
+
+
+def test_storage_r2_incomplete_configuration_has_clear_safe_error(monkeypatch):
+    configure_r2_env(monkeypatch)
+    monkeypatch.delenv('R2_SECRET_ACCESS_KEY')
+
+    status = storage_status()
+
+    assert status['backend'] == 'r2'
+    assert status['ready'] is False
+    assert status['r2']['ready'] is False
+    assert status['r2']['missing'] == ['R2_SECRET_ACCESS_KEY']
+    assert 'R2_SECRET_ACCESS_KEY' in status['errors'][0]
+    assert 'secret123' not in str(status)
+    with pytest.raises(RuntimeError, match='R2_SECRET_ACCESS_KEY'):
+        validate_storage_config()
+
+
+def test_storage_invalid_backend_has_clear_status_and_runtime_error(monkeypatch):
+    clear_storage_env(monkeypatch)
+    monkeypatch.setenv('STORAGE_BACKEND', 's3')
+
+    status = storage_status()
+
+    assert status['backend'] == 's3'
+    assert status['backend_valid'] is False
+    assert status['ready'] is False
+    assert status['r2']['enabled'] is False
+    assert 'STORAGE_BACKEND invalido' in status['errors'][0]
+    with pytest.raises(RuntimeError, match='STORAGE_BACKEND invalido'):
+        storage_backend()
+    with pytest.raises(RuntimeError, match='STORAGE_BACKEND invalido'):
+        r2_enabled()
+
+
+def test_store_public_file_requires_r2_and_does_not_upload_when_local(monkeypatch):
+    clear_storage_env(monkeypatch)
+    calls = []
+
+    def fake_upload(*args):
+        calls.append(args)
+        return 'https://assets.example.com/img.gif'
+
+    monkeypatch.setattr('backend.services.storage.upload_r2_object', fake_upload)
+
+    with pytest.raises(RuntimeError, match='Storage R2 nao esta habilitado'):
+        store_public_file('catalog/produto/img.gif', b'img', 'image/gif')
+
+    assert calls == []
+
+
+def test_public_asset_url_joins_base_and_key_safely():
+    assert public_asset_url('/catalog/produto/img 1.gif', base_url='https://assets.example.com/') == (
+        'https://assets.example.com/catalog/produto/img%201.gif'
+    )
+    assert public_asset_url('/catalog/produto/img.gif') == 'catalog/produto/img.gif'
 
 def test_r2_upload_uses_s3_compatible_endpoint(monkeypatch):
     calls = []

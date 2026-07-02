@@ -95,13 +95,13 @@ class Product(Base):
     )
 
     def to_dict(self):
+        from backend.services.product_media import serialize_product_media
+
         try:
             features = json.loads(self.features) if self.features else []
         except (TypeError, json.JSONDecodeError):
             features = self.features.split("\n") if self.features else []
-        images = [item.path for item in self.gallery_images]
-        if not images and self.image:
-            images = [self.image]
+        media = serialize_product_media(self)
         return {
             "id": self.id,
             "name": self.name,
@@ -139,9 +139,7 @@ class Product(Base):
             "preco_credito_12x": decimal_to_float(self.preco_credito_12x),
             "margem_pix": decimal_to_float(self.margem_pix),
             "lucro_pix": decimal_to_float(self.lucro_pix),
-            "image": self.image,
-            "imagem_url": self.image,
-            "images": images,
+            **media,
             "icon": self.icon or "\U0001F48E",
             "badge": self.badge,
             "status": self.status,

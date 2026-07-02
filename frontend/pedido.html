@@ -30,23 +30,28 @@
 
     <div class="offline-notice" id="offline-notice"></div>
 
-    <main class="order-tracking-page">
-        <section class="order-tracking-hero">
+    <main class="order-tracking-page post-purchase-page">
+        <section class="order-tracking-hero post-purchase-hero">
+            <span>Acompanhamento seguro</span>
             <h1>Acompanhe seu pedido</h1>
-            <p>Veja status, frete, rastreio e historico de atualizacoes.</p>
+            <p>Pedido recebido com cuidado pela VJ Semijoias. Consulte status, pagamento, entrega e atualizações usando o número do pedido e o token do link seguro, quando aplicável.</p>
         </section>
 
         <section class="order-tracking-grid">
-            <form class="order-tracking-form" id="order-tracking-form">
-                <h2>Consultar pedido</h2>
+            <form class="order-tracking-form post-purchase-form" id="order-tracking-form">
+                <div class="post-purchase-form-head">
+                    <span>Consulta do pedido</span>
+                    <h2>Tenha seus dados em mãos</h2>
+                    <p>Use o número do pedido. Se o link seguro não estiver preenchido, informe também e-mail e CPF usados na compra.</p>
+                </div>
                 <div class="form-group">
-                    <label>Numero do pedido</label>
-                    <input type="text" name="order_id" id="tracking-order-id" required autocomplete="off">
+                    <label>Número do pedido</label>
+                    <input type="text" name="order_id" id="tracking-order-id" required autocomplete="off" placeholder="Ex.: 123">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>E-mail da compra</label>
-                        <input type="email" name="email" id="tracking-email" autocomplete="email">
+                        <input type="email" name="email" id="tracking-email" autocomplete="email" placeholder="email usado no pedido">
                     </div>
                     <div class="form-group">
                         <label>CPF</label>
@@ -57,16 +62,56 @@
                     <label>Token do link seguro</label>
                     <input type="text" name="token" id="tracking-token" autocomplete="off" placeholder="Preenchido automaticamente quando vier do e-mail">
                 </div>
-                <button type="submit" class="btn btn-primary btn-block" id="tracking-submit">Consultar pedido</button>
-                <p class="order-tracking-hint">O token vem no link enviado por e-mail. Sem token, informe e-mail e CPF da compra.</p>
+                <button type="submit" class="btn btn-primary btn-block post-purchase-submit" id="tracking-submit">Consultar pedido com segurança</button>
+                <p class="order-tracking-hint">O token ajuda a proteger sua consulta. Sem token, e-mail e CPF confirmam que você tem acesso aos dados da compra.</p>
             </form>
 
             <div class="order-tracking-result" id="order-tracking-result">
-                <div class="order-empty-state">
-                    <strong>Pedido ainda nao carregado</strong>
-                    <span>Informe os dados ao lado ou abra o link recebido por e-mail.</span>
+                <div class="order-empty-state post-purchase-empty-state">
+                    <strong>Pedido ainda não carregado</strong>
+                    <span>Informe os dados ao lado ou abra o link recebido por e-mail para acompanhar com segurança.</span>
                 </div>
             </div>
+        </section>
+
+        <section class="post-purchase-guidance" aria-label="Orientações pós-compra">
+            <article>
+                <span>Próximos passos</span>
+                <h2>O que acontece agora?</h2>
+                <ol>
+                    <li>Conferimos seu pedido e os dados de entrega.</li>
+                    <li>Confirmamos o pagamento, quando aplicável.</li>
+                    <li>Preparamos sua semijoia com cuidado.</li>
+                    <li>Atualizamos você sobre o andamento do pedido.</li>
+                    <li>Nosso atendimento fica disponível para dúvidas.</li>
+                </ol>
+            </article>
+            <article>
+                <span>Cuidados</span>
+                <h2>Cuide da sua semijoia</h2>
+                <ul>
+                    <li>Evite contato direto com perfumes, cremes e produtos químicos.</li>
+                    <li>Guarde sua semijoia separadamente para reduzir atritos.</li>
+                    <li>Limpe com flanela seca e macia.</li>
+                    <li>Consulte a garantia e o FAQ para mais detalhes.</li>
+                </ul>
+                <div class="post-purchase-links">
+                    <a href="/garantia.html">Ver garantia</a>
+                    <a href="/faq.html">Abrir FAQ</a>
+                </div>
+            </article>
+            <article>
+                <span>Atendimento</span>
+                <h2>Precisa de ajuda?</h2>
+                <p>Precisa de ajuda com seu pedido? Fale com a VJ Semijoias pelo WhatsApp.</p>
+                <a class="post-purchase-support-link" data-store-whatsapp-link target="_blank" rel="noopener">Falar pelo WhatsApp</a>
+            </article>
+            <article>
+                <span>Curadoria VJ</span>
+                <h2>Conheça outras peças</h2>
+                <p>Enquanto acompanha seu pedido, você também pode conhecer outras peças da curadoria VJ.</p>
+                <a class="post-purchase-catalog-link" href="/catalogo">Ver catálogo</a>
+            </article>
         </section>
     </main>
     <!-- FOOTER -->
@@ -89,6 +134,16 @@
             delivered: 'Entregue',
             canceled: 'Cancelado',
             failed: 'Falhou'
+        };
+        const statusDescriptions = {
+            pending: 'Recebemos seu pedido e ele está registrado para conferência.',
+            payment_pending: 'Seu pedido foi registrado e aguarda a conclusão do pagamento.',
+            paid: 'O pagamento foi confirmado e o pedido seguirá para preparação.',
+            processing: 'Seu pedido está em separação e preparação pela equipe VJ.',
+            shipped: 'Seu pedido foi enviado. Acompanhe o rastreio quando estiver disponível.',
+            delivered: 'Seu pedido consta como entregue. Guarde os cuidados da peça para preservar sua semijoia.',
+            canceled: 'Este pedido consta como cancelado. Fale com o atendimento se precisar de ajuda.',
+            failed: 'Não foi possível confirmar o fluxo deste pedido. Fale com o atendimento para orientação.'
         };
         const statusSteps = ['pending', 'payment_pending', 'paid', 'processing', 'shipped', 'delivered'];
 
@@ -115,12 +170,16 @@
             return statusLabels[status] || status || 'Pedido recebido';
         }
 
+        function orderStatusDescription(status) {
+            return statusDescriptions[status] || 'Consulte as atualizações do pedido e fale com o atendimento se precisar de ajuda.';
+        }
+
         function renderProgress(order) {
-            const currentIndex = Math.max(statusSteps.indexOf(order.status), 0);
+            const currentIndex = statusSteps.indexOf(order.status);
             return `
                 <div class="tracking-progress">
                     ${statusSteps.map((step, index) => `
-                        <div class="tracking-step ${index <= currentIndex ? 'done' : ''} ${step === order.status ? 'current' : ''}">
+                        <div class="tracking-step ${currentIndex >= 0 && index <= currentIndex ? 'done' : ''} ${step === order.status ? 'current' : ''}">
                             <span></span>
                             <small>${trackingEscape(orderStatusLabel(step))}</small>
                         </div>
@@ -162,6 +221,10 @@
                             <strong>${trackingEscape(order.id)}</strong>
                         </div>
                         <b class="tracking-status ${trackingEscape(order.status)}">${trackingEscape(orderStatusLabel(order.status))}</b>
+                    </div>
+                    <div class="tracking-status-note">
+                        <strong>${trackingEscape(orderStatusLabel(order.status))}</strong>
+                        <span>${trackingEscape(orderStatusDescription(order.status))}</span>
                     </div>
                     ${renderProgress(order)}
                     <div class="tracking-panels">
@@ -211,21 +274,21 @@
             const email = document.getElementById('tracking-email').value.trim();
             const cpf = document.getElementById('tracking-cpf').value.trim();
             if (!orderId) {
-                showToast('Informe o numero do pedido', 'error');
+                showToast('Informe o número do pedido para consultar o acompanhamento com segurança.', 'error', 'Dados do pedido');
                 return;
             }
             button.disabled = true;
-            button.textContent = 'Consultando...';
+            button.textContent = 'Consultando com segurança...';
             const result = token
                 ? await API.getPublicOrder(orderId, token)
                 : await API.lookupPublicOrder({ order_id: orderId, email, cpf: digitsOnly(cpf) });
             button.disabled = false;
-            button.textContent = 'Consultar pedido';
+            button.textContent = 'Consultar pedido com segurança';
             if (!result.success) {
                 document.getElementById('order-tracking-result').innerHTML = `
-                    <div class="order-empty-state error">
-                        <strong>Pedido nao encontrado</strong>
-                        <span>${trackingEscape(result.error || 'Confira os dados informados e tente novamente.')}</span>
+                    <div class="order-empty-state error post-purchase-empty-state">
+                        <strong>Não encontramos esse pedido</strong>
+                        <span>${trackingEscape(result.error || 'Confira número, token, e-mail ou CPF e tente novamente. Se a dúvida continuar, fale com a VJ Semijoias pelo WhatsApp.')}</span>
                     </div>
                 `;
                 return;

@@ -95,6 +95,14 @@ function deleteCustomProduct(id) {
 async function loadProductsFromAPI() {
     if (apiLoaded) return apiProductsCache;
 
+    const sharedProducts = window.__vjProductSEOProducts
+        || (window.__vjProductSEOProductsPromise ? await window.__vjProductSEOProductsPromise : null);
+    if (Array.isArray(sharedProducts) && sharedProducts.length) {
+        apiProductsCache = sharedProducts;
+        apiLoaded = true;
+        return apiProductsCache;
+    }
+
     try {
         const result = await API.getProducts();
         if (result.success) {

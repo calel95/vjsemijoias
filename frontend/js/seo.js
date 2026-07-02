@@ -339,6 +339,19 @@
         return result;
     }
 
+    function setProductImagePreload(image) {
+        if (!image) return;
+        let link = document.head.querySelector('link[data-vj-product-preload]');
+        if (!link) {
+            link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.setAttribute('data-vj-product-preload', 'true');
+            document.head.appendChild(link);
+        }
+        link.href = absoluteUrl(image);
+    }
+
     function applyProductSEO(product) {
         if (!product) return applyPageSEO('/produto');
         const productId = product.id ? `?id=${encodeURIComponent(product.id)}` : window.location.search;
@@ -346,6 +359,7 @@
         const image = Array.isArray(product.images) && product.images.length
             ? product.images[0]
             : product.image;
+        setProductImagePreload(image);
         const title = `${text(product.name, 'Produto')} - VJ Semijoias`;
         const description = shortText(
             product.description,
@@ -378,27 +392,37 @@
         return id ? parseInt(id, 10) : null;
     }
 
+    function getProductSEOProducts() {
+        if (window.__vjProductSEOProductsPromise) return window.__vjProductSEOProductsPromise;
+        if (!window.fetch) return Promise.resolve([]);
+
+        window.__vjProductSEOProductsPromise = fetch('/api/products', { credentials: 'same-origin' })
+            .then(response => (response.ok ? response.json() : null))
+            .then(payload => {
+                const products = normalizeProductsPayload(payload);
+                window.__vjProductSEOProducts = products;
+                return products;
+            })
+            .catch(() => []);
+        return window.__vjProductSEOProductsPromise;
+    }
+
     async function applyProductSEOFromAPI() {
         if (currentRoute() !== '/produto') return null;
         const productId = productIdFromLocation();
-        if (!productId || !window.fetch) return null;
+        if (!productId) return null;
 
-        try {
-            const response = await fetch('/api/products', { credentials: 'same-origin' });
-            if (!response.ok) return null;
-            const products = normalizeProductsPayload(await response.json());
-            const product = products.find(item => Number(item.id) === productId);
-            if (!product) return null;
-            return applyProductSEO(product);
-        } catch (_) {
-            return null;
-        }
+        const products = await getProductSEOProducts();
+        const product = products.find(item => Number(item.id) === productId);
+        if (!product) return null;
+        return applyProductSEO(product);
     }
 
     window.VJSEO = {
         applyPageSEO,
         applyProductSEO,
         applyProductSEOFromAPI,
+        getProductSEOProducts,
         setJsonLd,
         absoluteUrl,
     };

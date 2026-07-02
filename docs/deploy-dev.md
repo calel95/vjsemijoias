@@ -267,6 +267,14 @@ importadas pelo catalogo sao gravadas no R2, e o banco salva a URL publica.
 Se `STORAGE_BACKEND` ficar vazio ou `local`, o app volta ao comportamento local
 e salva em `frontend/images/catalog/`.
 
+Para validar o ambiente sem expor segredos, acesse o endpoint administrativo
+`/api/admin/storage/status` autenticado como admin. A resposta pode informar
+backend ativo, pendencias de variaveis e URL publica configurada, mas nao deve
+retornar `R2_ACCESS_KEY_ID` nem `R2_SECRET_ACCESS_KEY`.
+
+Valores aceitos para `STORAGE_BACKEND`: `local` e `r2`. Qualquer outro valor deve
+ser corrigido antes de importar catalogo ou enviar imagens.
+
 ### Imagens 404 no DEV remoto
 
 Se os logs do deploy mostrarem requisicoes como:

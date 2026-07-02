@@ -36,27 +36,50 @@
                     <span>🛒</span>
                     <span class="cart-badge">0</span>
                 </a>
-                <button class="hamburger"><span></span><span></span><span></span></button>
+                <button class="hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
             </div>
         </div>
     </nav>
 
     <div class="offline-notice" id="offline-notice"></div>
 
-    <section class="catalog-hero">
-        <h1>Nosso <span>Catálogo</span></h1>
-        <p>Explore a coleção oficial de semijoias VJ banhadas a ouro 18k</p>
-        <div class="breadcrumb">
-            <a href="/">Início</a>
-            <span>›</span>
-            <span>Catálogo</span>
+    <section class="catalog-hero catalog-commercial-hero">
+        <div class="catalog-hero-inner">
+            <span class="catalog-kicker">Curadoria VJ Semijoias</span>
+            <h1>Semijoias selecionadas para iluminar sua rotina</h1>
+            <p>Descubra peças banhadas a Ouro 18K com garantia de 2 anos, compra segura e envio com cálculo por CEP.</p>
+            <div class="catalog-hero-benefits" aria-label="Benefícios do catálogo">
+                <span>Ouro 18K</span>
+                <span>Garantia de 2 anos</span>
+                <span>Compra segura</span>
+                <span>Envio por CEP</span>
+            </div>
+            <div class="breadcrumb">
+                <a href="/">Início</a>
+                <span>›</span>
+                <span>Catálogo</span>
+            </div>
         </div>
     </section>
 
     <section class="section">
         <div class="section-container">
+            <section class="catalog-discovery" aria-labelledby="catalog-discovery-title">
+                <div class="catalog-discovery-head">
+                    <span>Descubra por categoria</span>
+                    <h2 id="catalog-discovery-title">Encontre a peça ideal</h2>
+                    <p>Navegue pelas categorias principais e veja somente as peças que combinam com o que você procura.</p>
+                </div>
+                <div class="catalog-discovery-grid">
+                    <a href="/catalogo?cat=aneis" data-discovery-category="aneis"><span>Anéis</span><small>Peças para todos os dias</small></a>
+                    <a href="/catalogo?cat=colares" data-discovery-category="colares"><span>Colares</span><small>Camadas, pontos de luz e presença</small></a>
+                    <a href="/catalogo?cat=pulseiras" data-discovery-category="pulseiras"><span>Pulseiras</span><small>Combinações delicadas</small></a>
+                    <a href="/catalogo?cat=brincos" data-discovery-category="brincos"><span>Brincos</span><small>Do clássico ao marcante</small></a>
+                </div>
+            </section>
+
             <!-- BARRA DE DOWNLOAD DO PDF -->
-            <div class="pdf-download-bar">
+            <div class="pdf-download-bar catalog-pdf-bar">
                 <p>
                     <strong>📄 Baixe nosso catálogo oficial em PDF</strong>
                     Acesse offline a coleção completa de semijoias VJ
@@ -71,20 +94,29 @@
             </div>
 
             <!-- FILTROS -->
-            <div class="filters">
+            <div class="filters catalog-filters-commercial" aria-label="Filtros do catálogo">
+                <div class="catalog-filter-head">
+                    <span>Explore o catálogo</span>
+                    <h2>Filtre por categoria, busca ou preço</h2>
+                    <p>Use os filtros para comparar peças com mais clareza.</p>
+                </div>
                 <div class="filter-group" id="category-filters"></div>
                 <div class="catalog-controls">
-                    <div class="search-box">
-                        <input type="text" id="search-input" placeholder="Buscar produto...">
-                    </div>
+                    <label class="search-box" for="search-input">
+                    <span>Buscar peça</span>
+                    <input type="text" id="search-input" placeholder="Buscar por nome, categoria ou descrição">
+                    </label>
+                    <label class="catalog-sort-control" for="sort-select">
+                    <span>Ordenar</span>
                     <select id="sort-select" class="sort-select" aria-label="Ordenar produtos">
-                        <option value="newest">Mais recentes</option>
+                        <option value="relevance">Relevância</option>
                         <option value="name_asc">Nome A-Z</option>
-                        <option value="price_asc">Menor preco</option>
-                        <option value="price_desc">Maior preco</option>
+                        <option value="price_asc">Menor preço</option>
+                        <option value="price_desc">Maior preço</option>
                     </select>
+                    </label>
                     <button type="button" class="btn-reset-filters" id="reset-filters">
-                        Limpar filtros
+                    Limpar filtros
                     </button>
                 </div>
             </div>
@@ -100,11 +132,19 @@
                     Carregar mais produtos
                 </button>
             </div>
-            <div id="no-results" style="display: none; text-align: center; padding: 3rem;">
-                <div style="font-size: 4rem; opacity: 0.3;">🔍</div>
-                <h3 style="margin: 1rem 0;">Nenhum produto encontrado</h3>
-                <p style="color: var(--gray);">Tente outros termos ou filtros</p>
+                    <div id="no-results" class="catalog-empty-state" style="display: none;">
+                <div class="catalog-empty-icon">Buscar</div>
+                <h3>Nenhuma peça encontrada com esses filtros</h3>
+                <p>Tente outra categoria ou explore o catálogo completo.</p>
+                <button type="button" class="btn btn-secondary" id="empty-reset-filters">Ver todo o catálogo</button>
             </div>
+
+            <section class="catalog-trust-band" aria-label="Confiança no catálogo">
+                <div><strong>Garantia de 2 anos</strong><span>Condições institucionais da VJ Semijoias.</span></div>
+                <div><strong>Banho Ouro 18K</strong><span>Acabamento elegante para compor diferentes momentos.</span></div>
+                <div><strong>Compra segura</strong><span>Navegação e finalização com fluxo protegido.</span></div>
+                <div><strong>Atendimento</strong><a data-store-whatsapp-link target="_blank" rel="noopener">WhatsApp VJ</a></div>
+            </section>
         </div>
     </section>
     <!-- FOOTER -->
@@ -120,7 +160,7 @@
     <script>
         let currentCategory = 'all';
         let currentSearch = '';
-        let currentSort = 'newest';
+        let currentSort = 'relevance';
         let visibleCount = 12;
         const PRODUCTS_PER_PAGE = 12;
 
@@ -130,13 +170,14 @@
         const searchFromURL = urlParams.get('q');
         if (searchFromURL) currentSearch = searchFromURL;
         const sortFromURL = urlParams.get('sort');
-        if (sortFromURL) currentSort = sortFromURL;
+        const allowedSorts = ['relevance', 'name_asc', 'price_asc', 'price_desc'];
+        if (allowedSorts.includes(sortFromURL)) currentSort = sortFromURL;
 
         function updateCatalogURL() {
             const params = new URLSearchParams();
             if (currentCategory !== 'all') params.set('cat', currentCategory);
             if (currentSearch) params.set('q', currentSearch);
-            if (currentSort !== 'newest') params.set('sort', currentSort);
+            if (currentSort !== 'relevance') params.set('sort', currentSort);
             const query = params.toString();
             history.replaceState(null, '', query ? `/catalogo?${query}` : '/catalogo');
         }
@@ -153,14 +194,14 @@
             if (currentSort === 'name_asc') return sorted.sort(byName);
             if (currentSort === 'price_asc') return sorted.sort(byPrice);
             if (currentSort === 'price_desc') return sorted.sort((a, b) => byPrice(b, a));
-            return sorted.sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+            return sorted;
         }
 
         function renderFilters() {
             const container = document.getElementById('category-filters');
             container.innerHTML = CATEGORIES.map(cat => `
                 <button class="filter-btn ${cat.id === currentCategory ? 'active' : ''}" data-category="${cat.id}">
-                    ${cat.icon} ${cat.name}
+                    <span>${cat.icon}</span> ${cat.name}
                 </button>
             `).join('');
 
@@ -181,9 +222,9 @@
             if (currentSearch) {
                 const search = currentSearch.toLowerCase();
                 products = products.filter(p =>
-                    p.name.toLowerCase().includes(search) ||
-                    p.description.toLowerCase().includes(search) ||
-                    p.categoryName.toLowerCase().includes(search)
+                    String(p.name || '').toLowerCase().includes(search) ||
+                    String(p.description || '').toLowerCase().includes(search) ||
+                    String(p.categoryName || p.category || '').toLowerCase().includes(search)
                 );
             }
 
@@ -199,10 +240,11 @@
             const count = document.getElementById('products-count');
             const pageInfo = document.getElementById('products-page-info');
             const loadMore = document.getElementById('load-more-products');
+            const emptyResetButton = document.getElementById('empty-reset-filters');
 
             if (products.length === 0) {
                 grid.innerHTML = '';
-                noResults.style.display = 'block';
+                noResults.style.display = 'grid';
                 count.textContent = '0 produtos encontrados';
                 pageInfo.textContent = '';
                 loadMore.style.display = 'none';
@@ -227,6 +269,7 @@
             const sortSelect = document.getElementById('sort-select');
             const resetButton = document.getElementById('reset-filters');
             const loadMore = document.getElementById('load-more-products');
+            const emptyResetButton = document.getElementById('empty-reset-filters');
 
             searchInput.value = currentSearch;
             sortSelect.value = currentSort;
@@ -249,17 +292,20 @@
                 updateCatalogURL();
             });
 
-            resetButton.addEventListener('click', () => {
+            function clearCatalogFilters() {
                 currentCategory = 'all';
                 currentSearch = '';
-                currentSort = 'newest';
+                currentSort = 'relevance';
                 searchInput.value = '';
                 sortSelect.value = currentSort;
                 resetVisibleProducts();
                 renderFilters();
                 renderProducts();
                 updateCatalogURL();
-            });
+            }
+
+            resetButton.addEventListener('click', clearCatalogFilters);
+            emptyResetButton?.addEventListener('click', clearCatalogFilters);
 
             loadMore.addEventListener('click', () => {
                 visibleCount += PRODUCTS_PER_PAGE;

@@ -1,11 +1,16 @@
+import shutil
 from decimal import Decimal, ROUND_HALF_UP
+from pathlib import Path
 
 import pytest
 
+from sqlalchemy import select
+
+from backend.config import FRONTEND_ROOT
 from backend.database import SessionLocal
-from backend.models import Product
+from backend.models import Product, ProductImage
 from backend.services.pricing import PAYMENT_FEES, calculate_pricing
-from tests.helpers import admin_headers, client
+from tests.helpers import TINY_GIF_DATA_URL, admin_headers, client
 
 
 MONEY = Decimal("0.01")
@@ -359,3 +364,621 @@ def test_vj_admin_deactivate_requires_confirmation_and_hides_product_from_site()
     assert accepted.json()["is_active"] is False
     assert accepted.json()["updated_by_id"] is not None
     assert not any(item["codigo"] == "VJ-INATIVAR-001" for item in public_after.json())
+
+
+# ---------------------------------------------------------------------------
+# Sprint 015 - Upload de imagens no VJ Admin modular
+# ---------------------------------------------------------------------------
+
+
+def test_vj_admin_creates_product_with_manual_url_image():
+    headers = admin_headers()
+    created = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-IMG-URL-001",
+            "nome": "Produto URL Manual",
+            "categoria": "brincos",
+            "descricao": "Produto com URL manual.",
+            "custo_peca": 30,
+            "imagem_url": "images/products/anel.svg",
+        },
+    )
+
+    assert created.status_code == 201
+    data = created.json()
+    assert data["imagem_url"] == "images/products/anel.svg"
+    assert data["image"] == "images/products/anel.svg"
+    assert data["images"] == ["images/products/anel.svg"]
+
+
+def test_vj_admin_creates_product_with_data_url_image():
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-UPLOAD-001",
+                "nome": "Produto Upload Imagem",
+                "categoria": "brincos",
+                "descricao": "Produto criado com upload de imagem.",
+                "custo_peca": 45,
+                "imagem_url": TINY_GIF_DATA_URL,
+            },
+        )
+
+        assert created.status_code == 201
+        data = created.json()
+        assert data["image"].startswith("images/catalog/admin/")
+        assert data["image"].endswith("/img_1.gif")
+        assert not data["image"].startswith("data:image/")
+        assert data["imagem_url"] == data["image"]
+        assert data["images"] == [data["image"]]
+        assert (FRONTEND_ROOT / Path(data["image"])).is_file()
+
+        with SessionLocal() as db:
+            product = db.get(Product, data["id"])
+            assert product.image.startswith("images/catalog/admin/")
+            gallery = product.gallery_images
+            assert len(gallery) == 1
+            assert isinstance(gallery[0], ProductImage)
+            assert gallery[0].path == product.image
+            assert gallery[0].position == 0
+
+        created_folder = (FRONTEND_ROOT / Path(data["image"])).parent
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+def test_vj_admin_updates_product_changing_image():
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-EDIT-001",
+                "nome": "Produto Editar Imagem",
+                "categoria": "brincos",
+                "descricao": "Produto para editar imagem.",
+                "custo_peca": 50,
+                "imagem_url": "images/products/anel.svg",
+            },
+        )
+        product_id = created.json()["id"]
+        assert created.json()["image"] == "images/products/anel.svg"
+
+        updated = client.put(
+            f"/api/vj-admin/produtos/{product_id}",
+            headers=headers,
+            json={"imagem_url": TINY_GIF_DATA_URL},
+        )
+
+        assert updated.status_code == 200
+        data = updated.json()
+        assert data["image"].startswith("images/catalog/admin/")
+        assert data["image"].endswith("/img_1.gif")
+        assert not data["image"].startswith("data:image/")
+        assert data["images"] == [data["image"]]
+
+        created_folder = (FRONTEND_ROOT / Path(data["image"])).parent
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+def test_vj_admin_updates_product_removing_image():
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-REMOVE-001",
+                "nome": "Produto Remover Imagem",
+                "categoria": "brincos",
+                "descricao": "Produto para remover imagem.",
+                "custo_peca": 35,
+                "imagem_url": TINY_GIF_DATA_URL,
+            },
+        )
+        product_id = created.json()["id"]
+        assert created.json()["image"].startswith("images/catalog/admin/")
+        created_folder = (FRONTEND_ROOT / Path(created.json()["image"])).parent
+
+        updated = client.put(
+            f"/api/vj-admin/produtos/{product_id}",
+            headers=headers,
+            json={"imagem_url": ""},
+        )
+
+        assert updated.status_code == 200
+        data = updated.json()
+        assert data["image"] is None
+        assert data["imagem_url"] is None
+        assert data["images"] == []
+
+        with SessionLocal() as db:
+            product = db.get(Product, product_id)
+            assert product.image is None
+            assert len(product.gallery_images) == 0
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+def test_vj_admin_rejects_invalid_image_format():
+    headers = admin_headers()
+    fake_svg_data_url = "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="
+
+    response = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-IMG-INVALID-001",
+            "nome": "Produto Imagem Invalida",
+            "categoria": "brincos",
+            "descricao": "Produto com imagem invalida.",
+            "custo_peca": 25,
+            "imagem_url": fake_svg_data_url,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "nao suportado" in response.json()["error"].lower()
+
+
+def test_vj_admin_rejects_mismatched_image_type():
+    headers = admin_headers()
+    fake_png_with_gif = TINY_GIF_DATA_URL.replace("image/gif", "image/png")
+
+    response = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-IMG-MISMATCH-001",
+            "nome": "Produto Imagem Falsa",
+            "categoria": "brincos",
+            "descricao": "Produto com mime divergente.",
+            "custo_peca": 25,
+            "imagem_url": fake_png_with_gif,
+        },
+    )
+
+    assert response.status_code == 400
+    assert "Tipo de imagem" in response.json()["error"]
+
+
+def test_vj_admin_image_fields_consistency():
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-CONSIST-001",
+                "nome": "Produto Consistencia Imagem",
+                "categoria": "colares",
+                "descricao": "Produto para validar consistencia de campos.",
+                "custo_peca": 60,
+                "imagem_url": TINY_GIF_DATA_URL,
+            },
+        )
+
+        assert created.status_code == 201
+        data = created.json()
+        assert data["image"] == data["imagem_url"]
+        assert data["images"] == [data["image"]]
+        assert data["image"] is not None
+        assert not data["image"].startswith("data:")
+
+        created_folder = (FRONTEND_ROOT / Path(data["image"])).parent
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+def test_vj_admin_local_storage_does_not_require_r2(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-LOCAL-001",
+                "nome": "Produto Storage Local",
+                "categoria": "brincos",
+                "descricao": "Produto com storage local.",
+                "custo_peca": 20,
+                "imagem_url": TINY_GIF_DATA_URL,
+            },
+        )
+
+        assert created.status_code == 201
+        data = created.json()
+        assert data["image"].startswith("images/catalog/admin/")
+        assert (FRONTEND_ROOT / Path(data["image"])).is_file()
+
+        created_folder = (FRONTEND_ROOT / Path(data["image"])).parent
+    finally:
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+def test_vj_admin_r2_incomplete_returns_safe_error_without_secrets(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "r2")
+    monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+    headers = admin_headers()
+
+    response = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-IMG-R2-FAIL-001",
+            "nome": "Produto R2 Incompleto",
+            "categoria": "brincos",
+            "descricao": "Produto com R2 incompleto.",
+            "custo_peca": 20,
+            "imagem_url": TINY_GIF_DATA_URL,
+        },
+    )
+
+    assert response.status_code == 503
+    body = response.json()
+    body_text = str(body)
+    assert "R2_ACCESS_KEY_ID" not in body_text
+    assert "R2_SECRET_ACCESS_KEY" not in body_text
+    assert "storage" in body_text.lower() or "indisponivel" in body_text.lower()
+
+    with SessionLocal() as db:
+        existing = db.scalar(select(Product).where(Product.codigo == "VJ-IMG-R2-FAIL-001"))
+        assert existing is None
+
+
+def test_vj_admin_update_storage_failure_does_not_corrupt_previous_image(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-IMG-EDIT-FAIL-001",
+                "nome": "Produto Editar Falha Storage",
+                "categoria": "brincos",
+                "descricao": "Produto para validar falha de storage na edicao.",
+                "custo_peca": 40,
+                "imagem_url": TINY_GIF_DATA_URL,
+            },
+        )
+        assert created.status_code == 201
+        product_id = created.json()["id"]
+        original_image = created.json()["image"]
+        assert original_image.startswith("images/catalog/admin/")
+        created_folder = (FRONTEND_ROOT / Path(original_image)).parent
+
+        monkeypatch.setenv("STORAGE_BACKEND", "r2")
+        monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
+        monkeypatch.delenv("R2_BUCKET", raising=False)
+        monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+        monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+        monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+
+        failed = client.put(
+            f"/api/vj-admin/produtos/{product_id}",
+            headers=headers,
+            json={"imagem_url": TINY_GIF_DATA_URL},
+        )
+
+        assert failed.status_code == 503
+        body_text = str(failed.json())
+        assert "R2_ACCESS_KEY_ID" not in body_text
+        assert "R2_SECRET_ACCESS_KEY" not in body_text
+
+        stored = client.get(f"/api/vj-admin/produtos/{product_id}", headers=headers)
+        assert stored.status_code == 200
+        assert stored.json()["image"] == original_image
+        assert stored.json()["images"] == [original_image]
+    finally:
+        monkeypatch.setenv("STORAGE_BACKEND", "local")
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)
+
+
+# ---------------------------------------------------------------------------
+# Sprint 016 - Multiplas imagens / galeria no VJ Admin modular
+# ---------------------------------------------------------------------------
+
+
+def admin_gallery_folders(images):
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    folders = set()
+    for image in images:
+        if not image or image.startswith("http"):
+            continue
+        image_path = FRONTEND_ROOT / Path(image)
+        if image_path.is_file() and image_path.parent.is_relative_to(admin_image_root):
+            folders.add(image_path.parent)
+    return folders
+
+
+def cleanup_admin_gallery_folders(folders):
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    for folder in folders:
+        if folder.is_relative_to(admin_image_root):
+            shutil.rmtree(folder, ignore_errors=True)
+
+
+def test_vj_admin_creates_product_with_multiple_manual_url_images():
+    headers = admin_headers()
+    images = [
+        "images/products/anel.svg",
+        "images/products/brinco-marguerite.svg",
+        "https://cdn.example.com/vj/colar.webp",
+    ]
+
+    created = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-URL-001",
+            "nome": "Produto Galeria URL",
+            "categoria": "brincos",
+            "descricao": "Produto com galeria manual.",
+            "custo_peca": 30,
+            "imagem_url": images[0],
+            "images": images,
+        },
+    )
+
+    assert created.status_code == 201, created.text
+    data = created.json()
+    assert data["image"] == images[0]
+    assert data["imagem_url"] == images[0]
+    assert data["images"] == images
+
+    with SessionLocal() as db:
+        product = db.get(Product, data["id"])
+        assert product.image == images[0]
+        assert [(item.path, item.position) for item in product.gallery_images] == [
+            (images[0], 0),
+            (images[1], 1),
+            (images[2], 2),
+        ]
+
+
+def test_vj_admin_creates_product_with_multiple_data_url_images(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    folders = set()
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-GAL-UPLOAD-001",
+                "nome": "Produto Galeria Upload",
+                "categoria": "aneis",
+                "descricao": "Produto com multiplos uploads.",
+                "custo_peca": 44,
+                "images": [TINY_GIF_DATA_URL, TINY_GIF_DATA_URL],
+            },
+        )
+
+        assert created.status_code == 201, created.text
+        data = created.json()
+        assert data["image"] == data["images"][0]
+        assert data["imagem_url"] == data["images"][0]
+        assert len(data["images"]) == 2
+        assert data["images"][0].endswith("/img_1.gif")
+        assert data["images"][1].endswith("/img_2.gif")
+        assert all(not image.startswith("data:image/") for image in data["images"])
+        assert all((FRONTEND_ROOT / Path(image)).is_file() for image in data["images"])
+
+        with SessionLocal() as db:
+            product = db.get(Product, data["id"])
+            assert [item.position for item in product.gallery_images] == [0, 1]
+            assert [item.path for item in product.gallery_images] == data["images"]
+
+        folders = admin_gallery_folders(data["images"])
+    finally:
+        cleanup_admin_gallery_folders(folders)
+
+
+def test_vj_admin_creates_product_with_mixed_url_and_data_url_gallery(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    manual_url = "images/products/colar-sol-dourado.svg"
+    folders = set()
+
+    try:
+        created = client.post(
+            "/api/vj-admin/produtos",
+            headers=headers,
+            json={
+                "codigo": "VJ-GAL-MIX-001",
+                "nome": "Produto Galeria Mista",
+                "categoria": "colares",
+                "descricao": "Produto com URL e upload.",
+                "custo_peca": 55,
+                "imagem_url": manual_url,
+                "images": [manual_url, TINY_GIF_DATA_URL],
+            },
+        )
+
+        assert created.status_code == 201, created.text
+        data = created.json()
+        assert data["image"] == manual_url
+        assert data["imagem_url"] == manual_url
+        assert data["images"][0] == manual_url
+        assert data["images"][1].endswith("/img_2.gif")
+        assert not data["images"][1].startswith("data:image/")
+
+        with SessionLocal() as db:
+            product = db.get(Product, data["id"])
+            assert [(item.path, item.position) for item in product.gallery_images] == [
+                (data["images"][0], 0),
+                (data["images"][1], 1),
+            ]
+
+        folders = admin_gallery_folders(data["images"])
+    finally:
+        cleanup_admin_gallery_folders(folders)
+
+
+def test_vj_admin_updates_gallery_reordering_and_removing_images():
+    headers = admin_headers()
+    original = [
+        "images/products/anel.svg",
+        "images/products/brinco-marguerite.svg",
+        "images/products/colar-sol-dourado.svg",
+    ]
+    created = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-EDIT-001",
+            "nome": "Produto Editar Galeria",
+            "categoria": "pulseiras",
+            "descricao": "Produto para editar galeria.",
+            "custo_peca": 38,
+            "images": original,
+        },
+    )
+    product_id = created.json()["id"]
+    reordered = [original[2], original[0], original[1]]
+
+    updated = client.put(
+        f"/api/vj-admin/produtos/{product_id}",
+        headers=headers,
+        json={"images": reordered},
+    )
+    removed = client.put(
+        f"/api/vj-admin/produtos/{product_id}",
+        headers=headers,
+        json={"images": [reordered[0], reordered[2]]},
+    )
+    cleared = client.put(
+        f"/api/vj-admin/produtos/{product_id}",
+        headers=headers,
+        json={"images": []},
+    )
+
+    assert created.status_code == 201, created.text
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["image"] == reordered[0]
+    assert updated.json()["images"] == reordered
+    assert removed.status_code == 200, removed.text
+    assert removed.json()["images"] == [reordered[0], reordered[2]]
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["image"] is None
+    assert cleared.json()["imagem_url"] is None
+    assert cleared.json()["images"] == []
+
+    with SessionLocal() as db:
+        product = db.get(Product, product_id)
+        assert product.image is None
+        assert product.gallery_images == []
+
+
+def test_vj_admin_gallery_creation_storage_failure_does_not_persist_product(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "r2")
+    monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+    headers = admin_headers()
+
+    failed = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-R2-FAIL-001",
+            "nome": "Produto Galeria R2 Falha",
+            "categoria": "brincos",
+            "descricao": "Produto com falha segura de galeria.",
+            "custo_peca": 20,
+            "images": [TINY_GIF_DATA_URL, "images/products/anel.svg"],
+        },
+    )
+
+    assert failed.status_code == 503
+    body_text = str(failed.json())
+    assert "R2_ACCESS_KEY_ID" not in body_text
+    assert "R2_SECRET_ACCESS_KEY" not in body_text
+
+    with SessionLocal() as db:
+        existing = db.scalar(select(Product).where(Product.codigo == "VJ-GAL-R2-FAIL-001"))
+        assert existing is None
+
+
+def test_vj_admin_gallery_update_storage_failure_preserves_previous_gallery(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    original = ["images/products/anel.svg", "images/products/brinco-marguerite.svg"]
+    created = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-GAL-EDIT-FAIL-001",
+            "nome": "Produto Galeria Falha Edicao",
+            "categoria": "brincos",
+            "descricao": "Produto para validar rollback de galeria.",
+            "custo_peca": 28,
+            "images": original,
+        },
+    )
+    product_id = created.json()["id"]
+    assert created.status_code == 201, created.text
+
+    monkeypatch.setenv("STORAGE_BACKEND", "r2")
+    monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
+    monkeypatch.delenv("R2_BUCKET", raising=False)
+    monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+
+    failed = client.put(
+        f"/api/vj-admin/produtos/{product_id}",
+        headers=headers,
+        json={"images": [TINY_GIF_DATA_URL, original[0]]},
+    )
+
+    assert failed.status_code == 503
+    body_text = str(failed.json())
+    assert "R2_ACCESS_KEY_ID" not in body_text
+    assert "R2_SECRET_ACCESS_KEY" not in body_text
+
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    stored = client.get(f"/api/vj-admin/produtos/{product_id}", headers=headers)
+    assert stored.status_code == 200
+    assert stored.json()["image"] == original[0]
+    assert stored.json()["images"] == original
