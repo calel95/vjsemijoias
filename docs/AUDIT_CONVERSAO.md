@@ -435,7 +435,22 @@ Melhorias implementadas nesta sprint:
 - Estado de carrinho vazio ganhou mensagem comercial e CTA para o catalogo.
 - Estilos responsivos adicionados para resumo, frete, cupom, CTA, itens e blocos de confianca.
 
-### Sprint 008 — Catalogo
+### Sprint 008 — Checkout Comercial
+
+Objetivo: reduzir desistencia antes do pagamento.
+
+Impacto esperado: aumentar pedidos concluidos.
+
+Escopo sugerido:
+
+- Comunicacao.
+- Seguranca.
+- InfinitePay.
+- Mensagens.
+- Campos.
+- UX mobile.
+
+### Sprint 009 — Catalogo / Descoberta de Produtos
 
 Objetivo: facilitar descoberta de produtos.
 
@@ -450,26 +465,11 @@ Escopo sugerido:
 - Comparacao.
 - Descoberta.
 
-### Sprint 009 — Checkout
-
-Objetivo: reduzir desistencia antes do pagamento.
-
-Impacto esperado: maior taxa de pedidos concluidos.
-
-Escopo sugerido:
-
-- Comunicacao.
-- Seguranca.
-- InfinitePay.
-- Mensagens.
-- Campos.
-- UX mobile.
-
 ### Sprint 010 — Pos-compra
 
-Objetivo: fidelizacao.
+Objetivo: melhorar confianca apos pedido e preparar recompra.
 
-Impacto esperado: maior recompra.
+Impacto esperado: aumentar recompra e reduzir duvidas pos-compra.
 
 Escopo sugerido:
 
@@ -489,8 +489,8 @@ Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar prior
 | Sprint 005 | Cliques para Catalogo |
 | Sprint 006 | Adicoes ao Carrinho |
 | Sprint 007 | Reducao de Abandono do Carrinho |
-| Sprint 008 | Visualizacoes de Produto |
-| Sprint 009 | Pedidos Concluidos |
+| Sprint 008 | Pedidos Concluidos |
+| Sprint 009 | Visualizacoes de Produto |
 | Sprint 010 | Recompra |
 
 No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por ferramentas como Google Analytics, PostHog, Plausible ou outra solucao de analytics.
