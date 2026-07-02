@@ -375,6 +375,7 @@ Melhorias implementadas nesta sprint:
 - Beneficios reorganizados em Garantia, Ouro 18K, Compra Segura e Envio.
 - Texto de Sobre reduzido para uma apresentacao rapida da marca, com CTA `Conheça nossa história`.
 - Ajustes responsivos adicionados para preservar leitura, CTAs e cards no mobile.
+- Correcao visual aplicada aos estilos comerciais da Home, reforcando hero, categorias, vitrine, CTA intermediario, beneficios, Sobre, estados de foco e responsividade.
 
 ### Sprint 006 — Catalogo
 
