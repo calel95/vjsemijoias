@@ -720,31 +720,75 @@ Documento operacional criado:
 
 - `docs/IMAGE_VARIANTS.md`.
 
+## Sprint 019 - Uso de variantes no catalogo publico
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- O catalogo publico passou a tentar usar a variante `card` quando o card de produto possui imagem local raster.
+- A URL da variante segue o padrao da Sprint 018: `images/variants/<caminho-original-sem-images>/<arquivo>-card.webp`.
+- Exemplo: `images/catalog/produto/img_1.jpg` tenta carregar `images/variants/catalog/produto/img_1-card.webp`.
+- O frontend nao faz `fetch`, `HEAD` ou requisicao extra para verificar existencia da variante.
+- O fallback acontece pelo proprio evento `onerror` da imagem.
+- Se a variante falhar, o card troca para a imagem original registrada em `data-original-src`.
+- Se a imagem original tambem falhar, o placeholder visual existente continua sendo exibido.
+- URLs externas, SVG, data URL e imagens vazias continuam usando o comportamento original.
+
+Compatibilidade preservada:
+
+- Nenhum backend de produtos foi alterado.
+- `Product.to_dict()` nao foi alterado.
+- O contrato publico `image`/`imagem_url`/`images` foi preservado.
+- Variantes continuam opcionais e o site publico nao depende delas existirem.
+- Nenhum banco, schema, migration, upload, galeria, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro, dashboard, SEO/JSON-LD ou service worker foi alterado.
+- Nenhuma variante e gerada automaticamente nesta sprint.
+- R2 nao e chamado.
+
+Cobertura adicionada:
+
+- Imagem local `.jpg` gera caminho de variante `card`.
+- Imagem local `.jpeg` gera caminho de variante `card`.
+- Imagem local `.png` gera caminho de variante `card`.
+- Imagem local `.webp` gera caminho de variante `card`.
+- SVG mantem original.
+- URL externa mantem original.
+- Data URL mantem original.
+- Imagem vazia mantem placeholder atual.
+- Erro da variante cai para imagem original uma vez e depois para placeholder se necessario.
+- Nao ha uso de `fetch` ou `HEAD` para descobrir variantes.
+
+Como preparar variantes antes de testar catalogo:
+
+```powershell
+uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
+```
+
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 019 - Usar variantes no catalogo publico.
+A proxima sprint recomendada e a Sprint 020 - Usar variantes na pagina de produto.
 
 Motivo:
 
-- O catalogo concentra muitos cards de produto e tende a multiplicar o impacto do peso de imagens.
-- A variante `card` ja prepara o tamanho esperado para listagens sem mudar o contrato publico nesta sprint.
-- Ativar primeiro no catalogo permite medir ganho de performance antes de mexer na pagina de produto.
+- O catalogo ja passou a usar `card` com fallback seguro.
+- A pagina de produto concentra a imagem principal e pode se beneficiar da variante `detail`.
+- A ativacao deve preservar SEO/JSON-LD, preload da imagem principal, galeria e fallback para original.
 
 Escopo recomendado:
 
-- Fazer o catalogo publico consumir variantes `card` quando disponiveis.
-- Manter fallback para `product.image` e `product.images[0]`.
-- Nao remover originais.
-- Preservar SEO, carrinho e checkout.
-- Medir impacto em LCP, peso transferido e ausencia de 404.
+- Usar variante `detail` na imagem principal da pagina de produto quando disponivel.
+- Manter fallback para original em erro de carregamento.
+- Nao alterar contrato publico nem dados de produto.
+- Preservar `loading="eager"`, `fetchpriority="high"`, `decoding="async"` e dimensoes explicitas da imagem principal.
+- Medir impacto em LCP e evitar CLS.
 
-## Validacoes da Sprint 018
+## Validacoes da Sprint 019
 
 Validacoes obrigatorias desta sprint:
 
 - `uv run pytest`.
 - `uv run python tools/e2e_smoke.py`.
-- `node --check` somente se JS for alterado; nesta sprint nao houve alteracao de JS.
+- `node --check frontend/js/main.js`.
 - `git diff --check`.
 
 Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

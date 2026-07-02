@@ -87,6 +87,33 @@ Status comuns:
 - `ignorar`: item fora do escopo, como URL externa ou SVG.
 - `erro`: problema que exige correcao, como arquivo inexistente ou path traversal.
 
+## Uso no catalogo publico
+
+Desde a Sprint 019, os cards do catalogo publico tentam usar a variante `card` quando a imagem principal e um arquivo local raster.
+
+Exemplo:
+
+- Original: `images/catalog/produto/img_1.jpg`
+- Variante tentada: `images/variants/catalog/produto/img_1-card.webp`
+
+O catalogo nao faz `fetch` ou `HEAD` para verificar existencia. Ele define a variante como `src` e guarda a imagem original em `data-original-src`.
+
+Se a variante nao existir ou falhar, o `onerror` troca a imagem para a original. Se a original tambem falhar, o placeholder visual do card continua funcionando.
+
+Fontes que nao tentam variante:
+
+- URL externa `http/https`.
+- SVG.
+- Data URL.
+- Caminho vazio.
+- Formato local fora de `.jpg`, `.jpeg`, `.png` ou `.webp`.
+
+Para preparar variantes antes de testar o catalogo:
+
+```powershell
+uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
+```
+
 ## Como validar
 
 Antes de usar variantes em producao:
@@ -109,6 +136,4 @@ Antes de usar variantes em producao:
 
 ## Proximos passos
 
-A proxima sprint recomendada e usar variantes no catalogo publico, porque os cards/listagens tendem a multiplicar o impacto de peso de imagem.
-
-Depois disso, avaliar uso na pagina de produto e, por ultimo, gerar variantes automaticamente no upload do VJ Admin modular.
+A proxima sprint recomendada e usar a variante `detail` na pagina de produto, mantendo preload, SEO/JSON-LD, galeria e fallback para original. Depois disso, avaliar geracao automatica de variantes no upload do VJ Admin modular.

@@ -2,21 +2,124 @@
 // MAIN - Funções principais
 // ============================================
 
+function escapeHTML(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function normalizeImageUrl(imageUrl) {
+    return String(imageUrl || '').trim().replace(/\\/g, '/');
+}
+
+function isExternalImageUrl(imageUrl) {
+    const image = normalizeImageUrl(imageUrl).toLowerCase();
+    return image.startsWith('http://') || image.startsWith('https://') || image.startsWith('//');
+}
+
+function isDataImageUrl(imageUrl) {
+    return normalizeImageUrl(imageUrl).toLowerCase().startsWith('data:');
+}
+
+function imagePathWithoutQuery(imageUrl) {
+    return normalizeImageUrl(imageUrl).split('#')[0].split('?')[0];
+}
+
+function isSvgImageUrl(imageUrl) {
+    return imagePathWithoutQuery(imageUrl).toLowerCase().endsWith('.svg');
+}
+
+function imageCardVariantUrl(imageUrl) {
+    const image = normalizeImageUrl(imageUrl);
+    if (!image || isExternalImageUrl(image) || isDataImageUrl(image) || isSvgImageUrl(image)) {
+        return image;
+    }
+
+    const hasLeadingSlash = image.startsWith('/');
+    let path = image.replace(/^\/+/, '');
+    if (path.startsWith('frontend/images/')) {
+        path = path.slice('frontend/'.length);
+    }
+    if (!path.startsWith('images/')) return image;
+
+    const cleanPath = imagePathWithoutQuery(path);
+    const extension = cleanPath.slice(cleanPath.lastIndexOf('.') + 1).toLowerCase();
+    if (!['jpg', 'jpeg', 'png', 'webp'].includes(extension)) return image;
+
+    const relativeToImages = cleanPath.slice('images/'.length);
+    const lastSlash = relativeToImages.lastIndexOf('/');
+    const directory = lastSlash >= 0 ? relativeToImages.slice(0, lastSlash + 1) : '';
+    const filename = lastSlash >= 0 ? relativeToImages.slice(lastSlash + 1) : relativeToImages;
+    const dotIndex = filename.lastIndexOf('.');
+    if (dotIndex <= 0) return image;
+
+    const stem = filename.slice(0, dotIndex);
+    return `${hasLeadingSlash ? '/' : ''}images/variants/${directory}${stem}-card.webp`;
+}
+
+function productMainImage(product) {
+    if (product.image) return product.image;
+    if (Array.isArray(product.images) && product.images.length) return product.images[0];
+    return '';
+}
+
+function productCardImageSrc(product) {
+    const image = productMainImage(product);
+    return imageCardVariantUrl(image);
+}
+
+function fallbackProductCardImage(imageElement) {
+    const originalSrc = imageElement.getAttribute('data-original-src');
+    const currentSrc = imageElement.getAttribute('src');
+    if (originalSrc && currentSrc !== originalSrc && imageElement.dataset.originalFallbackApplied !== 'true') {
+        imageElement.dataset.originalFallbackApplied = 'true';
+        imageElement.setAttribute('src', originalSrc);
+        return;
+    }
+
+    imageElement.style.display = 'none';
+    if (imageElement.nextElementSibling) {
+        imageElement.nextElementSibling.style.display = 'flex';
+    }
+}
+
+function renderProductImage(product) {
+    const productUrl = `/produto?id=${encodeURIComponent(product.id)}`;
+    const productName = product.name || 'Produto VJ Semijoias';
+    const originalImage = productMainImage(product);
+
+    if (!originalImage) {
+        return `<a href="${productUrl}" aria-label="Ver detalhes de ${escapeHTML(productName)}">
+            <div class="placeholder">${escapeHTML(product.icon || 'VJ')}</div>
+        </a>`;
+    }
+
+    const cardImage = productCardImageSrc(product);
+    return `<a href="${productUrl}" aria-label="Ver detalhes de ${escapeHTML(productName)}">
+        <img src="${escapeHTML(cardImage)}" data-original-src="${escapeHTML(originalImage)}" alt="${escapeHTML(productName)}" loading="lazy" decoding="async" onerror="fallbackProductCardImage(this)">
+        <div class="placeholder" style="display:none;">${escapeHTML(product.icon || 'VJ')}</div>
+    </a>`;
+}
+
 function createProductCard(product) {
     const badgeLabels = {
         new: 'NOVO',
         sale: 'OFERTA',
         bestseller: 'MAIS VENDIDO',
     };
-    const badgeHTML = product.badge ?
-        `<span class="product-badge ${product.badge}">${badgeLabels[product.badge] || product.badge}</span>` : '';
+    const badge = product.badge || '';
+    const badgeHTML = badge ?
+        `<span class="product-badge ${escapeHTML(badge)}">${escapeHTML(badgeLabels[badge] || badge)}</span>` : '';
     const isOutOfStock = product.stock_status === 'out_of_stock';
     const stockHTML = isOutOfStock
         ? '<div class="stock-note unavailable">Sem estoque no momento</div>'
         : (product.stock_status === 'preorder' ? '<div class="stock-note preorder">Sob encomenda</div>' : '');
     const categoryName = product.categoryName || product.category || 'Semijoia';
-    const description = product.description || 'Peça selecionada pela curadoria VJ Semijoias.';
-    const productUrl = `/produto?id=${product.id}`;
+    const description = product.description || 'Peca selecionada pela curadoria VJ Semijoias.';
+    const productUrl = `/produto?id=${encodeURIComponent(product.id)}`;
 
     const priceHTML = product.oldPrice ?
         `<div class="product-price">
@@ -27,27 +130,18 @@ function createProductCard(product) {
         `<div class="product-price">${formatPrice(product.price)}</div>
         <div class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</div>`;
 
-    const imageHTML = product.image ?
-        `<a href="${productUrl}" aria-label="Ver detalhes de ${product.name}">
-            <img src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="placeholder" style="display:none;">${product.icon || 'VJ'}</div>
-        </a>` :
-        `<a href="${productUrl}" aria-label="Ver detalhes de ${product.name}">
-            <div class="placeholder">${product.icon || 'VJ'}</div>
-        </a>`;
-
     return `
-        <div class="product-card catalog-product-card" data-category="${product.category}">
+        <div class="product-card catalog-product-card" data-category="${escapeHTML(product.category || '')}">
             <div class="product-image">
                 ${badgeHTML}
-                ${imageHTML}
+                ${renderProductImage(product)}
             </div>
             <div class="product-info">
-                <span class="product-category">${categoryName}</span>
+                <span class="product-category">${escapeHTML(categoryName)}</span>
                 <a href="${productUrl}">
-                    <h3 class="product-title">${product.name}</h3>
+                    <h3 class="product-title">${escapeHTML(product.name || 'Produto')}</h3>
                 </a>
-                <p class="product-description">${description}</p>
+                <p class="product-description">${escapeHTML(description)}</p>
 
                 ${stockHTML}
                 <div class="product-footer">
@@ -56,16 +150,15 @@ function createProductCard(product) {
                     </div>
                 </div>
                 <div class="product-card-actions">
-                    <a class="product-view-link" href="${productUrl}">Ver peça</a>
-                    <button class="btn-add-cart" onclick="addToCart(${product.id})" title="Adicionar ao carrinho" ${isOutOfStock ? 'disabled' : ''}>
+                    <a class="product-view-link" href="${productUrl}">Ver peca</a>
+                    <button class="btn-add-cart" onclick="addToCart(${Number(product.id)})" title="Adicionar ao carrinho" ${isOutOfStock ? 'disabled' : ''}>
                         Adicionar
                     </button>
                 </div>
             </div>
         </div>
     `;
-}
-function addToCart(productId) {
+}function addToCart(productId) {
     const product = getProductById(productId);
     if (!product || product.stock_status === 'out_of_stock') {
         showToast('Produto sem estoque no momento', 'error');
