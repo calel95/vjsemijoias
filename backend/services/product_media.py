@@ -1,3 +1,4 @@
+import logging
 import re
 import unicodedata
 
@@ -7,6 +8,9 @@ from backend.config import FRONTEND_ROOT
 from backend.models import ProductImage
 from backend.services.storage import r2_enabled, store_public_file
 from backend.services.validation import decode_base64_image, validate_image_bytes
+
+
+logger = logging.getLogger(__name__)
 
 
 ADMIN_CATALOG_IMAGE_ROOT = FRONTEND_ROOT / "images" / "catalog" / "admin"
@@ -141,8 +145,49 @@ def save_admin_image(product, image_data, position):
     return destination_path.relative_to(FRONTEND_ROOT).as_posix()
 
 
+def generate_variants_for_local_product_image(image_path: str) -> dict:
+    """Gera variantes thumbnail/card/detail para imagem local salva no upload.
+
+    Regras:
+    - Ignora URL externa, SVG, data URL, R2/URL absoluta.
+    - Apenas gera para arquivos locais raster dentro de frontend/images.
+    - Falha de variante nao quebra o fluxo principal.
+    - Retorna relatorio simples com status e variantes geradas.
+    """
+    try:
+        from backend.services.image_variants import generate_variants_for_image
+
+        report = generate_variants_for_image(image_path, apply=True)
+        if report.get("status") == "erro":
+            logger.warning(
+                "Variante nao gerada para %s: %s",
+                image_path,
+                report.get("reason", ""),
+            )
+        return {
+            "image": image_path,
+            "status": report.get("status", "erro"),
+            "reason": report.get("reason", ""),
+            "generated": report.get("generated", []),
+        }
+    except Exception as exc:
+        logger.warning("Falha ao gerar variantes para %s: %s", image_path, exc)
+        return {
+            "image": image_path,
+            "status": "erro",
+            "reason": str(exc),
+            "generated": [],
+        }
+
+
 def store_admin_gallery_images(product, images):
-    return [save_admin_image(product, image, position) for position, image in enumerate(images)]
+    saved = []
+    for position, image in enumerate(images):
+        path = save_admin_image(product, image, position)
+        saved.append(path)
+        if path and not path.startswith(("http://", "https://")) and not path.startswith("data:"):
+            generate_variants_for_local_product_image(path)
+    return saved
 
 
 def replace_product_gallery(product, images):

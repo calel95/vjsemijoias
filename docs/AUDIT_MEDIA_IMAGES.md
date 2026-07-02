@@ -854,3 +854,72 @@ Validacoes obrigatorias desta sprint:
 - `git diff --check`.
 
 Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.
+
+## Sprint 021 — Gerar variantes automaticamente no upload do VJ Admin modular
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- Novos uploads feitos pelo VJ Admin modular com `STORAGE_BACKEND=local` passam a gerar automaticamente as variantes `thumbnail`, `card` e `detail` no momento em que a imagem original e salva localmente.
+- A funcao `generate_variants_for_local_product_image()` foi adicionada em `backend/services/product_media.py` e integrada em `store_admin_gallery_images()`.
+- A geracao reutiliza `generate_variants_for_image()` de `backend/services/image_variants.py` (Sprint 018).
+- `Product.image` e `ProductImage.path` continuam apontando para o original, nunca para variantes.
+- O contrato publico `image`/`imagem_url`/`images` nao foi alterado.
+- Falha na geracao de variantes nao quebra o cadastro do produto. A excecao e capturada, logada como aviso e o produto e persistido com a imagem original.
+- SVG e GIF animado nao geram variantes e nao falham o cadastro.
+- URL externa e URL R2 absoluta nao geram variantes nesta sprint.
+- Em modo R2 (`STORAGE_BACKEND=r2`), a imagem e enviada para R2 e variantes locais nao sao geradas automaticamente nesta sprint.
+- Nenhum schema, migration, site publico, carrinho, checkout, pedido, pagamento, estoque, preco ou frete foi alterado.
+- Nenhuma dependencia nova foi instalada.
+
+Regras preservadas:
+
+- A imagem original continua sendo salva como antes.
+- Variantes sao arquivos derivados, nao substituem o original.
+- Nao alterar `Product.image`.
+- Nao alterar `ProductImage.path`.
+- Nao adicionar campos novos no banco.
+- Nao expor variantes no payload publico.
+- O site publico ja deriva a URL da variante sozinho.
+- Data URL nao e persistida.
+
+Cobertura adicionada:
+
+- Upload local de uma imagem gera original e variantes thumbnail/card/detail.
+- Upload local de multiplas imagens gera variantes para cada imagem.
+- `Product.image` continua apontando para o original, nao para variante.
+- `ProductImage.path` continua apontando para original, nao para variante.
+- API retorna image/imagem_url/images com original.
+- URL manual nao gera variante.
+- SVG nao gera variante e nao falha.
+- Falha na geracao de variante nao impede cadastro do produto.
+- Data URL nao e persistida.
+
+Arquivos alterados:
+
+- `backend/services/product_media.py`: adicionada `generate_variants_for_local_product_image()` e integrada em `store_admin_gallery_images()`.
+- `tests/test_vj_admin_sprint021.py`: adicionados testes de geracao automatica de variantes.
+- `docs/AUDIT_MEDIA_IMAGES.md`: atualizado com Sprint 021.
+- `docs/IMAGE_VARIANTS.md`: atualizado com secao de geracao automatica.
+
+## Recomendacao para a proxima sprint
+
+A proxima sprint recomendada e a Sprint 022 — Variantes remotas em R2 ou migracao gradual de imagens antigas para R2.
+
+Motivo:
+
+- A geracao automatica de variantes locais ja esta operacional desde a Sprint 021.
+- O site publico ja usa variantes com fallback desde as Sprints 019/020.
+- Imagens antigas ainda precisam de variantes geradas via script manual.
+- R2 remoto ainda nao gera variantes automaticas.
+
+## Validacoes da Sprint 021
+
+Validacoes obrigatorias desta sprint:
+
+- `uv run pytest`.
+- `uv run python tools/e2e_smoke.py`.
+- `git diff --check`.
+
+`node --check` nao e necessario porque nenhum JavaScript foi alterado. Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

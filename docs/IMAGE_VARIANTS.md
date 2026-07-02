@@ -165,4 +165,32 @@ Antes de usar variantes em producao:
 
 ## Proximos passos
 
-Avaliar geracao automatica de variantes no upload do VJ Admin modular e revisar cache/CDN antes de producao. Antes de lotes maiores, rodar dry-run, aplicar em lote pequeno, conferir qualidade visual e validar catalogo/produto com fallback para original.
+Avaliar geracao de variantes remotas em R2 e revisar cache/CDN antes de producao. Antes de lotes maiores, rodar dry-run, aplicar em lote pequeno, conferir qualidade visual e validar catalogo/produto com fallback para original.
+
+## Geracao automatica no upload do VJ Admin modular
+
+Desde a Sprint 021, novos uploads feitos pelo VJ Admin modular com `STORAGE_BACKEND=local` geram automaticamente as variantes `thumbnail`, `card` e `detail` no momento em que a imagem original e salva localmente.
+
+Comportamento:
+
+- A imagem original continua sendo salva como antes em `frontend/images/catalog/admin/<id>-<slug>/img_N.ext`.
+- As variantes sao geradas em `frontend/images/variants/catalog/admin/<id>-<slug>/img_N-<variant>.webp` (ou formato compativel se WebP nao estiver disponivel).
+- `Product.image` e `ProductImage.path` continuam apontando para o original, nunca para variantes.
+- O contrato publico `image`/`imagem_url`/`images` nao foi alterado.
+- Falha na geracao de variantes nao quebra o cadastro do produto. O site publico faz fallback para o original.
+- SVG e GIF animado nao geram variantes e nao falham o cadastro.
+- URL externa e URL R2 absoluta nao geram variantes nesta sprint.
+- Em modo R2 (`STORAGE_BACKEND=r2`), a imagem e enviada para R2 e variantes locais nao sao geradas automaticamente nesta sprint. Isso fica para uma sprint futura de variantes remotas.
+
+Quando ainda e necessario usar o script manual:
+
+- Para imagens antigas ja cadastradas antes da Sprint 021.
+- Para imagens importadas via `tools/generate_image_variants.py` em lotes.
+- Para regenerar variantes apos alterar dimensoes ou formato padrao.
+
+Como validar no ambiente local:
+
+1. Criar um produto no VJ Admin modular com upload de imagem.
+2. Verificar que o original existe em `frontend/images/catalog/admin/`.
+3. Verificar que as variantes existem em `frontend/images/variants/catalog/admin/`.
+4. Acessar o catalogo publico e a pagina de produto para confirmar que as variantes sao usadas com fallback.
