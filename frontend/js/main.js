@@ -48,10 +48,7 @@ function createProductCard(product) {
                     <h3 class="product-title">${product.name}</h3>
                 </a>
                 <p class="product-description">${description}</p>
-                <div class="product-decision-meta">
-                    <span>Banho Ouro 18K</span>
-                    <span>Garantia de 2 anos</span>
-                </div>
+
                 ${stockHTML}
                 <div class="product-footer">
                     <div>

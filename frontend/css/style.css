@@ -4430,21 +4430,6 @@ input, select, textarea {
     margin-bottom: 0;
 }
 
-.product-decision-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-}
-
-.product-decision-meta span {
-    background: var(--cream);
-    border: 1px solid var(--gold-pale);
-    border-radius: 999px;
-    color: var(--gray-dark);
-    font-size: 0.74rem;
-    font-weight: 800;
-    padding: 0.25rem 0.55rem;
-}
 
 .product-card-actions {
     display: grid;

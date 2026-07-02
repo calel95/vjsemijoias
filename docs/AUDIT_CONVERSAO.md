@@ -486,6 +486,7 @@ Melhorias implementadas nesta sprint:
 - Bloco de descoberta por categorias principais adicionado com atalhos para aneis, colares, pulseiras e brincos usando filtros existentes por URL.
 - Filtros e ordenacao receberam hierarquia visual, microcopy e ordenacao local por relevancia, nome e preco sem alterar API.
 - Cards de produto reforcados com categoria, descricao, preco, parcelamento, informacoes reais de badge/estoque quando existentes e CTA para ver a peca.
+- Correcao aplicada: atributos especificos de material/acabamento nao sao exibidos nos cards quando nao vierem do produto; beneficios institucionais permanecem apenas no contexto do catalogo.
 - Estado vazio revisado com mensagem mais clara e acao para voltar ao catalogo completo.
 - Bloco de confianca adicionado com garantia, banho Ouro 18K, compra segura e atendimento via WhatsApp configurado pela loja.
 - Estilos responsivos adicionados para hero, descoberta, filtros, cards, estado vazio e bloco de confianca.
