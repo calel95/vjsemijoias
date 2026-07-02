@@ -29,7 +29,15 @@ from backend.services.shipping import (
     calculate_shipping_options,
     normalize_zip,
 )
-from backend.services.storage import upload_r2_object
+from backend.services.storage import (
+    public_asset_url,
+    r2_enabled,
+    storage_backend,
+    storage_status,
+    store_public_file,
+    upload_r2_object,
+    validate_storage_config,
+)
 from backend.services.validation import (
     clean_text,
     normalize_email,
@@ -666,6 +674,118 @@ def test_validate_image_bytes_checks_real_content_and_size():
     with pytest.raises(ValueError, match='maior'):
         validate_image_bytes(TINY_GIF, 'image/gif', filename='produto.gif', max_bytes=1)
 
+
+def clear_storage_env(monkeypatch):
+    for key in [
+        'STORAGE_BACKEND',
+        'R2_ACCOUNT_ID',
+        'R2_BUCKET',
+        'R2_ACCESS_KEY_ID',
+        'R2_SECRET_ACCESS_KEY',
+        'R2_PUBLIC_BASE_URL',
+    ]:
+        monkeypatch.delenv(key, raising=False)
+
+
+def configure_r2_env(monkeypatch):
+    monkeypatch.setenv('STORAGE_BACKEND', 'r2')
+    monkeypatch.setenv('R2_ACCOUNT_ID', 'account123')
+    monkeypatch.setenv('R2_BUCKET', 'vjsemijoias-dev')
+    monkeypatch.setenv('R2_ACCESS_KEY_ID', 'access123')
+    monkeypatch.setenv('R2_SECRET_ACCESS_KEY', 'secret123')
+    monkeypatch.setenv('R2_PUBLIC_BASE_URL', 'https://assets-dev.example.com')
+
+
+def test_storage_local_is_default_and_does_not_require_r2(monkeypatch):
+    clear_storage_env(monkeypatch)
+
+    status = storage_status()
+
+    assert storage_backend() == 'local'
+    assert r2_enabled() is False
+    assert validate_storage_config() == {'backend': 'local', 'ready': True, 'r2_enabled': False}
+    assert status['backend'] == 'local'
+    assert status['ready'] is True
+    assert status['r2']['enabled'] is False
+    assert status['r2']['ready'] is False
+    assert status['errors'] == []
+
+
+def test_storage_r2_complete_configuration_is_ready_without_exposing_secrets(monkeypatch):
+    configure_r2_env(monkeypatch)
+
+    status = storage_status()
+
+    assert storage_backend() == 'r2'
+    assert r2_enabled() is True
+    assert validate_storage_config() == {'backend': 'r2', 'ready': True, 'r2_enabled': True}
+    assert status['backend'] == 'r2'
+    assert status['ready'] is True
+    assert status['r2']['enabled'] is True
+    assert status['r2']['ready'] is True
+    assert status['r2']['bucket'] == 'vjsemijoias-dev'
+    assert status['r2']['public_base_url'] == 'https://assets-dev.example.com'
+    serialized = str(status)
+    assert 'secret123' not in serialized
+    assert 'access123' not in serialized
+    assert 'secret_access_key' not in status['r2']
+    assert 'access_key_id' not in status['r2']
+
+
+def test_storage_r2_incomplete_configuration_has_clear_safe_error(monkeypatch):
+    configure_r2_env(monkeypatch)
+    monkeypatch.delenv('R2_SECRET_ACCESS_KEY')
+
+    status = storage_status()
+
+    assert status['backend'] == 'r2'
+    assert status['ready'] is False
+    assert status['r2']['ready'] is False
+    assert status['r2']['missing'] == ['R2_SECRET_ACCESS_KEY']
+    assert 'R2_SECRET_ACCESS_KEY' in status['errors'][0]
+    assert 'secret123' not in str(status)
+    with pytest.raises(RuntimeError, match='R2_SECRET_ACCESS_KEY'):
+        validate_storage_config()
+
+
+def test_storage_invalid_backend_has_clear_status_and_runtime_error(monkeypatch):
+    clear_storage_env(monkeypatch)
+    monkeypatch.setenv('STORAGE_BACKEND', 's3')
+
+    status = storage_status()
+
+    assert status['backend'] == 's3'
+    assert status['backend_valid'] is False
+    assert status['ready'] is False
+    assert status['r2']['enabled'] is False
+    assert 'STORAGE_BACKEND invalido' in status['errors'][0]
+    with pytest.raises(RuntimeError, match='STORAGE_BACKEND invalido'):
+        storage_backend()
+    with pytest.raises(RuntimeError, match='STORAGE_BACKEND invalido'):
+        r2_enabled()
+
+
+def test_store_public_file_requires_r2_and_does_not_upload_when_local(monkeypatch):
+    clear_storage_env(monkeypatch)
+    calls = []
+
+    def fake_upload(*args):
+        calls.append(args)
+        return 'https://assets.example.com/img.gif'
+
+    monkeypatch.setattr('backend.services.storage.upload_r2_object', fake_upload)
+
+    with pytest.raises(RuntimeError, match='Storage R2 nao esta habilitado'):
+        store_public_file('catalog/produto/img.gif', b'img', 'image/gif')
+
+    assert calls == []
+
+
+def test_public_asset_url_joins_base_and_key_safely():
+    assert public_asset_url('/catalog/produto/img 1.gif', base_url='https://assets.example.com/') == (
+        'https://assets.example.com/catalog/produto/img%201.gif'
+    )
+    assert public_asset_url('/catalog/produto/img.gif') == 'catalog/produto/img.gif'
 
 def test_r2_upload_uses_s3_compatible_endpoint(monkeypatch):
     calls = []

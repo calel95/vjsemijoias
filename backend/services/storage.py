@@ -9,10 +9,25 @@ import requests
 
 R2_SERVICE = "s3"
 R2_REGION = "auto"
+STORAGE_BACKENDS = {"local", "r2"}
+R2_REQUIRED_ENV = {
+    "account_id": "R2_ACCOUNT_ID",
+    "bucket": "R2_BUCKET",
+    "access_key_id": "R2_ACCESS_KEY_ID",
+    "secret_access_key": "R2_SECRET_ACCESS_KEY",
+    "public_base_url": "R2_PUBLIC_BASE_URL",
+}
+
+
+def _storage_backend_value():
+    return (os.getenv("STORAGE_BACKEND", "").strip().lower() or "local")
 
 
 def storage_backend():
-    return os.getenv("STORAGE_BACKEND", "local").strip().lower()
+    backend = _storage_backend_value()
+    if backend not in STORAGE_BACKENDS:
+        raise RuntimeError("STORAGE_BACKEND invalido: use local ou r2")
+    return backend
 
 
 def r2_enabled():
@@ -23,41 +38,81 @@ def public_url(base_url, key):
     return f"{base_url.rstrip('/')}/{quote(key.strip('/'), safe='/')}"
 
 
-def r2_config():
-    config = {
+def public_asset_url(key, *, base_url=""):
+    base_url = (base_url or "").strip().rstrip("/")
+    clean_key = str(key or "").strip().lstrip("/")
+    if not base_url:
+        return clean_key
+    return public_url(base_url, clean_key)
+
+
+def _r2_env_config():
+    return {
         "account_id": os.getenv("R2_ACCOUNT_ID", "").strip(),
         "bucket": os.getenv("R2_BUCKET", "").strip(),
         "access_key_id": os.getenv("R2_ACCESS_KEY_ID", "").strip(),
         "secret_access_key": os.getenv("R2_SECRET_ACCESS_KEY", "").strip(),
         "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", "").strip().rstrip("/"),
     }
-    missing = [key for key, value in config.items() if not value]
+
+
+def missing_r2_config(config=None):
+    config = config or _r2_env_config()
+    return [env_name for key, env_name in R2_REQUIRED_ENV.items() if not config.get(key)]
+
+
+def validate_r2_config():
+    config = _r2_env_config()
+    missing = missing_r2_config(config)
     if missing:
         raise RuntimeError(f"Configuracao R2 incompleta: {', '.join(missing)}")
     return config
 
 
+def validate_storage_config():
+    backend = storage_backend()
+    if backend == "local":
+        return {"backend": "local", "ready": True, "r2_enabled": False}
+    validate_r2_config()
+    return {"backend": "r2", "ready": True, "r2_enabled": True}
+
+
+def r2_config():
+    return validate_r2_config()
+
+
 def storage_status():
-    config = {
-        "backend": storage_backend(),
+    backend = _storage_backend_value()
+    backend_valid = backend in STORAGE_BACKENDS
+    r2_config_values = _r2_env_config()
+    missing = missing_r2_config(r2_config_values)
+    r2_ready = not missing
+    errors = []
+
+    if not backend_valid:
+        errors.append("STORAGE_BACKEND invalido: use local ou r2")
+    elif backend == "r2" and missing:
+        errors.append(f"Configuracao R2 incompleta: {', '.join(missing)}")
+
+    return {
+        "backend": backend,
+        "backend_valid": backend_valid,
+        "ready": backend_valid and (backend == "local" or r2_ready),
+        "errors": errors,
         "r2": {
-            "account_id_configured": bool(os.getenv("R2_ACCOUNT_ID", "").strip()),
-            "bucket": os.getenv("R2_BUCKET", "").strip(),
-            "access_key_configured": bool(os.getenv("R2_ACCESS_KEY_ID", "").strip()),
-            "secret_key_configured": bool(os.getenv("R2_SECRET_ACCESS_KEY", "").strip()),
-            "public_base_url": os.getenv("R2_PUBLIC_BASE_URL", "").strip().rstrip("/"),
+            "enabled": backend_valid and backend == "r2",
+            "ready": r2_ready,
+            "configured": r2_ready,
+            "missing": missing if backend == "r2" else [],
+            "account_id_configured": bool(r2_config_values["account_id"]),
+            "bucket": r2_config_values["bucket"],
+            "bucket_configured": bool(r2_config_values["bucket"]),
+            "access_key_configured": bool(r2_config_values["access_key_id"]),
+            "secret_key_configured": bool(r2_config_values["secret_access_key"]),
+            "public_base_url": r2_config_values["public_base_url"],
+            "public_base_url_configured": bool(r2_config_values["public_base_url"]),
         },
     }
-    config["r2"]["ready"] = all(
-        [
-            config["r2"]["account_id_configured"],
-            config["r2"]["bucket"],
-            config["r2"]["access_key_configured"],
-            config["r2"]["secret_key_configured"],
-            config["r2"]["public_base_url"],
-        ]
-    )
-    return config
 
 
 def signing_key(secret_key, date_stamp):
@@ -133,10 +188,11 @@ def upload_r2_object(key, content, content_type, cache_control="public, max-age=
         timeout=30,
     )
     response.raise_for_status()
-    return public_url(config["public_base_url"], clean_key)
+    return public_asset_url(clean_key, base_url=config["public_base_url"])
 
 
 def store_public_file(key, content, content_type):
     if not r2_enabled():
         raise RuntimeError("Storage R2 nao esta habilitado")
+    validate_storage_config()
     return upload_r2_object(key, content, content_type)

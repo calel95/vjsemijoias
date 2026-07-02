@@ -251,6 +251,57 @@ Cobertura adicionada:
 - Ausencia de duplicidade quando a mesma imagem aparece mais de uma vez.
 - Compatibilidade com `icon` como fallback visual.
 
+## Sprint 014 — Preparacao e validacao de storage externo R2
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- `backend/services/storage.py` passou a validar explicitamente `STORAGE_BACKEND` como `local` ou `r2`.
+- `local` segue como padrao quando `STORAGE_BACKEND` esta vazio ou ausente.
+- `r2` exige configuracao completa antes de operacoes que dependem de storage externo.
+- `storage_status()` passou a retornar um diagnostico administrativo seguro, com backend ativo, prontidao, pendencias e booleans de configuracao.
+- O endpoint existente `/api/admin/storage/status` continua sendo reutilizado, sem novo endpoint e sem exposicao de credenciais sensiveis.
+- `store_public_file()` continua recusando gravacao externa quando R2 nao esta habilitado, sem tentar upload em modo local.
+
+Regra de configuracao adotada:
+
+| Cenario | Resultado |
+|---|---|
+| `STORAGE_BACKEND` vazio ou ausente | Usa `local`, pronto, sem exigir variaveis R2. |
+| `STORAGE_BACKEND=local` | Mantem gravacao local nos fluxos existentes. |
+| `STORAGE_BACKEND=r2` completo | R2 fica habilitado e pronto para operacoes futuras. |
+| `STORAGE_BACKEND=r2` incompleto | Status aponta pendencias por nome de variavel, sem exibir valores. |
+| `STORAGE_BACKEND` invalido | Status retorna erro claro e operacoes levantam `RuntimeError`. |
+
+Variaveis esperadas para R2:
+
+- `STORAGE_BACKEND=r2`.
+- `R2_ACCOUNT_ID`.
+- `R2_BUCKET`.
+- `R2_ACCESS_KEY_ID`.
+- `R2_SECRET_ACCESS_KEY`.
+- `R2_PUBLIC_BASE_URL`.
+
+Compatibilidade preservada:
+
+- Nenhum upload novo foi criado.
+- Nenhuma migracao de imagem antiga foi executada.
+- Nenhum endpoint novo foi criado.
+- Nenhum schema, migration, frontend publico, carrinho, checkout, pedido, pagamento, estoque, preco ou frete foi alterado.
+- R2 nao se tornou dependencia obrigatoria do sistema.
+
+Cobertura adicionada:
+
+- Storage local como padrao.
+- R2 desativado quando o backend e local.
+- R2 completo com status pronto.
+- R2 incompleto com erro seguro.
+- `STORAGE_BACKEND` invalido com erro claro.
+- `storage_status()` sem exposicao de `R2_ACCESS_KEY_ID` ou `R2_SECRET_ACCESS_KEY`.
+- `store_public_file()` sem tentativa de upload quando R2 nao esta habilitado.
+- `public_asset_url()` preservando caminho relativo local ou montando URL publica codificada.
+
 ## Arquivos candidatos para futuras alteracoes
 
 ### Backend
@@ -344,20 +395,23 @@ Cobertura adicionada:
 
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 014 — Preparacao e validacao de storage externo R2.
+A proxima sprint recomendada e a Sprint 015 — Upload de imagens no VJ Admin modular.
+
+Motivo:
+
+- O contrato de midia ja esta centralizado desde a Sprint 013.
+- A configuracao local/R2 ja esta validavel desde a Sprint 014.
+- O VJ Admin modular ainda trabalha com uma `Imagem URL` unica, enquanto o backend ja suporta persistencia via service e galeria.
 
 Escopo recomendado:
 
-- Nao criar upload novo no VJ Admin ainda.
-- Validar configuracao R2 por ambiente sem ativar automaticamente em producao.
-- Testar `storage_status()`, variaveis obrigatorias e erros de configuracao incompleta.
-- Definir politica de fallback para caminhos locais antigos.
-- Preparar checklist de migracao gradual das imagens de `frontend/images/catalog/` para URL publica.
-- Manter compatibilidade com o contrato de midia consolidado na Sprint 013.
+- Criar upload no VJ Admin modular sem alterar o site publico.
+- Reutilizar validacoes e storage existentes.
+- Manter data URL apenas como transporte temporario, nunca como dado final persistido.
+- Preservar compatibilidade com `image`, `imagem_url`, `images` e `ProductImage`.
+- Deixar migracao gradual de imagens antigas para uma sprint posterior.
 
-Apos essa preparacao, uma sprint posterior pode implementar upload no VJ Admin modular com menor risco.
-
-## Validacoes da Sprint 013
+## Validacoes da Sprint 014
 
 Validacoes obrigatorias desta sprint:
 
