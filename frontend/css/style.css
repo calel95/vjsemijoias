@@ -2742,3 +2742,344 @@ input, select, textarea {
         grid-template-columns: 1fr;
     }
 }
+
+/* ========== HOME COMERCIAL - SPRINT 005 ========== */
+.hero-commercial {
+    min-height: 82vh;
+    background:
+        linear-gradient(135deg, rgba(251, 246, 238, 0.96) 0%, rgba(243, 231, 209, 0.92) 58%, rgba(255, 255, 255, 0.96) 100%);
+}
+
+.hero-kicker {
+    color: var(--gold-dark);
+    display: inline-flex;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 2.4px;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.hero-commercial .hero-content h1 {
+    max-width: 640px;
+}
+
+.hero-commercial .hero-content p {
+    max-width: 610px;
+}
+
+.hero-benefits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin: -1rem 0 2rem;
+}
+
+.hero-benefits span {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--gold-light);
+    border-radius: 999px;
+    color: var(--gray-dark);
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.45rem 0.8rem;
+}
+
+.hero-showcase {
+    min-height: 480px;
+}
+
+.hero-brand-card {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(201, 168, 106, 0.42);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(166, 124, 61, 0.18);
+    display: grid;
+    gap: 1.4rem;
+    justify-items: center;
+    max-width: 430px;
+    padding: 3rem 2.5rem;
+    position: relative;
+    text-align: center;
+}
+
+.hero-brand-card::before {
+    border: 1px solid var(--gold-pale);
+    border-radius: 14px;
+    content: '';
+    inset: 1rem;
+    position: absolute;
+}
+
+.hero-brand-card .hero-logo {
+    max-width: 300px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-brand-copy {
+    display: grid;
+    gap: 0.35rem;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-brand-copy strong {
+    color: var(--gold-dark);
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+}
+
+.hero-brand-copy span {
+    color: var(--gray-dark);
+    font-size: 0.95rem;
+}
+
+.hero-mini-card {
+    background: var(--dark);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 14px;
+    box-shadow: var(--shadow-hover);
+    color: var(--white);
+    display: grid;
+    gap: 0.1rem;
+    min-width: 150px;
+    padding: 1rem 1.15rem;
+    position: absolute;
+    text-align: left;
+}
+
+.hero-mini-card strong {
+    color: var(--gold-light);
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+}
+
+.hero-mini-card span {
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 0.82rem;
+}
+
+.hero-mini-card-top {
+    right: 0.5rem;
+    top: 3.5rem;
+}
+
+.hero-mini-card-bottom {
+    bottom: 3.75rem;
+    left: 0.25rem;
+}
+
+.categories-commercial {
+    background: linear-gradient(180deg, var(--cream), var(--white));
+}
+
+.categories-featured-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.category-card-featured {
+    border-color: var(--gold-pale);
+    border-radius: 14px;
+    min-height: 300px;
+    padding: 2rem 1.4rem;
+    position: relative;
+}
+
+.category-card-featured::after {
+    background: linear-gradient(90deg, transparent, var(--gold-light), transparent);
+    bottom: 0;
+    content: '';
+    height: 3px;
+    left: 22%;
+    position: absolute;
+    right: 22%;
+}
+
+.category-card-featured p {
+    line-height: 1.55;
+    margin-bottom: 1rem;
+}
+
+.category-card-featured span {
+    color: var(--gold-dark);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.featured-showcase {
+    background: var(--white);
+}
+
+.featured-products-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.home-catalog-cta {
+    background: var(--dark);
+    color: var(--white);
+    padding: 3rem 2rem;
+}
+
+.home-catalog-cta-inner {
+    align-items: center;
+    display: flex;
+    gap: 2rem;
+    justify-content: space-between;
+}
+
+.home-catalog-cta span {
+    color: var(--gold-light);
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+}
+
+.home-catalog-cta h2 {
+    color: var(--white);
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    margin-bottom: 0.45rem;
+}
+
+.home-catalog-cta p {
+    color: rgba(255, 255, 255, 0.72);
+    margin: 0;
+}
+
+.features-commercial {
+    background: var(--cream);
+}
+
+.trust-grid {
+    gap: 1.2rem;
+}
+
+.trust-card {
+    background: var(--white);
+    border: 1px solid var(--gold-pale);
+    border-radius: 12px;
+    padding: 1.6rem 1.25rem;
+    text-align: left;
+}
+
+.trust-card .feature-icon {
+    align-items: center;
+    background: var(--gold-pale);
+    border-radius: 999px;
+    color: var(--gold-dark);
+    display: inline-flex;
+    font-size: 1.15rem;
+    font-weight: 800;
+    height: 48px;
+    justify-content: center;
+    margin-bottom: 1rem;
+    min-width: 48px;
+    padding: 0 0.7rem;
+}
+
+.about-commercial {
+    background: var(--white);
+}
+
+.about-commercial-inner {
+    background: var(--cream);
+    border: 1px solid var(--gold-pale);
+    border-radius: 14px;
+    max-width: 980px;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.about-commercial-inner p {
+    color: var(--gray-dark);
+    font-size: 1.05rem;
+    line-height: 1.75;
+    margin: 0 auto 1.5rem;
+    max-width: 720px;
+}
+
+@media (max-width: 1024px) {
+    .hero-showcase {
+        max-width: none;
+        min-height: auto;
+        order: -1;
+        width: 100%;
+    }
+
+    .hero-mini-card {
+        position: static;
+    }
+
+    .hero-showcase {
+        display: grid;
+        gap: 0.75rem;
+        justify-items: center;
+    }
+
+    .categories-featured-grid,
+    .featured-products-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-catalog-cta-inner {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-commercial .hero-content h1 {
+        font-size: 2.4rem;
+    }
+
+    .hero-benefits,
+    .hero-commercial .hero-buttons {
+        justify-content: center;
+    }
+
+    .hero-brand-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .hero-brand-card .hero-logo {
+        max-width: 210px;
+    }
+
+    .category-card-featured {
+        min-height: 260px;
+    }
+
+    .home-catalog-cta {
+        padding: 2.5rem 1rem;
+    }
+
+    .home-catalog-cta .btn {
+        width: 100%;
+    }
+
+    .about-commercial-inner {
+        padding: 2rem 1.2rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .categories-featured-grid,
+    .featured-products-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-benefits span {
+        flex: 1 1 calc(50% - 0.65rem);
+        text-align: center;
+    }
+
+    .trust-card {
+        text-align: center;
+    }
+}

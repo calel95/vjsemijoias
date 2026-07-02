@@ -363,6 +363,19 @@ Escopo sugerido:
 - Prova social.
 - Hierarquia visual.
 
+Status: iniciada.
+
+Melhorias implementadas nesta sprint:
+
+- Hero reposicionado para comunicar semijoias banhadas a Ouro 18K, elegancia, garantia, envio transparente e parcelamento antes da marca.
+- CTA principal atualizado para `Comprar Agora`, conduzindo diretamente ao catalogo.
+- Categorias da Home reduzidas e priorizadas para Aneis, Colares, Pulseiras e Brincos.
+- Secao de Mais Vendidos transformada em vitrine comercial enxuta, mantendo a mesma origem de dados dos produtos.
+- Bloco intermediario criado para incentivar visita ao catalogo completo.
+- Beneficios reorganizados em Garantia, Ouro 18K, Compra Segura e Envio.
+- Texto de Sobre reduzido para uma apresentacao rapida da marca, com CTA `Conheça nossa história`.
+- Ajustes responsivos adicionados para preservar leitura, CTAs e cards no mobile.
+
 ### Sprint 006 — Catalogo
 
 Objetivo: facilitar descoberta de produtos.
