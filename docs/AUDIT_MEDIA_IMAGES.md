@@ -629,25 +629,116 @@ Documento operacional criado:
 
 - `docs/MEDIA_MIGRATION_R2.md`.
 
+## Sprint 018 - Otimizacao e variantes de imagem
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- Foi criado o service `backend/services/image_variants.py` para resolver imagens locais com seguranca, planejar variantes e gerar arquivos otimizados.
+- Foi criado o CLI `tools/generate_image_variants.py` com dry-run padrao e apply protegido por `--yes`.
+- A geracao preserva o arquivo original e cria apenas arquivos derivados no output-root permitido.
+- O output-root padrao fica em `frontend/images/variants`.
+- A sprint nao altera banco, nao altera `Product.to_dict()` e nao muda o contrato publico `image`/`imagem_url`/`images`.
+- A sprint nao ativa variantes no catalogo publico nem na pagina publica de produto.
+- A sprint nao chama R2 e nao depende de storage externo.
+- Pillow ja era dependencia do projeto, portanto nenhuma dependencia nova foi instalada.
+
+Variantes definidas:
+
+| Variante | Largura maxima | Situacao |
+|---|---:|---|
+| `thumbnail` | 160 px | Geravel pelo script. |
+| `card` | 480 px | Geravel pelo script. |
+| `detail` | 960 px | Geravel pelo script. |
+| `original` | Sem alteracao | Preservado como fonte. |
+
+Formato:
+
+- O gerador prefere WebP quando suportado pelo ambiente Pillow.
+- Se WebP nao estiver disponivel, usa formato raster compativel com a imagem original.
+- SVG e tratado como nao aplicavel nesta sprint.
+- GIF animado e ignorado para evitar quebra de animacao.
+
+Como executar:
+
+```powershell
+uv run python tools/generate_image_variants.py --dry-run --report-path output/image-variants-dry-run.json
+```
+
+Para uma imagem especifica:
+
+```powershell
+uv run python tools/generate_image_variants.py --dry-run --image images/catalog/produto/img_1.jpg --report-path output/image-variants-produto.json
+```
+
+Para execucao real em lote pequeno:
+
+```powershell
+uv run python tools/generate_image_variants.py --apply --yes --limit 20 --report-path output/image-variants-apply-lote-001.json
+```
+
+Politica de seguranca:
+
+- Aceita apenas imagens locais dentro de `frontend/images`.
+- Bloqueia path traversal.
+- Nao escreve fora do output-root permitido.
+- Nao apaga arquivos.
+- Nao sobrescreve originais.
+- Nao modifica banco.
+- Nao chama Cloudflare/R2.
+- Ignora URLs externas.
+- Reporta data URL como problema.
+
+Restricoes preservadas:
+
+- Nenhum site publico visual, catalogo publico, pagina publica de produto, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro ou dashboard foi alterado.
+- Nenhum schema, migration, endpoint novo ou campo novo foi criado.
+- `Product.to_dict()` e o contrato publico `image`/`imagem_url`/`images` foram preservados.
+- O upload e a galeria do VJ Admin modular nao foram alterados.
+- O script de migracao R2 nao foi alterado.
+- Nenhuma imagem antiga foi removida.
+
+Cobertura adicionada:
+
+- Dry-run nao cria arquivos.
+- Apply exige `--yes`.
+- Geracao preserva original.
+- Geracao cria `thumbnail`, `card` e `detail`.
+- Variantes respeitam largura maxima.
+- Apply repetido e idempotente.
+- URL externa e ignorada.
+- SVG e reportado como nao aplicavel.
+- Arquivo inexistente e reportado.
+- Path traversal e bloqueado.
+- Output-root fora de `frontend/images` e bloqueado.
+- Relatorio JSON tem campos esperados.
+- Banco nao e alterado.
+- R2 nao e chamado.
+
+Documento operacional criado:
+
+- `docs/IMAGE_VARIANTS.md`.
+
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 018 - Otimizacao e variantes de imagem.
+A proxima sprint recomendada e a Sprint 019 - Usar variantes no catalogo publico.
 
 Motivo:
 
-- O fluxo de storage local/R2, upload modular, galeria e migracao gradual ja possui base operacional.
-- O proximo risco comercial e tecnico passa a ser peso, formato e dimensoes das imagens servidas no catalogo/produto.
-- Variantes responsivas podem reduzir LCP e consumo de banda sem mudar o contrato publico de produto.
+- O catalogo concentra muitos cards de produto e tende a multiplicar o impacto do peso de imagens.
+- A variante `card` ja prepara o tamanho esperado para listagens sem mudar o contrato publico nesta sprint.
+- Ativar primeiro no catalogo permite medir ganho de performance antes de mexer na pagina de produto.
 
 Escopo recomendado:
 
-- Definir politica de variantes (`thumbnail`, `card`, `detail`, `original`).
-- Avaliar conversao WebP/AVIF sem perda visual relevante.
-- Criar processo seguro para gerar variantes futuras.
-- Medir impacto em catalogo e pagina de produto.
-- Preservar URLs antigas ate validacao completa.
+- Fazer o catalogo publico consumir variantes `card` quando disponiveis.
+- Manter fallback para `product.image` e `product.images[0]`.
+- Nao remover originais.
+- Preservar SEO, carrinho e checkout.
+- Medir impacto em LCP, peso transferido e ausencia de 404.
 
-## Validacoes da Sprint 017
+## Validacoes da Sprint 018
 
 Validacoes obrigatorias desta sprint:
 
