@@ -14,6 +14,9 @@ function createProductCard(product) {
     const stockHTML = isOutOfStock
         ? '<div class="stock-note unavailable">Sem estoque no momento</div>'
         : (product.stock_status === 'preorder' ? '<div class="stock-note preorder">Sob encomenda</div>' : '');
+    const categoryName = product.categoryName || product.category || 'Semijoia';
+    const description = product.description || 'Peça selecionada pela curadoria VJ Semijoias.';
+    const productUrl = `/produto?id=${product.id}`;
 
     const priceHTML = product.oldPrice ?
         `<div class="product-price">
@@ -24,42 +27,47 @@ function createProductCard(product) {
         `<div class="product-price">${formatPrice(product.price)}</div>
         <div class="product-installment">ou 12x de ${formatPrice(calculateInstallment(product.price))} sem juros</div>`;
 
-    // Decide se mostra imagem real ou placeholder
     const imageHTML = product.image ?
-        `<a href="/produto?id=${product.id}">
+        `<a href="${productUrl}" aria-label="Ver detalhes de ${product.name}">
             <img src="${product.image}" alt="${product.name}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-            <div class="placeholder" style="display:none;">${product.icon || '💎'}</div>
+            <div class="placeholder" style="display:none;">${product.icon || 'VJ'}</div>
         </a>` :
-        `<a href="/produto?id=${product.id}">
-            <div class="placeholder">${product.icon || '💎'}</div>
+        `<a href="${productUrl}" aria-label="Ver detalhes de ${product.name}">
+            <div class="placeholder">${product.icon || 'VJ'}</div>
         </a>`;
 
     return `
-        <div class="product-card" data-category="${product.category}">
+        <div class="product-card catalog-product-card" data-category="${product.category}">
             <div class="product-image">
                 ${badgeHTML}
                 ${imageHTML}
             </div>
             <div class="product-info">
-                <span class="product-category">${product.categoryName}</span>
-                <a href="/produto?id=${product.id}">
+                <span class="product-category">${categoryName}</span>
+                <a href="${productUrl}">
                     <h3 class="product-title">${product.name}</h3>
                 </a>
-                <p class="product-description">${product.description}</p>
+                <p class="product-description">${description}</p>
+                <div class="product-decision-meta">
+                    <span>Banho Ouro 18K</span>
+                    <span>Garantia de 2 anos</span>
+                </div>
                 ${stockHTML}
                 <div class="product-footer">
                     <div>
                         ${priceHTML}
                     </div>
+                </div>
+                <div class="product-card-actions">
+                    <a class="product-view-link" href="${productUrl}">Ver peça</a>
                     <button class="btn-add-cart" onclick="addToCart(${product.id})" title="Adicionar ao carrinho" ${isOutOfStock ? 'disabled' : ''}>
-                        🛒 Add
+                        Adicionar
                     </button>
                 </div>
             </div>
         </div>
     `;
 }
-
 function addToCart(productId) {
     const product = getProductById(productId);
     if (!product || product.stock_status === 'out_of_stock') {

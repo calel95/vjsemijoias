@@ -478,6 +478,18 @@ Escopo sugerido:
 - Comparacao.
 - Descoberta.
 
+Status: concluida.
+
+Melhorias implementadas nesta sprint:
+
+- Cabecalho comercial do catalogo revisado para destacar curadoria VJ, banho Ouro 18K, garantia de 2 anos, compra segura e envio por CEP.
+- Bloco de descoberta por categorias principais adicionado com atalhos para aneis, colares, pulseiras e brincos usando filtros existentes por URL.
+- Filtros e ordenacao receberam hierarquia visual, microcopy e ordenacao local por relevancia, nome e preco sem alterar API.
+- Cards de produto reforcados com categoria, descricao, preco, parcelamento, informacoes reais de badge/estoque quando existentes e CTA para ver a peca.
+- Estado vazio revisado com mensagem mais clara e acao para voltar ao catalogo completo.
+- Bloco de confianca adicionado com garantia, banho Ouro 18K, compra segura e atendimento via WhatsApp configurado pela loja.
+- Estilos responsivos adicionados para hero, descoberta, filtros, cards, estado vazio e bloco de confianca.
+
 ### Sprint 010 — Pos-compra
 
 Objetivo: melhorar confianca apos pedido e preparar recompra.
@@ -510,17 +522,17 @@ No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por 
 
 ## Restricoes observadas
 
-- Melhorias da Sprint 008 foram limitadas ao frontend publico do checkout e a este registro documental.
+- Melhorias da Sprint 009 foram limitadas ao frontend publico do catalogo e a este registro documental.
 - Backend, banco de dados, APIs, models, migrations, VJ Admin e autenticacao nao foram modificados.
-- Regras de pedido, estoque, preco, frete, cupom, pagamento, integracao InfinitePay e contrato do payload de pedido foram preservados.
+- Estoque, preco, carrinho, checkout, pedido, payloads, rotas existentes e contratos de API foram preservados.
 - `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados.
 
 ## Validacoes
 
-Validacoes executadas para a Sprint 008:
+Validacoes executadas para a Sprint 009:
 
-- `node --check` nos scripts carregados pelo checkout.
-- Parse do script inline de `frontend/checkout.html` com Node.
+- `node --check` nos JS alterados e nos scripts carregados pelo catalogo.
+- Parse do script inline de `frontend/catalogo.html` com Node.
 - `uv run pytest`.
 - `uv run python tools\e2e_smoke.py`.
 - `git diff --check`.
