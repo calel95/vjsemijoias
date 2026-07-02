@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from sqlalchemy import select
+
 from backend.config import FRONTEND_ROOT
 from backend.database import SessionLocal
 from backend.models import Product, ProductImage
@@ -622,7 +624,7 @@ def test_vj_admin_local_storage_does_not_require_r2(monkeypatch):
             shutil.rmtree(created_folder, ignore_errors=True)
 
 
-def test_vj_admin_r2_incomplete_raises_error_without_secrets(monkeypatch):
+def test_vj_admin_r2_incomplete_returns_safe_error_without_secrets(monkeypatch):
     monkeypatch.setenv("STORAGE_BACKEND", "r2")
     monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
     monkeypatch.delenv("R2_BUCKET", raising=False)
@@ -631,20 +633,79 @@ def test_vj_admin_r2_incomplete_raises_error_without_secrets(monkeypatch):
     monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
     headers = admin_headers()
 
-    with pytest.raises(RuntimeError) as exc_info:
-        client.post(
+    response = client.post(
+        "/api/vj-admin/produtos",
+        headers=headers,
+        json={
+            "codigo": "VJ-IMG-R2-FAIL-001",
+            "nome": "Produto R2 Incompleto",
+            "categoria": "brincos",
+            "descricao": "Produto com R2 incompleto.",
+            "custo_peca": 20,
+            "imagem_url": TINY_GIF_DATA_URL,
+        },
+    )
+
+    assert response.status_code == 503
+    body = response.json()
+    body_text = str(body)
+    assert "R2_ACCESS_KEY_ID" not in body_text
+    assert "R2_SECRET_ACCESS_KEY" not in body_text
+    assert "storage" in body_text.lower() or "indisponivel" in body_text.lower()
+
+    with SessionLocal() as db:
+        existing = db.scalar(select(Product).where(Product.codigo == "VJ-IMG-R2-FAIL-001"))
+        assert existing is None
+
+
+def test_vj_admin_update_storage_failure_does_not_corrupt_previous_image(monkeypatch):
+    monkeypatch.setenv("STORAGE_BACKEND", "local")
+    headers = admin_headers()
+    admin_image_root = FRONTEND_ROOT / "images" / "catalog" / "admin"
+    created_folder = None
+
+    try:
+        created = client.post(
             "/api/vj-admin/produtos",
             headers=headers,
             json={
-                "codigo": "VJ-IMG-R2-FAIL-001",
-                "nome": "Produto R2 Incompleto",
+                "codigo": "VJ-IMG-EDIT-FAIL-001",
+                "nome": "Produto Editar Falha Storage",
                 "categoria": "brincos",
-                "descricao": "Produto com R2 incompleto.",
-                "custo_peca": 20,
+                "descricao": "Produto para validar falha de storage na edicao.",
+                "custo_peca": 40,
                 "imagem_url": TINY_GIF_DATA_URL,
             },
         )
+        assert created.status_code == 201
+        product_id = created.json()["id"]
+        original_image = created.json()["image"]
+        assert original_image.startswith("images/catalog/admin/")
+        created_folder = (FRONTEND_ROOT / Path(original_image)).parent
 
-    error_message = str(exc_info.value)
-    assert "R2" in error_message or "r2" in error_message.lower()
-    assert "incompleta" in error_message.lower()
+        monkeypatch.setenv("STORAGE_BACKEND", "r2")
+        monkeypatch.delenv("R2_ACCOUNT_ID", raising=False)
+        monkeypatch.delenv("R2_BUCKET", raising=False)
+        monkeypatch.delenv("R2_ACCESS_KEY_ID", raising=False)
+        monkeypatch.delenv("R2_SECRET_ACCESS_KEY", raising=False)
+        monkeypatch.delenv("R2_PUBLIC_BASE_URL", raising=False)
+
+        failed = client.put(
+            f"/api/vj-admin/produtos/{product_id}",
+            headers=headers,
+            json={"imagem_url": TINY_GIF_DATA_URL},
+        )
+
+        assert failed.status_code == 503
+        body_text = str(failed.json())
+        assert "R2_ACCESS_KEY_ID" not in body_text
+        assert "R2_SECRET_ACCESS_KEY" not in body_text
+
+        stored = client.get(f"/api/vj-admin/produtos/{product_id}", headers=headers)
+        assert stored.status_code == 200
+        assert stored.json()["image"] == original_image
+        assert stored.json()["images"] == [original_image]
+    finally:
+        monkeypatch.setenv("STORAGE_BACKEND", "local")
+        if created_folder and created_folder.is_relative_to(admin_image_root):
+            shutil.rmtree(created_folder, ignore_errors=True)

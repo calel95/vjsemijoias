@@ -368,7 +368,7 @@ Cobertura adicionada:
 
 ### Integracao/admin
 
-- Criacao de produto com URL externa.
+- Criacao de produto com URL externo.
 - Criacao de produto com upload de uma imagem.
 - Criacao de produto com multiplas imagens.
 - Edicao que remove imagem.
@@ -408,7 +408,9 @@ Decisao tecnica implementada:
 - A validacao frontend verifica extensao, tipo MIME e tamanho antes de enviar, mas o backend continua validando com Pillow e rejeitando formatos nao suportados (incluindo SVG).
 - Nenhum schema, migration, endpoint novo, site publico, carrinho, checkout, pedido, pagamento, estoque, preco ou frete foi alterado.
 - R2 nao se tornou obrigatorio. O modo local continua funcionando com `STORAGE_BACKEND=local`.
-- R2 incompleto gera erro 500 sem expor credenciais.
+- R2 incompleto gera erro 503 (Service Unavailable) com mensagem amigavel e sem expor credenciais.
+- Falha de storage durante criacao faz `db.rollback()` e nao persiste produto parcial.
+- Falha de storage durante edicao faz `db.rollback()` e preserva a imagem anterior do produto.
 
 Fluxo de upload no VJ Admin modular:
 
@@ -432,7 +434,7 @@ Comportamento local/R2:
 |---|---|
 | `STORAGE_BACKEND=local` (padrao) | Imagem e gravada em `frontend/images/catalog/admin/<id>-<slug>/img_N.ext` |
 | `STORAGE_BACKEND=r2` completo | Imagem e enviada para R2 e URL publica e retornada |
-| `STORAGE_BACKEND=r2` incompleto | Erro 500 sem expor secrets |
+| `STORAGE_BACKEND=r2` incompleto | Erro 503 com mensagem amigavel, sem expor secrets |
 | Sem `STORAGE_BACKEND` | Usa local por padrao |
 
 Restricoes preservadas:
@@ -458,14 +460,18 @@ Cobertura adicionada:
 - `ProductImage` e criado corretamente com `path` e `position`.
 - `product.image`, `imagem_url` e `images` continuam consistentes.
 - Modo local nao exige R2.
-- R2 incompleto gera erro 500 sem expor `R2_ACCESS_KEY_ID` ou `R2_SECRET_ACCESS_KEY`.
+- R2 incompleto gera erro 503 com mensagem "Storage de imagens indisponivel: configuracao R2 incompleta. Verifique as variaveis obrigatorias."
+- Erro 503 nao expoe `R2_ACCESS_KEY_ID` ou `R2_SECRET_ACCESS_KEY`.
+- Falha de storage na criacao nao persiste produto nem `ProductImage` (rollback completo).
+- Falha de storage na edicao preserva a imagem anterior do produto (rollback completo).
 
 Arquivos alterados:
 
 - `frontend/vj-admin.html`: adicionado input de arquivo, preview, hint e botao remover.
 - `frontend/css/vj-admin.css`: adicionados estilos para area de upload e preview.
 - `frontend/js/vj-admin/products.js`: adicionada logica de selecao, validacao, preview e transporte de imagem.
-- `tests/test_vj_admin.py`: adicionados testes de upload, edicao, remocao, formato invalido, tipo divergente, consistencia, local e R2 incompleto.
+- `backend/routers/vj_admin_products.py`: adicionado tratamento seguro de `RuntimeError` de storage com `db.rollback()` e `HTTPException` 503 sem expor secrets.
+- `tests/test_vj_admin.py`: adicionados testes de upload, edicao, remocao, formato invalido, tipo divergente, consistencia, local, R2 incompleto (503) e falha de storage na edicao preserva imagem anterior.
 - `docs/AUDIT_MEDIA_IMAGES.md`: atualizado com Sprint 015.
 
 ## Recomendacao para a proxima sprint

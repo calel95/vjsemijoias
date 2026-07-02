@@ -33,6 +33,16 @@ from backend.services.vj_products import (
 router = APIRouter(prefix="/api/vj-admin", tags=["VJ Admin"])
 
 
+def safe_storage_error(exc: RuntimeError) -> HTTPException:
+    """Converte RuntimeError de storage em HTTPException segura sem expor secrets."""
+    message = str(exc)
+    if "R2" in message or "r2" in message.lower():
+        detail = "Storage de imagens indisponivel: configuracao R2 incompleta. Verifique as variaveis obrigatorias."
+    else:
+        detail = "Storage de imagens indisponivel. Tente novamente ou contate o suporte."
+    return HTTPException(status_code=503, detail=detail)
+
+
 @router.get("/pricing/defaults")
 def pricing_defaults(_claims=Depends(admin_claims)):
     from backend.services.pricing import PAYMENT_FEES
@@ -127,8 +137,12 @@ def create_product(
     db.add(product)
     db.flush()
     if product.image:
-        images = store_admin_gallery_images(product, [product.image])
-        replace_product_gallery(product, images)
+        try:
+            images = store_admin_gallery_images(product, [product.image])
+            replace_product_gallery(product, images)
+        except RuntimeError as exc:
+            db.rollback()
+            raise safe_storage_error(exc) from exc
     record_vj_admin_audit(
         db,
         request,
@@ -171,8 +185,12 @@ def update_product(
     if any(field in cleaned for field in ("custo_peca", "custo_embalagem", "markup")):
         calculate_product_prices(product, cleaned)
     if "image" in cleaned:
-        images = store_admin_gallery_images(product, [product.image] if product.image else [])
-        replace_product_gallery(product, images)
+        try:
+            images = store_admin_gallery_images(product, [product.image] if product.image else [])
+            replace_product_gallery(product, images)
+        except RuntimeError as exc:
+            db.rollback()
+            raise safe_storage_error(exc) from exc
     db.flush()
     record_vj_admin_audit(
         db,
