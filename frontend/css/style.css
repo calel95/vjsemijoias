@@ -4557,3 +4557,227 @@ input, select, textarea {
         width: 100%;
     }
 }
+
+/* ========== POST PURCHASE - EPICO 3 ========== */
+.post-purchase-page {
+    max-width: 1220px;
+}
+
+.post-purchase-hero {
+    background: linear-gradient(135deg, var(--cream), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(201, 168, 106, 0.3);
+    border-radius: 18px;
+    box-shadow: 0 16px 46px rgba(166, 124, 61, 0.08);
+    margin-bottom: 2rem;
+    padding: 2rem;
+}
+
+.post-purchase-hero > span,
+.post-purchase-form-head span,
+.post-purchase-guidance article > span {
+    color: var(--gold-dark);
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 1.6px;
+    margin-bottom: 0.45rem;
+    text-transform: uppercase;
+}
+
+.post-purchase-hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 5vw, 3rem);
+    margin-bottom: 0.65rem;
+}
+
+.post-purchase-hero p {
+    line-height: 1.65;
+    margin: 0 auto;
+    max-width: 760px;
+}
+
+.post-purchase-form,
+.post-purchase-empty-state,
+.tracking-card {
+    border-color: rgba(201, 168, 106, 0.28);
+    box-shadow: 0 16px 46px rgba(166, 124, 61, 0.08);
+}
+
+.post-purchase-form-head {
+    border-bottom: 1px solid var(--gold-pale);
+    margin-bottom: 1.2rem;
+    padding-bottom: 1rem;
+}
+
+.post-purchase-form-head h2 {
+    color: var(--dark);
+    margin-bottom: 0.35rem;
+}
+
+.post-purchase-form-head p {
+    color: var(--gray);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.post-purchase-submit {
+    min-height: 50px;
+}
+
+.post-purchase-submit:focus-visible,
+.post-purchase-links a:focus-visible,
+.post-purchase-support-link:focus-visible,
+.post-purchase-catalog-link:focus-visible,
+.post-purchase-form input:focus-visible {
+    outline: 3px solid rgba(166, 124, 61, 0.32);
+    outline-offset: 3px;
+}
+
+.tracking-status-note {
+    background: var(--cream);
+    border: 1px solid var(--gold-pale);
+    border-radius: 12px;
+    display: grid;
+    gap: 0.25rem;
+    padding: 1rem;
+}
+
+.tracking-status-note strong {
+    color: var(--dark);
+}
+
+.tracking-status-note span {
+    color: var(--gray-dark);
+    line-height: 1.55;
+}
+
+.post-purchase-guidance {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-top: 2rem;
+}
+
+.post-purchase-guidance article {
+    background: var(--white);
+    border: 1px solid rgba(201, 168, 106, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(166, 124, 61, 0.06);
+    padding: 1rem;
+}
+
+.post-purchase-guidance h2 {
+    color: var(--dark);
+    font-size: 1.1rem;
+    margin-bottom: 0.7rem;
+}
+
+.post-purchase-guidance p,
+.post-purchase-guidance li {
+    color: var(--gray-dark);
+    font-size: 0.92rem;
+    line-height: 1.55;
+}
+
+.post-purchase-guidance ol,
+.post-purchase-guidance ul {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding-left: 1.15rem;
+}
+
+.post-purchase-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 1rem;
+}
+
+.post-purchase-links a,
+.post-purchase-support-link,
+.post-purchase-catalog-link {
+    align-items: center;
+    border: 1px solid var(--gold-pale);
+    border-radius: 999px;
+    color: var(--gold-dark);
+    display: inline-flex;
+    font-size: 0.84rem;
+    font-weight: 900;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0.55rem 0.85rem;
+}
+
+.post-purchase-links a:hover,
+.post-purchase-support-link:hover,
+.post-purchase-catalog-link:hover {
+    background: var(--gold-pale);
+    color: var(--dark);
+}
+
+.post-purchase-support-link,
+.post-purchase-catalog-link {
+    margin-top: 1rem;
+}
+
+.post-purchase-support-link[aria-disabled='true'] {
+    color: var(--gray);
+    cursor: not-allowed;
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.order-empty-state.post-purchase-empty-state {
+    min-height: 220px;
+    padding: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .post-purchase-guidance {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .post-purchase-page {
+        padding: 2rem 1rem;
+    }
+
+    .post-purchase-hero,
+    .post-purchase-form,
+    .tracking-card,
+    .order-empty-state.post-purchase-empty-state {
+        padding: 1.25rem;
+    }
+
+    .tracking-card-head {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .tracking-status {
+        align-self: flex-start;
+    }
+
+    .post-purchase-guidance {
+        grid-template-columns: 1fr;
+    }
+
+    .post-purchase-links a,
+    .post-purchase-support-link,
+    .post-purchase-catalog-link {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tracking-total-row,
+    .tracking-item,
+    .tracking-event {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+}

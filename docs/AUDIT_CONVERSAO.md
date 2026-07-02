@@ -506,6 +506,18 @@ Escopo sugerido:
 - Atendimento.
 - Recompra.
 
+Status: concluida.
+
+Melhorias implementadas nesta sprint:
+
+- Pagina publica de acompanhamento do pedido revisada com cabecalho de acompanhamento seguro e orientacao sobre numero/token do pedido.
+- Status existentes receberam explicacao visual para a cliente, sem criar novos status ou alterar nomes internos.
+- Bloco `O que acontece agora?` adicionado com etapas genericas e seguras do pos-compra, sem promessa de prazo fixo.
+- Bloco institucional de cuidados com a semijoia adicionado com links para garantia e FAQ.
+- Atendimento pos-compra via WhatsApp adicionado usando configuracao publica da loja, sem `href="#"` quando indisponivel.
+- Chamada discreta para recompra adicionada com CTA para o catalogo, sem cupom, desconto ou campanha.
+- Estados vazio, pedido nao encontrado e carregamento receberam mensagens mais claras sem alterar logica de consulta.
+- Estilos responsivos adicionados para status, formulario, resumo do pedido, suporte, cuidados e recompra.
 ## KPIs do Epico 3
 
 Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar priorizacao, validacao e evolucao do funil comercial.
@@ -523,17 +535,16 @@ No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por 
 
 ## Restricoes observadas
 
-- Melhorias da Sprint 009 foram limitadas ao frontend publico do catalogo e a este registro documental.
-- Backend, banco de dados, APIs, models, migrations, VJ Admin e autenticacao nao foram modificados.
-- Estoque, preco, carrinho, checkout, pedido, payloads, rotas existentes e contratos de API foram preservados.
+- Melhorias da Sprint 010 foram limitadas ao frontend publico da pagina de pedido/acompanhamento e a este registro documental.
+- Backend, banco, APIs, models, migrations, VJ Admin, financeiro, estoque, pagamento, InfinitePay, regras de status, regras de pedido, payloads, rotas existentes e contratos foram preservados.
 - `ROADMAP.md`, `PRODUCT.md` e `ARCHITECTURE.md` nao foram modificados.
 
 ## Validacoes
 
-Validacoes executadas para a Sprint 009:
+Validacoes executadas para a Sprint 010:
 
-- `node --check` nos JS alterados e nos scripts carregados pelo catalogo.
-- Parse do script inline de `frontend/catalogo.html` com Node.
+- `node --check` nos scripts carregados pela pagina de pedido.
+- Parse do script inline de `frontend/pedido.html` com Node.
 - `uv run pytest`.
 - `uv run python tools\e2e_smoke.py`.
 - `git diff --check`.
