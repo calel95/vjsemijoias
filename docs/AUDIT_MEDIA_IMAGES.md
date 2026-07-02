@@ -474,33 +474,96 @@ Arquivos alterados:
 - `tests/test_vj_admin.py`: adicionados testes de upload, edicao, remocao, formato invalido, tipo divergente, consistencia, local, R2 incompleto (503) e falha de storage na edicao preserva imagem anterior.
 - `docs/AUDIT_MEDIA_IMAGES.md`: atualizado com Sprint 015.
 
+## Sprint 016 - Multiplas imagens / galeria no VJ Admin modular
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- O VJ Admin modular passou a operar galeria de produto com multiplas imagens no formulario de criacao/edicao.
+- O campo `Imagem URL` foi preservado por compatibilidade e continua representando a imagem principal quando usado sozinho.
+- O input de upload agora aceita multiplos arquivos (`jpg`, `jpeg`, `png`, `webp`, `gif`) com limite de 8 MB por imagem.
+- O frontend mantem uma lista ordenada de imagens, permite remover item individual e reordenar com botoes `Principal`, `Subir` e `Descer`, sem biblioteca externa de drag-and-drop.
+- O payload do VJ Admin modular passa a enviar `images` como lista ordenada e `imagem_url` como compatibilidade para a primeira imagem.
+- O backend prioriza `images` quando a lista e enviada; quando apenas `imagem_url`/`image` e enviado, o fluxo antigo de imagem unica continua funcionando.
+- `store_admin_gallery_images()` e `replace_product_gallery()` continuam sendo o ponto central para validar, armazenar e reconstruir a galeria.
+- Data URL continua sendo apenas transporte temporario: apos salvar, a resposta retorna caminho/URL final, nunca `data:image/...` persistido.
+- A primeira imagem da galeria continua sendo refletida em `Product.image`, `image` e `imagem_url`; `images` retorna a lista ordenada.
+- R2 nao foi ativado automaticamente e o modo local continua sendo o padrao quando `STORAGE_BACKEND` esta ausente ou `local`.
+
+Regra da galeria:
+
+1. O produto pode ter zero, uma ou varias imagens.
+2. A primeira imagem da lista ordenada e sempre a imagem principal.
+3. `ProductImage.position` representa a ordem da galeria.
+4. URLs manuais e caminhos existentes podem ser misturados com novos uploads em data URL temporaria.
+5. Imagens duplicadas sao normalizadas pelo contrato central antes de substituir a galeria.
+6. Remover todas as imagens deixa `image` e `imagem_url` como `None` e `images` como lista vazia, preservando fallback visual por `icon`.
+7. Falha de storage durante criacao faz rollback e nao persiste produto parcial.
+8. Falha de storage durante edicao faz rollback e preserva a galeria anterior.
+
+Compatibilidade preservada:
+
+- Nenhum site publico, catalogo publico, pagina publica de produto, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro ou dashboard foi alterado.
+- Nenhum schema, migration, campo novo de banco ou endpoint novo foi criado.
+- `Product.to_dict()` e o contrato publico `image`/`imagem_url`/`images` foram preservados.
+- O fluxo antigo com apenas `imagem_url` continua funcionando.
+- Nenhuma imagem antiga foi migrada ou removida.
+- Nenhuma dependencia nova foi instalada.
+- O storage local/R2 continua seguindo a configuracao existente.
+
+Cobertura adicionada:
+
+- Criacao de produto com multiplas imagens por URL manual.
+- Criacao de produto com multiplas imagens por data URL.
+- Criacao de produto com mistura de URL existente e data URL.
+- Consistencia de `image`, `imagem_url` e `images` com a primeira imagem da galeria.
+- Persistencia de `ProductImage.position` conforme ordem enviada.
+- Edicao reordenando imagens.
+- Edicao removendo uma imagem.
+- Edicao removendo todas as imagens.
+- Falha de storage durante criacao sem produto parcial persistido.
+- Falha de storage durante edicao preservando a galeria anterior.
+- Campo antigo `imagem_url` sozinho continua coberto pelos testes da Sprint 015.
+- Data URL nunca e persistida.
+- URL manual continua funcionando.
+- R2 incompleto retorna erro seguro sem expor secrets.
+
+Arquivos alterados:
+
+- `frontend/vj-admin.html`: input de upload multiplo e area de preview de galeria.
+- `frontend/css/vj-admin.css`: estilos para galeria, miniaturas, estado vazio e controles de ordem/remocao.
+- `frontend/js/vj-admin/products.js`: estado de galeria, selecao multipla, preview, reordenacao, remocao individual, payload `images` e reset ao criar novo produto.
+- `backend/routers/vj_admin_products.py`: suporte ao payload `images` no VJ Admin modular com fallback para `imagem_url` unico.
+- `tests/test_vj_admin.py`: testes de criacao, edicao, rollback, ordem, remocao e compatibilidade de galeria.
+- `docs/AUDIT_MEDIA_IMAGES.md`: registro desta sprint.
+
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 016 — Multiplas imagens/galeria no VJ Admin modular.
+A proxima sprint recomendada e a Sprint 017 - Migracao gradual de imagens antigas para R2.
 
 Motivo:
 
-- O upload de imagem unica ja esta operacional no VJ Admin modular desde a Sprint 015.
-- O backend ja suporta galeria com `ProductImage` ordenada por `position`.
-- O admin legado ja trabalha com multiplas imagens, mas o VJ Admin modular ainda envia uma imagem por vez.
-- A migracao gradual de imagens antigas para R2 pode ser feita em sprint posterior sem bloquear a evolucao da galeria.
+- O VJ Admin modular ja opera upload unico e galeria multipla.
+- O contrato central `image`/`imagem_url`/`images` esta preservado.
+- A validacao local/R2 ja existe e permite preparar migracao sem exigir R2 em desenvolvimento local.
+- A dependencia remota de imagens antigas ainda deve ser resolvida em uma sprint propria, com baixo risco operacional.
 
 Escopo recomendado:
 
-- Permitir selecao e preview de multiplas imagens no VJ Admin modular.
-- Reordenar imagens da galeria no formulario.
-- Manter primeira imagem como principal.
-- Reutilizar `store_admin_gallery_images()` e `replace_product_gallery()` com lista de imagens.
-- Preservar compatibilidade com `image`, `imagem_url`, `images` e `ProductImage`.
-- Deixar migracao gradual de imagens antigas para uma sprint posterior.
+- Criar script idempotente de migracao local/R2 com modo `dry-run`.
+- Mapear imagens antigas `images/catalog/...` ainda usadas por produtos.
+- Enviar lotes para R2 somente quando `STORAGE_BACKEND=r2` estiver completo.
+- Registrar origem/destino e plano de rollback documentado.
+- Nao remover imagens locais ate validacao completa em DEV/PRD.
 
-## Validacoes da Sprint 015
+## Validacoes da Sprint 016
 
 Validacoes obrigatorias desta sprint:
 
 - `uv run pytest`.
 - `uv run python tools/e2e_smoke.py`.
-- `node --check` em `frontend/js/vj-admin/products.js` e `frontend/js/vj-admin/api.js`.
+- `node --check` em `frontend/js/vj-admin/products.js`.
 - `git diff --check`.
 
 Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.

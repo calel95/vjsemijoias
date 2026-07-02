@@ -18,7 +18,7 @@
         const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         const ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
         const IMAGE_MAX_BYTES = 8 * 1024 * 1024;
-        let selectedImageDataUrl = null;
+        let galleryImages = [];
 
         function productFilters() {
             return {
@@ -139,26 +139,96 @@
                 <label class="readonly-field"><span>${label}</span><input value="${escapeHTML(value)}" readonly tabindex="-1"></label>
             `).join('')}</div>`;
         }
-        function renderImagePreview(src) {
-            const box = $('#product-imagem-preview');
-            if (!src) {
-                box.innerHTML = '<span>Sem imagem</span>';
-                return;
-            }
-            box.innerHTML = `<img src="${escapeHTML(src)}" alt="Preview da imagem do produto">`;
+        function cleanGalleryImage(value) {
+            const image = String(value || '').trim();
+            return image || null;
+        }
+
+        function isDataImage(value) {
+            return String(value || '').startsWith('data:image/');
+        }
+
+        function galleryFromProduct(product) {
+            const images = Array.isArray(product.images) ? product.images : [];
+            const cleanedImages = images.map(cleanGalleryImage).filter(Boolean);
+            if (cleanedImages.length) return cleanedImages;
+            const image = cleanGalleryImage(product.imagem_url || product.image);
+            return image ? [image] : [];
+        }
+
+        function currentGalleryImages() {
+            return galleryImages.map(cleanGalleryImage).filter(Boolean);
+        }
+
+        function syncMainImageInput() {
+            const firstImage = currentGalleryImages()[0] || '';
+            $('#product-imagem').value = firstImage && !isDataImage(firstImage) ? firstImage : '';
         }
 
         function updateClearButtonVisibility() {
-            const hasImage = Boolean(selectedImageDataUrl || $('#product-imagem').value.trim());
-            $('#product-imagem-clear').classList.toggle('hidden', !hasImage);
+            $('#product-imagem-clear').classList.toggle('hidden', currentGalleryImages().length === 0);
+        }
+
+        function imageLabel(image, index) {
+            if (isDataImage(image)) return `Imagem selecionada ${index + 1}`;
+            const compact = image.length > 44 ? `${image.slice(0, 41)}...` : image;
+            return compact || `Imagem ${index + 1}`;
+        }
+
+        function renderGalleryPreview() {
+            const box = $('#product-gallery-preview');
+            const images = currentGalleryImages();
+            galleryImages = images;
+            syncMainImageInput();
+            updateClearButtonVisibility();
+            if (!images.length) {
+                box.innerHTML = '<div class="gallery-empty">Sem imagens na galeria</div>';
+                return;
+            }
+            box.innerHTML = images.map((image, index) => {
+                const safeImage = isDataImage(image) ? image : escapeHTML(image);
+                const mainBadge = index === 0 ? '<span class="status-badge publicado">Principal</span>' : '';
+                return `
+                    <article class="gallery-item${index === 0 ? ' is-main' : ''}">
+                        <div class="gallery-thumb"><img src="${safeImage}" alt="Preview da imagem ${index + 1}"></div>
+                        ${mainBadge}
+                        <small>${escapeHTML(imageLabel(image, index))}</small>
+                        <div class="gallery-actions">
+                            <button class="secondary-button" type="button" data-gallery-action="main" data-index="${index}" ${index === 0 ? 'disabled' : ''}>Principal</button>
+                            <button class="secondary-button" type="button" data-gallery-action="up" data-index="${index}" ${index === 0 ? 'disabled' : ''}>Subir</button>
+                            <button class="secondary-button" type="button" data-gallery-action="down" data-index="${index}" ${index === images.length - 1 ? 'disabled' : ''}>Descer</button>
+                            <button class="danger-button" type="button" data-gallery-action="remove" data-index="${index}">Remover</button>
+                        </div>
+                    </article>
+                `;
+            }).join('');
+            $$('#product-gallery-preview [data-gallery-action]').forEach((button) => {
+                button.addEventListener('click', () => updateGalleryOrder(button.dataset.galleryAction, Number(button.dataset.index)));
+            });
+        }
+
+        function updateGalleryOrder(action, index) {
+            const images = currentGalleryImages();
+            if (!images[index]) return;
+            if (action === 'remove') {
+                images.splice(index, 1);
+            } else if (action === 'main') {
+                const [image] = images.splice(index, 1);
+                images.unshift(image);
+            } else if (action === 'up' && index > 0) {
+                [images[index - 1], images[index]] = [images[index], images[index - 1]];
+            } else if (action === 'down' && index < images.length - 1) {
+                [images[index], images[index + 1]] = [images[index + 1], images[index]];
+            }
+            galleryImages = images;
+            renderGalleryPreview();
         }
 
         function clearSelectedImage() {
-            selectedImageDataUrl = null;
+            galleryImages = [];
             $('#product-imagem-file').value = '';
             $('#product-imagem').value = '';
-            renderImagePreview(null);
-            updateClearButtonVisibility();
+            renderGalleryPreview();
         }
 
         function validateImageFile(file) {
@@ -178,32 +248,36 @@
             return null;
         }
 
-        function handleImageFileSelect(event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) return;
-            const error = validateImageFile(file);
+        function readImageFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Falha ao ler o arquivo selecionado.'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleImageFileSelect(event) {
+            const files = Array.from(event.target.files || []);
+            if (!files.length) return;
+            const error = files.map(validateImageFile).find(Boolean);
             if (error) {
                 setMessage('#product-message', error, 'error');
                 $('#product-imagem-file').value = '';
                 return;
             }
-            const reader = new FileReader();
-            reader.onload = () => {
-                selectedImageDataUrl = reader.result;
-                $('#product-imagem').value = '';
-                renderImagePreview(selectedImageDataUrl);
-                updateClearButtonVisibility();
-                setMessage('#product-message', 'Imagem selecionada. Salve para enviar.', 'success');
-            };
-            reader.onerror = () => {
-                setMessage('#product-message', 'Falha ao ler o arquivo selecionado.', 'error');
-                selectedImageDataUrl = null;
+            try {
+                const selectedImages = await Promise.all(files.map(readImageFile));
+                galleryImages = currentGalleryImages().concat(selectedImages);
+                renderGalleryPreview();
+                const count = selectedImages.length;
+                setMessage('#product-message', `${count} imagem${count === 1 ? '' : 's'} adicionada${count === 1 ? '' : 's'}. Salve para enviar.`, 'success');
+            } catch (error) {
+                setMessage('#product-message', error.message || 'Falha ao ler arquivo selecionado.', 'error');
+            } finally {
                 $('#product-imagem-file').value = '';
-                updateClearButtonVisibility();
-            };
-            reader.readAsDataURL(file);
+            }
         }
-
         function resetProductForm() {
             state.currentProductId = null;
             $('#product-form').reset();
@@ -215,10 +289,9 @@
             $('#product-status').value = 'rascunho';
             $('#product-publicado').checked = false;
             $('#product-form-title').textContent = 'Novo produto';
-            selectedImageDataUrl = null;
+            galleryImages = [];
             $('#product-imagem-file').value = '';
-            renderImagePreview(null);
-            updateClearButtonVisibility();
+            renderGalleryPreview();
             setMessage('#product-message', '');
             renderPricing();
             renderProducts();
@@ -243,13 +316,11 @@
             $('#product-markup').value = product.markup ?? 2;
             $('#product-status').value = ['rascunho', 'publicado', 'inativo'].includes(product.status) ? product.status : 'publicado';
             $('#product-publicado').checked = Boolean(product.publicado);
-            $('#product-imagem').value = product.imagem_url || product.image || '';
             $('#product-descricao').value = product.descricao || product.description || '';
             $('#product-form-title').textContent = `Editar ${product.codigo || product.nome || product.id}`;
-            selectedImageDataUrl = null;
+            galleryImages = galleryFromProduct(product);
             $('#product-imagem-file').value = '';
-            renderImagePreview(product.imagem_url || product.image || null);
-            updateClearButtonVisibility();
+            renderGalleryPreview();
             const audit = [
                 product.created_by?.email ? `Criado por ${product.created_by.email}` : '',
                 product.updated_by?.email ? `Atualizado por ${product.updated_by.email}` : '',
@@ -260,6 +331,13 @@
         }
 
         function productPayload() {
+            const manualImage = cleanGalleryImage($('#product-imagem').value);
+            if (manualImage) {
+                galleryImages = currentGalleryImages();
+                if (galleryImages.length) galleryImages[0] = manualImage;
+                else galleryImages = [manualImage];
+            }
+            const images = currentGalleryImages();
             const payload = {
                 codigo: $('#product-codigo').value.trim(),
                 nome: $('#product-nome').value.trim(),
@@ -272,7 +350,8 @@
                 custo_peca: $('#product-custo-peca').value,
                 custo_embalagem: $('#product-custo-embalagem').value || 9.34,
                 markup: $('#product-markup').value || 2,
-                imagem_url: selectedImageDataUrl || $('#product-imagem').value.trim(),
+                imagem_url: images[0] || '',
+                images,
                 status: $('#product-status').value,
                 publicado: $('#product-publicado').checked,
             };
@@ -285,7 +364,6 @@
             const id = $('#product-id').value;
             try {
                 const saved = await api.saveProduct(productPayload(), id || null);
-                selectedImageDataUrl = null;
                 $('#product-imagem-file').value = '';
                 await loadProducts();
                 editProduct(saved.id);
@@ -332,7 +410,7 @@
         function previewProduct() {
             const payload = productPayload();
             const pricingValues = currentPricingInput();
-            const image = payload.imagem_url;
+            const image = payload.images[0] || payload.imagem_url;
             const safeImage = image && image.startsWith('data:') ? image : escapeHTML(image);
             $('#product-preview-card').innerHTML = `
                 <div class="preview-image-box">${image ? `<img src="${safeImage}" alt="${escapeHTML(payload.nome || 'Produto')}">` : '<span>Sem imagem</span>'}</div>
@@ -409,12 +487,16 @@
             $('#product-imagem-file').addEventListener('change', handleImageFileSelect);
             $('#product-imagem-clear').addEventListener('click', clearSelectedImage);
             $('#product-imagem').addEventListener('input', () => {
-                if (selectedImageDataUrl) {
-                    selectedImageDataUrl = null;
-                    $('#product-imagem-file').value = '';
+                const manualImage = cleanGalleryImage($('#product-imagem').value);
+                const images = currentGalleryImages();
+                if (manualImage) {
+                    if (images.length) images[0] = manualImage;
+                    else images.push(manualImage);
+                } else if (images.length && !isDataImage(images[0])) {
+                    images.shift();
                 }
-                renderImagePreview($('#product-imagem').value.trim() || null);
-                updateClearButtonVisibility();
+                galleryImages = images;
+                renderGalleryPreview();
             });
         }
 

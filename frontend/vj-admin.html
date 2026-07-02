@@ -206,14 +206,13 @@
                                 <label>Imagem URL<input id="product-imagem" maxlength="2000"
                                         placeholder="images/catalog/admin/produto.jpg"></label>
                                 <div class="image-upload-row">
-                                    <label class="image-upload-label">Enviar imagem<input id="product-imagem-file"
-                                            type="file" accept="image/jpeg,image/png,image/webp,image/gif"></label>
-                                    <small class="image-upload-hint">JPG, PNG, WebP ou GIF. Ate 8 MB.</small>
+                                    <label class="image-upload-label">Enviar imagens<input id="product-imagem-file"
+                                            type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple></label>
+                                    <small class="image-upload-hint">JPG, PNG, WebP ou GIF. Ate 8 MB por imagem. A primeira imagem sera a principal.</small>
                                     <button class="secondary-button hidden" id="product-imagem-clear"
-                                        type="button">Remover imagem</button>
+                                        type="button">Limpar galeria</button>
                                 </div>
-                                <div class="image-preview-box" id="product-imagem-preview" aria-live="polite"><span>Sem
-                                        imagem</span></div>
+                                <div class="gallery-preview" id="product-gallery-preview" aria-live="polite"></div>
                             </div>
                             <label>Descricao<textarea id="product-descricao" rows="3"
                                     maxlength="2000"></textarea></label>
