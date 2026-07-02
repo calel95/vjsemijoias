@@ -538,32 +538,122 @@ Arquivos alterados:
 - `tests/test_vj_admin.py`: testes de criacao, edicao, rollback, ordem, remocao e compatibilidade de galeria.
 - `docs/AUDIT_MEDIA_IMAGES.md`: registro desta sprint.
 
+## Sprint 017 - Migracao gradual de imagens antigas para R2
+
+Status: concluida.
+
+Decisao tecnica implementada:
+
+- Foi criado o script `tools/migrate_product_images_to_r2.py` para preparar a migracao gradual de imagens locais antigas para Cloudflare R2.
+- O script trabalha em dry-run por padrao e nao altera banco nem faz upload sem `--apply --yes`.
+- O apply exige `STORAGE_BACKEND=r2` e configuracao R2 valida antes de qualquer alteracao.
+- A migracao considera referencias persistidas em `Product.image` e `ProductImage.path`.
+- Apenas imagens locais dentro de `frontend/images` sao candidatas.
+- URLs absolutas `http/https` sao ignoradas e nao sao migradas.
+- Data URLs sao reportadas como problema, pois nao devem existir como valor persistido.
+- Caminhos inexistentes, fora de `frontend/images` ou com path traversal sao bloqueados e reportados.
+- A chave R2 final e deterministica: `catalog/migrated/{product_id}/{position}-{filename}`.
+- O lote so faz commit no banco apos processar com sucesso; em falha, faz rollback.
+- Nenhum arquivo local e apagado.
+
+Como executar:
+
+```powershell
+uv run python tools/migrate_product_images_to_r2.py --dry-run --report-path output/media-r2-dry-run.json
+```
+
+Para execucao real em lote pequeno:
+
+```powershell
+uv run python tools/migrate_product_images_to_r2.py --apply --yes --limit 20 --report-path output/media-r2-apply-lote-001.json
+```
+
+Para um produto especifico:
+
+```powershell
+uv run python tools/migrate_product_images_to_r2.py --dry-run --product-id 123 --report-path output/media-r2-produto-123.json
+```
+
+Regra de migracao gradual:
+
+1. Rodar dry-run e revisar o relatorio.
+2. Corrigir problemas de arquivo inexistente, data URL ou path traversal antes do apply.
+3. Fazer backup do banco.
+4. Executar apply com `--yes` em lote pequeno.
+5. Validar site/admin/smoke.
+6. Manter arquivos locais ate validacao completa em DEV/PRD.
+
+Relatorio:
+
+- `modo`: `dry-run` ou `apply`.
+- `total_produtos_analisados`.
+- `total_imagens_candidatas`.
+- `total_migrar_ou_migradas`.
+- `total_ignoradas`.
+- `total_problemas`.
+- Lista por produto com imagens atuais, imagens novas previstas e status por imagem.
+
+Politica de rollback:
+
+- Se houver falha durante apply antes do commit, o script executa rollback do banco.
+- Como arquivos locais nao sao removidos, o rollback logico apos um apply commitado pode ser feito restaurando backup do banco ou revertendo referencias a partir dos relatorios salvos.
+- Objetos eventualmente enviados ao R2 antes de uma falha nao sao apagados automaticamente nesta sprint.
+
+Restricoes preservadas:
+
+- Nenhum site publico, VJ Admin visual, carrinho, checkout, pedido, pagamento, estoque, preco, frete, financeiro ou dashboard foi alterado.
+- Nenhum schema, migration, endpoint novo ou campo novo foi criado.
+- `Product.to_dict()` e o contrato publico `image`/`imagem_url`/`images` foram preservados.
+- Nenhuma imagem local foi apagada ou removida do Git.
+- Nenhuma migracao automatica roda no startup.
+- R2 nao foi ativado automaticamente.
+- Nenhuma dependencia nova foi instalada.
+
+Cobertura adicionada:
+
+- Dry-run nao altera banco.
+- Dry-run identifica imagens locais validas.
+- Dry-run ignora URL externa.
+- Dry-run reporta arquivo inexistente.
+- Dry-run bloqueia path traversal.
+- Apply exige `STORAGE_BACKEND=r2`.
+- Apply exige `--yes`.
+- Apply atualiza `Product.image` e `ProductImage.path`.
+- Apply preserva ordem da galeria.
+- Apply nao duplica imagens em segunda execucao.
+- Apply faz rollback se upload falhar.
+- Relatorio JSON contem campos esperados.
+- Secrets nao aparecem no relatorio.
+
+Documento operacional criado:
+
+- `docs/MEDIA_MIGRATION_R2.md`.
+
 ## Recomendacao para a proxima sprint
 
-A proxima sprint recomendada e a Sprint 017 - Migracao gradual de imagens antigas para R2.
+A proxima sprint recomendada e a Sprint 018 - Otimizacao e variantes de imagem.
 
 Motivo:
 
-- O VJ Admin modular ja opera upload unico e galeria multipla.
-- O contrato central `image`/`imagem_url`/`images` esta preservado.
-- A validacao local/R2 ja existe e permite preparar migracao sem exigir R2 em desenvolvimento local.
-- A dependencia remota de imagens antigas ainda deve ser resolvida em uma sprint propria, com baixo risco operacional.
+- O fluxo de storage local/R2, upload modular, galeria e migracao gradual ja possui base operacional.
+- O proximo risco comercial e tecnico passa a ser peso, formato e dimensoes das imagens servidas no catalogo/produto.
+- Variantes responsivas podem reduzir LCP e consumo de banda sem mudar o contrato publico de produto.
 
 Escopo recomendado:
 
-- Criar script idempotente de migracao local/R2 com modo `dry-run`.
-- Mapear imagens antigas `images/catalog/...` ainda usadas por produtos.
-- Enviar lotes para R2 somente quando `STORAGE_BACKEND=r2` estiver completo.
-- Registrar origem/destino e plano de rollback documentado.
-- Nao remover imagens locais ate validacao completa em DEV/PRD.
+- Definir politica de variantes (`thumbnail`, `card`, `detail`, `original`).
+- Avaliar conversao WebP/AVIF sem perda visual relevante.
+- Criar processo seguro para gerar variantes futuras.
+- Medir impacto em catalogo e pagina de produto.
+- Preservar URLs antigas ate validacao completa.
 
-## Validacoes da Sprint 016
+## Validacoes da Sprint 017
 
 Validacoes obrigatorias desta sprint:
 
 - `uv run pytest`.
 - `uv run python tools/e2e_smoke.py`.
-- `node --check` em `frontend/js/vj-admin/products.js`.
+- `node --check` somente se JS for alterado; nesta sprint nao houve alteracao de JS.
 - `git diff --check`.
 
 Alembic nao deve ser executado porque nao houve alteracao de schema, banco ou migrations.
