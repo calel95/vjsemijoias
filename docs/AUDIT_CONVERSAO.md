@@ -346,82 +346,123 @@ Comparando com essas praticas, a VJ Semijoias ja tem uma base forte para uma loj
 
 ## Plano sugerido
 
-### Sprint 005
+### Sprint 005 — Home Comercial
 
-Objetivo: fortalecer produto, carrinho e checkout como funil minimo de conversao.
+Objetivo: transformar a Home em uma pagina comercial que desperte desejo, transmita confianca e conduza naturalmente ao catalogo.
 
-Impacto esperado: reduzir abandono entre interesse no produto e clique em pagamento seguro.
-
-Escopo sugerido:
-
-- Revisar microcopy de frete no produto e carrinho.
-- Melhorar comunicacao do bloqueio de frete antes do checkout.
-- Reforcar InfinitePay como ambiente seguro antes do CTA.
-- Adicionar links contextuais para garantia, troca e privacidade no checkout.
-- Validar experiencia mobile do funil de compra.
-
-### Sprint 006
-
-Objetivo: aumentar desejo e clareza no Catalogo e na Home.
-
-Impacto esperado: aumentar cliques em produtos e melhorar descoberta de pecas.
+Impacto esperado: aumentar entrada no catalogo.
 
 Escopo sugerido:
 
-- Transformar a Home em vitrine comercial mais forte.
-- Criar blocos de lancamentos, personalizados, presentes e mais vendidos.
-- Melhorar consistencia visual dos cards de produto.
-- Explorar badges comerciais com criterio.
-- Revisar papel do PDF dentro da jornada de compra.
+- Hero comercial.
+- Banner principal.
+- Categorias em destaque.
+- Produtos em destaque.
+- Beneficios.
+- CTA.
+- Prova social.
+- Hierarquia visual.
 
-### Sprint 007
+### Sprint 006 — Catalogo
 
-Objetivo: enriquecer paginas de produto para aumentar confianca e ticket medio.
+Objetivo: facilitar descoberta de produtos.
 
-Impacto esperado: aumentar taxa de adicionar ao carrinho e compras de maior valor.
-
-Escopo sugerido:
-
-- Padronizar descricoes comerciais dos produtos.
-- Exibir informacoes tecnicas quando disponiveis: medidas, banho, material, cuidados, estoque e personalizacao.
-- Melhorar produtos relacionados com combinacoes e sugestoes de presente.
-- Inserir prova social e atendimento contextual.
-- Destacar beneficio de garantia de 2 anos com criterio.
-
-### Sprint 008
-
-Objetivo: consolidar confianca institucional e pos-compra.
-
-Impacto esperado: reduzir inseguranca de primeira compra e duvidas antes do pagamento.
+Impacto esperado: aumentar visualizacoes de produtos.
 
 Escopo sugerido:
 
-- Revisar paginas de garantia, troca, privacidade, termos e FAQ sob linguagem comercial.
-- Conectar essas paginas aos pontos criticos do funil.
-- Reforcar WhatsApp e atendimento nos pontos de duvida.
-- Melhorar pagina de Pedido com proximos passos, cuidados e canais de suporte.
-- Ajustar Cadastro/Login para explicar uso de dados pessoais.
+- Badges.
+- Fotos.
+- Organizacao.
+- Destaques.
+- Comparacao.
+- Descoberta.
 
-### Sprint 009
+### Sprint 007 — Pagina de Produto
 
-Objetivo: otimizar ticket medio e recorrencia.
+Objetivo: aumentar taxa de adicionar ao carrinho.
 
-Impacto esperado: aumentar valor medio por pedido e preparar recompra.
+Impacto esperado: maior conversao produto -> carrinho.
 
 Escopo sugerido:
 
-- Criar recomendacoes de composicoes: colar + pingente, brinco + pulseira, presentes.
-- Criar secoes por faixa de preco e ocasiao.
-- Avaliar lista de desejos/favoritos.
-- Criar comunicacao pos-compra com cuidados e incentivo a recompra.
-- Planejar experimentos futuros com campanhas, cupons e vitrines sazonais.
+- Descricao comercial.
+- Informacoes tecnicas.
+- Garantia.
+- Cuidados.
+- Medidas.
+- Combinacoes.
+- Produtos relacionados.
+- Prova social.
+
+### Sprint 008 — Carrinho
+
+Objetivo: reduzir abandono.
+
+Impacto esperado: maior continuidade para checkout.
+
+Escopo sugerido:
+
+- Clareza.
+- Frete.
+- Comunicacao.
+- Resumo.
+- Seguranca.
+
+### Sprint 009 — Checkout
+
+Objetivo: reduzir desistencia antes do pagamento.
+
+Impacto esperado: maior taxa de pedidos concluidos.
+
+Escopo sugerido:
+
+- Comunicacao.
+- Seguranca.
+- InfinitePay.
+- Mensagens.
+- Campos.
+- UX mobile.
+
+### Sprint 010 — Pos-compra
+
+Objetivo: fidelizacao.
+
+Impacto esperado: maior recompra.
+
+Escopo sugerido:
+
+- Pagina do pedido.
+- Rastreio.
+- Cuidados.
+- Recomendacoes.
+- Atendimento.
+- Recompra.
+
+## KPIs do Epico 3
+
+Cada sprint do Epico 3 devera possuir indicadores de sucesso para orientar priorizacao, validacao e evolucao do funil comercial.
+
+| Sprint | KPI principal |
+|---------|---------------|
+| Sprint 005 | Cliques para Catalogo |
+| Sprint 006 | Visualizacoes de Produto |
+| Sprint 007 | Adicoes ao Carrinho |
+| Sprint 008 | Reducao de Abandono do Carrinho |
+| Sprint 009 | Pedidos Concluidos |
+| Sprint 010 | Recompra |
+
+No momento os KPIs sao metas arquiteturais. Futuramente poderao ser medidos por ferramentas como Google Analytics, PostHog, Plausible ou outra solucao de analytics.
 
 ## Restricoes observadas
 
 - Nenhuma melhoria foi implementada.
-- Nenhum arquivo existente foi alterado.
+- Apenas `docs/AUDIT_CONVERSAO.md` foi alterado.
+- Nenhum outro documento foi alterado.
 - O frontend nao foi modificado.
 - O backend nao foi modificado.
+- O banco de dados nao foi modificado.
+- As APIs nao foram modificadas.
 - `ROADMAP.md` nao foi modificado.
 - `PRODUCT.md` nao foi modificado.
 - `ARCHITECTURE.md` nao foi modificado.
@@ -432,7 +473,7 @@ Esta tarefa foi exclusivamente documental. Por isso, nao foram executados:
 
 - `pytest`
 - smoke tests
-- Alembic
 - `node --check`
+- Alembic
 
-A validacao realizada foi de auditoria comercial/documental, com consulta a loja publicada, rotas publicas, HTML servido, API publica de produtos e configuracao publica da loja. Testes automatizados nao seriam proporcionais ao escopo, pois nao houve alteracao de codigo, frontend, backend, banco de dados ou comportamento.
+A validacao realizada foi de auditoria comercial/documental. Testes automatizados nao seriam proporcionais ao escopo, pois nao houve alteracao de codigo, frontend, backend, banco de dados, APIs ou comportamento.
